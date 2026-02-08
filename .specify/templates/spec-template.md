@@ -105,6 +105,7 @@
 <!--
   ACTION REQUIRED: Define measurable success criteria.
   These must be technology-agnostic and measurable.
+  Align with constitution principles: UX consistency, performance requirements.
 -->
 
 ### Measurable Outcomes
@@ -113,3 +114,10 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+
+### Performance & UX Targets (if applicable)
+
+- **Page Load**: [e.g., "<3s on 3G, <1.5s First Contentful Paint" or "N/A for backend-only"]
+- **API Performance**: [e.g., "<500ms p95 for reads, <2s for writes" or "N/A for frontend-only"]
+- **Accessibility**: [e.g., "WCAG 2.1 AA compliant, keyboard navigable" or "N/A for backend-only"]
+- **Responsive Design**: [e.g., "Fully functional 320px-1920px" or "N/A for backend-only"]

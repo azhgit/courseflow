@@ -31,7 +31,27 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Code Quality**: 
+- [ ] Feature complexity justified (functions <50 lines, files <500 lines, or documented exceptions)
+- [ ] Documentation strategy defined (API docs, inline comments, user guides)
+- [ ] Code review process established
+
+**Testing Standards**:
+- [ ] Test strategy defined (unit/integration/contract test breakdown)
+- [ ] Coverage targets identified (80% minimum, 100% for critical paths)
+- [ ] Test-first approach planned for complex features
+
+**User Experience Consistency**:
+- [ ] Design system usage confirmed (or N/A for backend-only features)
+- [ ] Accessibility requirements identified (WCAG 2.1 AA compliance plan)
+- [ ] Responsive design breakpoints planned (or N/A for non-UI features)
+- [ ] Error handling and loading states designed
+
+**Performance Requirements**:
+- [ ] Performance targets defined (API response times, page load times)
+- [ ] Database query strategy planned (indexes, N+1 prevention)
+- [ ] Asset optimization planned (or N/A for backend-only features)
+- [ ] Scalability considerations documented
 
 ## Project Structure
 

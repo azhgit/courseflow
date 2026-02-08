@@ -2,6 +2,12 @@
 
 Auto-generated from all feature plans. Last updated: [DATE]
 
+**Constitution**: All development must comply with `.specify/memory/constitution.md` principles:
+- Code Quality Standards
+- Testing Standards  
+- User Experience Consistency
+- Performance Requirements
+
 ## Active Technologies
 
 [EXTRACTED FROM ALL PLAN.MD FILES]

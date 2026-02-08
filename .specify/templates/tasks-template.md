@@ -8,6 +8,12 @@ description: "Task list template for feature implementation"
 **Input**: Design documents from `/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
+**Constitution Compliance**: All tasks must align with constitution principles:
+- Code Quality: Functions <50 lines, files <500 lines, documented code
+- Testing Standards: 80% coverage minimum, test-first for complex features
+- UX Consistency: Design system usage, WCAG 2.1 AA accessibility (for UI tasks)
+- Performance: API <500ms p95, page load <3s, optimized assets (for applicable tasks)
+
 **Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
