@@ -1,0 +1,191 @@
+{
+  "description": "Golden QA pairs for RAG system testing",
+  "version": "1.0",
+  "created": "2025-02-09",
+  "qa_pairs": [
+    {
+      "id": "bio-001",
+      "subject": "biology",
+      "question": "What is photosynthesis?",
+      "expected_keywords": [
+        "light energy",
+        "chemical energy",
+        "plants",
+        "chlorophyll",
+        "glucose",
+        "CO2",
+        "oxygen"
+      ],
+      "expected_source": "photosynthesis.md",
+      "min_similarity": 0.7
+    },
+    {
+      "id": "bio-002",
+      "subject": "biology",
+      "question": "How does mitosis work?",
+      "expected_keywords": [
+        "cell division",
+        "daughter cells",
+        "chromosomes",
+        "prophase",
+        "metaphase",
+        "anaphase",
+        "telophase"
+      ],
+      "expected_source": "mitosis.md",
+      "min_similarity": 0.7
+    },
+    {
+      "id": "bio-003",
+      "subject": "biology",
+      "question": "What happens during the metaphase of mitosis?",
+      "expected_keywords": [
+        "chromosomes",
+        "align",
+        "equator",
+        "cell"
+      ],
+      "expected_source": "mitosis.md",
+      "min_similarity": 0.6
+    },
+    {
+      "id": "prog-001",
+      "subject": "programming",
+      "question": "How do I use async/await in Python?",
+      "expected_keywords": [
+        "async def",
+        "await",
+        "coroutine",
+        "asynchronous",
+        "asyncio"
+      ],
+      "expected_source": "python-async.md",
+      "min_similarity": 0.7
+    },
+    {
+      "id": "prog-002",
+      "subject": "programming",
+      "question": "What is asynchronous programming?",
+      "expected_keywords": [
+        "concurrent",
+        "I/O",
+        "await",
+        "async"
+      ],
+      "expected_source": "python-async.md",
+      "min_similarity": 0.6
+    },
+    {
+      "id": "prog-003",
+      "subject": "programming",
+      "question": "When should I use async/await?",
+      "expected_keywords": [
+        "I/O",
+        "network",
+        "database",
+        "concurrent"
+      ],
+      "expected_source": "python-async.md",
+      "min_similarity": 0.6
+    },
+    {
+      "id": "math-001",
+      "subject": "math",
+      "question": "What is a derivative in calculus?",
+      "expected_keywords": [
+        "rate of change",
+        "function",
+        "limit",
+        "slope"
+      ],
+      "expected_source": "derivatives.md",
+      "min_similarity": 0.7
+    },
+    {
+      "id": "math-002",
+      "subject": "math",
+      "question": "What is the power rule for derivatives?",
+      "expected_keywords": [
+        "power rule",
+        "x^n",
+        "nx^(n-1)",
+        "derivative"
+      ],
+      "expected_source": "derivatives.md",
+      "min_similarity": 0.6
+    },
+    {
+      "id": "hist-001",
+      "subject": "history",
+      "question": "When did World War II start?",
+      "expected_keywords": [
+        "1939",
+        "Poland",
+        "Germany",
+        "September"
+      ],
+      "expected_source": "world-war-2.md",
+      "min_similarity": 0.7
+    },
+    {
+      "id": "hist-002",
+      "subject": "history",
+      "question": "Who were the Allied powers in WWII?",
+      "expected_keywords": [
+        "United States",
+        "Soviet Union",
+        "United Kingdom",
+        "Allies"
+      ],
+      "expected_source": "world-war-2.md",
+      "min_similarity": 0.7
+    },
+    {
+      "id": "hist-003",
+      "subject": "history",
+      "question": "When did World War II end?",
+      "expected_keywords": [
+        "1945",
+        "August",
+        "Japan",
+        "surrender"
+      ],
+      "expected_source": "world-war-2.md",
+      "min_similarity": 0.7
+    },
+    {
+      "id": "edge-001",
+      "subject": "edge_case",
+      "question": "What is quantum entanglement?",
+      "expected_behavior": "no_relevant_documents",
+      "description": "Query about topic not in knowledge base",
+      "min_similarity": 0.5,
+      "should_find_documents": false
+    },
+    {
+      "id": "edge-002",
+      "subject": "edge_case",
+      "question": "",
+      "expected_behavior": "validation_error",
+      "description": "Empty query string",
+      "should_raise": "ValidationError"
+    },
+    {
+      "id": "edge-003",
+      "subject": "edge_case",
+      "question": "a".repeat(1001),
+      "expected_behavior": "validation_error",
+      "description": "Query exceeding maximum length",
+      "should_raise": "ValidationError"
+    }
+  ],
+  "test_instructions": {
+    "biology_questions": "Should retrieve documents from biology subject area",
+    "programming_questions": "Should retrieve documents from programming subject area",
+    "math_questions": "Should retrieve documents from math subject area",
+    "history_questions": "Should retrieve documents from history subject area",
+    "edge_cases": "Should handle gracefully with appropriate error messages",
+    "expected_latency": "All queries should complete within 3000ms",
+    "minimum_coverage": "All subjects (biology, programming, math, history) must be represented"
+  }
+}

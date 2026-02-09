@@ -27,6 +27,11 @@ class Query(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.utcnow())
     embedding: Optional[list[float]] = None
     
+    @property
+    def query_id(self) -> UUID:
+        """Alias for id field for backward compatibility."""
+        return self.id
+    
     @field_validator('text')
     @classmethod
     def validate_text(cls, v: str) -> str:
@@ -44,27 +49,29 @@ class DocumentMetadata(BaseModel):
         subject: Subject domain (e.g., "biology", "programming")
         topic: Specific topic (e.g., "photosynthesis", "async-await")
         chunk_index: Position in original document (0-indexed)
+        total_chunks: Total number of chunks in the document
     """
     
     source: str
     subject: str
     topic: Optional[str] = None
     chunk_index: int = Field(ge=0)
+    total_chunks: int = Field(ge=1)
 
 
 class Document(BaseModel):
     """Represents a chunk of educational content in the knowledge base.
     
     Attributes:
-        id: Document identifier (e.g., "bio-photosynthesis-chunk-0")
-        content: Text content of document chunk (300-500 tokens)
-        embedding: Gemini embedding of content (768-dim vector)
+        doc_id: Document identifier (e.g., "bio-photosynthesis-chunk-0")
+        content: Text content of document chunk (100-10000 chars)
+        embedding: Gemini embedding of content (768-dim vector, optional)
         metadata: Subject, source, chunk info
     """
     
-    id: str
+    doc_id: str
     content: str = Field(..., min_length=100, max_length=10000)
-    embedding: list[float] = Field(..., min_length=768, max_length=3072)
+    embedding: Optional[list[float]] = None
     metadata: DocumentMetadata
 
 
@@ -74,12 +81,10 @@ class SearchResult(BaseModel):
     Attributes:
         document: The retrieved document
         similarity_score: Cosine similarity (0-1 range)
-        rank: Position in search results (1-indexed)
     """
     
     document: Document
     similarity_score: float = Field(ge=0.0, le=1.0)
-    rank: int = Field(ge=1)
     
     model_config = {'validate_assignment': True}
 
@@ -113,21 +118,19 @@ class Answer(BaseModel):
     """Represents the AI-generated response to a query.
     
     Attributes:
-        text: The generated answer text
         query_id: Reference to original query
-        sources: Source document paths (from retrieved docs)
-        retrieval_count: Number of documents used in generation
-        top_similarity: Highest similarity score from retrieval
-        token_count: LLM token consumption
+        answer_text: The generated answer text
+        sources: Source documents with similarity scores
+        latency_ms: Total query processing time in milliseconds
+        token_usage: LLM token consumption (optional)
         timestamp: When answer was generated (UTC)
     """
     
-    text: str = Field(..., min_length=1)
     query_id: UUID
-    sources: list[str] = Field(default_factory=list)
-    retrieval_count: int = Field(ge=0, le=10)
-    top_similarity: float = Field(ge=0.0, le=1.0)
-    token_count: TokenUsage
+    answer_text: str = Field(..., min_length=1)
+    sources: list['SearchResult'] = Field(default_factory=list)
+    latency_ms: int = Field(ge=0)
+    token_usage: Optional[TokenUsage] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.utcnow())
 
 

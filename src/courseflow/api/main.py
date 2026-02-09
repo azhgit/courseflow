@@ -6,11 +6,18 @@ CORS, and lifespan context management for database and ChromaDB initialization.
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
-from courseflow.config import settings
+from src.courseflow.config import Settings
+
+# Global settings instance
+settings = Settings()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -28,9 +35,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup: Initialize resources
     print("Starting up CourseFlow RAG system...")
-    print(f"Using Gemini model: {settings.GEMINI_MODEL}")
-    print(f"ChromaDB persist dir: {settings.CHROMA_PERSIST_DIR}")
-    print(f"Rate limit: {settings.RATE_LIMIT_RPM} RPM")
+    print(f"ChromaDB persist dir: {settings.chroma_persist_dir}")
+    print(f"Rate limit: {settings.rate_limit_rpm} RPM")
     
     # NOTE: Resources are initialized per-request via dependencies
     # This keeps the lifespan simple and allows for easy testing
@@ -55,8 +61,24 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
-        openapi_url=f"{settings.API_V1_PREFIX}/openapi.json"
+        openapi_url=f"{settings.api_v1_prefix}/openapi.json"
     )
+    
+    # Add validation exception handler
+    @app.exception_handler(ValidationError)
+    async def validation_exception_handler(request: Request, exc: ValidationError):
+        """Handle Pydantic validation errors."""
+        logger.warning(f"Validation error: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": {
+                    "type": "validation_error",
+                    "message": "Invalid request data",
+                    "details": exc.errors(),
+                }
+            },
+        )
     
     # CORS middleware
     app.add_middleware(
@@ -68,15 +90,18 @@ def create_app() -> FastAPI:
     )
     
     # Register API routes
-    from courseflow.api.routes import health
+    from src.courseflow.api.routes import health, query
     
     app.include_router(
         health.router,
-        prefix=settings.API_V1_PREFIX,
+        prefix=settings.api_v1_prefix,
         tags=["health"]
     )
     
-    # NOTE: Query endpoint will be added in Phase 3 (User Story 1)
+    app.include_router(
+        query.router,
+        tags=["query"]
+    )
     
     return app
 

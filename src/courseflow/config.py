@@ -68,6 +68,39 @@ class Settings(BaseSettings):
         if self.CORS_ORIGINS == "*":
             return ["*"]
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+    
+    # Snake case aliases for backward compatibility
+    @property
+    def gemini_api_key(self) -> str:
+        return self.GEMINI_API_KEY
+    
+    @property
+    def chroma_persist_dir(self) -> str:
+        return self.CHROMA_PERSIST_DIR
+    
+    @property
+    def chroma_collection_name(self) -> str:
+        return self.CHROMA_COLLECTION_NAME
+    
+    @property
+    def database_path(self) -> str:
+        return self.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+    
+    @property
+    def rate_limit_rpm(self) -> int:
+        return self.RATE_LIMIT_RPM
+    
+    @property
+    def similarity_threshold(self) -> float:
+        return self.SIMILARITY_THRESHOLD
+    
+    @property
+    def top_k_results(self) -> int:
+        return self.TOP_K_RESULTS
+    
+    @property
+    def api_v1_prefix(self) -> str:
+        return self.API_V1_PREFIX
 
 
 # Global settings instance (initialized once at import)

@@ -86,7 +86,7 @@
 - [X] T032 [US1] Implement query endpoint in src/courseflow/api/routes/query.py (POST /api/v1/query handler with request validation, RAG service call, error handling, response formatting per openapi.yaml)
 - [X] T033 [US1] Add structured logging for RAG pipeline in src/courseflow/application/rag_service.py (log query_id, latency, retrieval_count, token_count, similarity_scores)
 - [X] T034 [US1] Add error response formatting in src/courseflow/api/routes/query.py (map domain exceptions to HTTP status codes and ErrorResponse schema)
-- [X] T035 [US1] Add request/response validation middleware in src/courseflow/api/main.py (validate all requests against Pydantic schemas, return 400 for validation errors)
+- [ ] T035 [US1] Add request/response validation middleware in src/courseflow/api/main.py (validate all requests against Pydantic schemas, return 400 for validation errors)
 
 **Checkpoint**: User Story 1 complete - can query knowledge base and receive AI-generated answers with source attribution
 

@@ -11,7 +11,7 @@ from src.courseflow.config import Settings
 from src.courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
 from src.courseflow.infrastructure.llm.gemini import GeminiLLMClient
 from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-from src.courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+from src.courseflow.infrastructure.vector_store.chroma import ChromaDBAdapter
 from src.courseflow.application.rag_service import RAGService
 
 # Global settings instance
@@ -29,13 +29,13 @@ async def get_db_connection() -> AsyncGenerator[aiosqlite.Connection, None]:
         yield db
 
 
-def get_vector_store() -> ChromaAdapter:
+def get_vector_store() -> ChromaDBAdapter:
     """Dependency for ChromaDB vector store.
     
     Returns:
         ChromaDB adapter instance
     """
-    return ChromaAdapter(
+    return ChromaDBAdapter(
         persist_directory=settings.chroma_persist_dir,
         collection_name=settings.chroma_collection_name,
     )
@@ -72,7 +72,12 @@ def get_query_repository() -> SQLiteQueryRepository:
     return SQLiteQueryRepository(db_path=settings.database_path)
 
 
-def get_rag_service() -> RAGService:
+def get_rag_service(
+    embedding_client: GeminiEmbeddingClient = None,
+    vector_store: ChromaDBAdapter = None,
+    llm_client: GeminiLLMClient = None,
+    query_repo: SQLiteQueryRepository = None,
+) -> RAGService:
     """Dependency for RAG service.
     
     Creates RAG service with all required dependencies.
@@ -80,10 +85,14 @@ def get_rag_service() -> RAGService:
     Returns:
         RAG service instance
     """
-    embedding_client = get_embedding_client()
-    vector_store = get_vector_store()
-    llm_client = get_llm_client()
-    query_repo = get_query_repository()
+    if embedding_client is None:
+        embedding_client = get_embedding_client()
+    if vector_store is None:
+        vector_store = get_vector_store()
+    if llm_client is None:
+        llm_client = get_llm_client()
+    if query_repo is None:
+        query_repo = get_query_repository()
     
     return RAGService(
         embedding_port=embedding_client,
