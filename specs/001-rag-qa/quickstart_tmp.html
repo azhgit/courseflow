@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>quickstart.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="quickstart-guide-rag-question-answering">Quickstart Guide: RAG Question Answering</h1>
+<p><strong>Feature</strong>: 001-rag-qa | <strong>Last Updated</strong>: 2025-02-08</p>
+<h2 id="overview">Overview</h2>
+<p>This guide helps developers set up and run the CourseFlow RAG (Retrieval-Augmented Generation) question answering system locally in under 10 minutes.</p>
+<p><strong>What you'll build</strong>: A working API that answers questions about pre-loaded educational content using AI.</p>
+<p><strong>Prerequisites</strong>:</p>
+<ul>
+<li>Python 3.11 or higher</li>
+<li>Google Gemini API key (free tier)</li>
+<li>500MB disk space</li>
+<li>macOS or Linux (Windows via WSL)</li>
+</ul>
+<hr>
+<h2 id="step-1-get-a-gemini-api-key">Step 1: Get a Gemini API Key</h2>
+<ol>
+<li>Visit <a href="https://aistudio.google.com/app/apikey">Google AI Studio</a></li>
+<li>Sign in with your Google account</li>
+<li>Click &quot;Create API Key&quot;</li>
+<li>Copy the key (starts with <code>AIza...</code>)</li>
+</ol>
+<p><strong>Cost</strong>: Free tier includes:</p>
+<ul>
+<li>15 requests per minute</li>
+<li>1,500 requests per day</li>
+<li>1M tokens per minute</li>
+</ul>
+<hr>
+<h2 id="step-2-clone-and-setup">Step 2: Clone and Setup</h2>
+<pre class="hljs"><code><div><span class="hljs-comment"># Clone repository</span>
+git <span class="hljs-built_in">clone</span> https://github.com/yourusername/courseflow.git
+<span class="hljs-built_in">cd</span> courseflow
+
+<span class="hljs-comment"># Checkout feature branch</span>
+git checkout 001-rag-qa
+
+<span class="hljs-comment"># Create virtual environment</span>
+python3.11 -m venv .venv
+<span class="hljs-built_in">source</span> .venv/bin/activate  <span class="hljs-comment"># On Windows: .venv\Scripts\activate</span>
+
+<span class="hljs-comment"># Install dependencies</span>
+pip install -e .
+
+<span class="hljs-comment"># Verify installation</span>
+python -c <span class="hljs-string">"import chromadb; import fastapi; print('✓ Dependencies installed')"</span>
+</div></code></pre>
+<p><strong>Expected time</strong>: 2-3 minutes</p>
+<hr>
+<h2 id="step-3-configure-environment">Step 3: Configure Environment</h2>
+<pre class="hljs"><code><div><span class="hljs-comment"># Copy environment template</span>
+cp .env.example .env
+
+<span class="hljs-comment"># Edit .env and add your Gemini API key</span>
+<span class="hljs-comment"># Use your favorite editor (nano, vim, VSCode, etc.)</span>
+nano .env
+</div></code></pre>
+<p><strong>Update this line</strong> in <code>.env</code>:</p>
+<pre class="hljs"><code><div>GEMINI_API_KEY=your_api_key_here  <span class="hljs-comment"># Replace with actual key</span>
+</div></code></pre>
+<p><strong>Optional settings</strong> (defaults are fine for quickstart):</p>
+<pre class="hljs"><code><div><span class="hljs-comment"># Rate limiting (free tier limits)</span>
+RATE_LIMIT_RPM=15
+RATE_LIMIT_DAILY=1500
+
+<span class="hljs-comment"># Vector search settings</span>
+SIMILARITY_THRESHOLD=0.5  <span class="hljs-comment"># Minimum relevance score</span>
+TOP_K_RESULTS=3           <span class="hljs-comment"># Number of docs to retrieve</span>
+
+<span class="hljs-comment"># Logging</span>
+LOG_LEVEL=INFO
+</div></code></pre>
+<p><strong>Expected time</strong>: 1 minute</p>
+<hr>
+<h2 id="step-4-initialize-knowledge-base">Step 4: Initialize Knowledge Base</h2>
+<p>Load the 10 pre-loaded documents into ChromaDB:</p>
+<pre class="hljs"><code><div><span class="hljs-comment"># Run ingestion script</span>
+python scripts/ingest_docs.py
+
+<span class="hljs-comment"># Expected output:</span>
+<span class="hljs-comment"># Ingested docs/biology/photosynthesis.md (2 chunks)</span>
+<span class="hljs-comment"># Ingested docs/biology/mitosis.md (2 chunks)</span>
+<span class="hljs-comment"># Ingested docs/programming/python-async.md (3 chunks)</span>
+<span class="hljs-comment"># ...</span>
+<span class="hljs-comment"># ✓ Ingested 10 documents (25 chunks total)</span>
+</div></code></pre>
+<p><strong>What this does</strong>:</p>
+<ol>
+<li>Reads markdown files from <code>docs/</code> directory</li>
+<li>Chunks documents into 300-500 token segments</li>
+<li>Generates embeddings using Gemini API</li>
+<li>Stores in ChromaDB at <code>./data/chroma</code></li>
+</ol>
+<p><strong>Expected time</strong>: 1-2 minutes (depends on API speed)</p>
+<p><strong>Troubleshooting</strong>:</p>
+<ul>
+<li><strong>Error: &quot;Invalid API key&quot;</strong>: Check your <code>GEMINI_API_KEY</code> in <code>.env</code></li>
+<li><strong>Error: &quot;Rate limit exceeded&quot;</strong>: Wait 60 seconds and retry</li>
+<li><strong>Error: &quot;Module not found&quot;</strong>: Ensure virtual environment is activated</li>
+</ul>
+<hr>
+<h2 id="step-5-start-the-api-server">Step 5: Start the API Server</h2>
+<pre class="hljs"><code><div><span class="hljs-comment"># Start FastAPI development server</span>
+uvicorn src.courseflow.api.main:app --reload --host 0.0.0.0 --port 8000
+
+<span class="hljs-comment"># Expected output:</span>
+<span class="hljs-comment"># INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)</span>
+<span class="hljs-comment"># INFO:     Started reloader process</span>
+<span class="hljs-comment"># INFO:     Started server process</span>
+<span class="hljs-comment"># INFO:     Application startup complete.</span>
+</div></code></pre>
+<p><strong>Server will be available at</strong>: <code>http://localhost:8000</code></p>
+<p><strong>Expected time</strong>: 10 seconds</p>
+<hr>
+<h2 id="step-6-test-the-api">Step 6: Test the API</h2>
+<h3 id="option-1-interactive-api-documentation-recommended">Option 1: Interactive API Documentation (Recommended)</h3>
+<ol>
+<li>Open browser: http://localhost:8000/docs</li>
+<li>Click <strong>POST /api/v1/query</strong></li>
+<li>Click <strong>Try it out</strong></li>
+<li>Enter a question in the request body:<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"query"</span>: <span class="hljs-string">"What is photosynthesis?"</span>
+}
+</div></code></pre>
+</li>
+<li>Click <strong>Execute</strong></li>
+<li>See the response with AI-generated answer</li>
+</ol>
+<h3 id="option-2-command-line-curl">Option 2: Command Line (curl)</h3>
+<pre class="hljs"><code><div><span class="hljs-comment"># Ask a biology question</span>
+curl -X POST http://localhost:8000/api/v1/query \
+  -H <span class="hljs-string">"Content-Type: application/json"</span> \
+  -d <span class="hljs-string">'{"query": "What is photosynthesis?"}'</span>
+
+<span class="hljs-comment"># Expected response (trimmed):</span>
+{
+  <span class="hljs-string">"success"</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-string">"data"</span>: {
+    <span class="hljs-string">"answer"</span>: <span class="hljs-string">"Photosynthesis is the process by which plants..."</span>,
+    <span class="hljs-string">"sources"</span>: [<span class="hljs-string">"docs/biology/photosynthesis.md"</span>],
+    <span class="hljs-string">"retrieval_count"</span>: 3,
+    <span class="hljs-string">"top_similarity"</span>: 0.87
+  },
+  <span class="hljs-string">"metadata"</span>: {
+    <span class="hljs-string">"request_id"</span>: <span class="hljs-string">"req_abc123"</span>,
+    <span class="hljs-string">"timestamp"</span>: <span class="hljs-string">"2025-02-08T12:34:56Z"</span>,
+    <span class="hljs-string">"latency_ms"</span>: 1234,
+    <span class="hljs-string">"token_count"</span>: 567
+  },
+  <span class="hljs-string">"error"</span>: null
+}
+</div></code></pre>
+<h3 id="option-3-python-requests">Option 3: Python Requests</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> requests
+
+response = requests.post(
+    <span class="hljs-string">"http://localhost:8000/api/v1/query"</span>,
+    json={<span class="hljs-string">"query"</span>: <span class="hljs-string">"How do I use async/await in Python?"</span>}
+)
+
+data = response.json()
+print(data[<span class="hljs-string">"data"</span>][<span class="hljs-string">"answer"</span>])
+<span class="hljs-comment"># Output: "To use async/await in Python, you define..."</span>
+</div></code></pre>
+<p><strong>Expected time</strong>: 1-3 seconds per query</p>
+<hr>
+<h2 id="example-queries-by-subject">Example Queries by Subject</h2>
+<h3 id="biology">Biology</h3>
+<pre class="hljs"><code><div>curl -X POST http://localhost:8000/api/v1/query \
+  -H <span class="hljs-string">"Content-Type: application/json"</span> \
+  -d <span class="hljs-string">'{"query": "What is mitosis?"}'</span>
+</div></code></pre>
+<h3 id="programming">Programming</h3>
+<pre class="hljs"><code><div>curl -X POST http://localhost:8000/api/v1/query \
+  -H <span class="hljs-string">"Content-Type: application/json"</span> \
+  -d <span class="hljs-string">'{"query": "Explain Python decorators"}'</span>
+</div></code></pre>
+<h3 id="history">History</h3>
+<pre class="hljs"><code><div>curl -X POST http://localhost:8000/api/v1/query \
+  -H <span class="hljs-string">"Content-Type: application/json"</span> \
+  -d <span class="hljs-string">'{"query": "What caused World War II?"}'</span>
+</div></code></pre>
+<h3 id="math">Math</h3>
+<pre class="hljs"><code><div>curl -X POST http://localhost:8000/api/v1/query \
+  -H <span class="hljs-string">"Content-Type: application/json"</span> \
+  -d <span class="hljs-string">'{"query": "How do you calculate derivatives?"}'</span>
+</div></code></pre>
+<hr>
+<h2 id="understanding-responses">Understanding Responses</h2>
+<h3 id="successful-response">Successful Response</h3>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">"data"</span>: {
+    <span class="hljs-attr">"answer"</span>: <span class="hljs-string">"Mitosis is the process of cell division..."</span>,
+    <span class="hljs-attr">"sources"</span>: [<span class="hljs-string">"docs/biology/mitosis.md"</span>],
+    <span class="hljs-attr">"retrieval_count"</span>: <span class="hljs-number">3</span>,
+    <span class="hljs-attr">"top_similarity"</span>: <span class="hljs-number">0.92</span>
+  },
+  <span class="hljs-attr">"metadata"</span>: {
+    <span class="hljs-attr">"request_id"</span>: <span class="hljs-string">"req_xyz789"</span>,
+    <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2025-02-08T13:00:00Z"</span>,
+    <span class="hljs-attr">"latency_ms"</span>: <span class="hljs-number">987</span>,
+    <span class="hljs-attr">"token_count"</span>: <span class="hljs-number">423</span>
+  },
+  <span class="hljs-attr">"error"</span>: <span class="hljs-literal">null</span>
+}
+</div></code></pre>
+<p><strong>Fields explained</strong>:</p>
+<ul>
+<li><code>success</code>: <code>true</code> if query succeeded</li>
+<li><code>data.answer</code>: AI-generated answer based on knowledge base</li>
+<li><code>data.sources</code>: Source document paths (for citation)</li>
+<li><code>data.retrieval_count</code>: How many documents were used (max 3)</li>
+<li><code>data.top_similarity</code>: Relevance score of best match (0-1 scale)</li>
+<li><code>metadata.latency_ms</code>: Response time in milliseconds</li>
+<li><code>metadata.token_count</code>: Gemini API tokens consumed</li>
+</ul>
+<h3 id="error-response-rate-limit">Error Response (Rate Limit)</h3>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"success"</span>: <span class="hljs-literal">false</span>,
+  <span class="hljs-attr">"data"</span>: <span class="hljs-literal">null</span>,
+  <span class="hljs-attr">"metadata"</span>: {
+    <span class="hljs-attr">"request_id"</span>: <span class="hljs-string">"req_limit123"</span>,
+    <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2025-02-08T13:01:00Z"</span>,
+    <span class="hljs-attr">"latency_ms"</span>: <span class="hljs-number">8</span>
+  },
+  <span class="hljs-attr">"error"</span>: {
+    <span class="hljs-attr">"type"</span>: <span class="hljs-string">"quota_exceeded"</span>,
+    <span class="hljs-attr">"message"</span>: <span class="hljs-string">"Gemini API quota exceeded (15 RPM limit). Please retry after 48 seconds."</span>,
+    <span class="hljs-attr">"retry_after"</span>: <span class="hljs-number">48</span>
+  }
+}
+</div></code></pre>
+<p><strong>What to do</strong>: Wait <code>retry_after</code> seconds before retrying.</p>
+<h3 id="error-response-no-relevant-docs">Error Response (No Relevant Docs)</h3>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"success"</span>: <span class="hljs-literal">false</span>,
+  <span class="hljs-attr">"data"</span>: <span class="hljs-literal">null</span>,
+  <span class="hljs-attr">"metadata"</span>: {...},
+  <span class="hljs-attr">"error"</span>: {
+    <span class="hljs-attr">"type"</span>: <span class="hljs-string">"no_relevant_documents"</span>,
+    <span class="hljs-attr">"message"</span>: <span class="hljs-string">"No relevant information found in knowledge base"</span>,
+    <span class="hljs-attr">"details"</span>: {
+      <span class="hljs-attr">"threshold"</span>: <span class="hljs-number">0.5</span>,
+      <span class="hljs-attr">"max_similarity"</span>: <span class="hljs-number">0.32</span>
+    }
+  }
+}
+</div></code></pre>
+<p><strong>What to do</strong>: Rephrase your question or ask about content in the knowledge base.</p>
+<hr>
+<h2 id="health-check">Health Check</h2>
+<p>Verify system status:</p>
+<pre class="hljs"><code><div>curl http://localhost:8000/api/v1/health
+</div></code></pre>
+<p><strong>Expected response</strong>:</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"status"</span>: <span class="hljs-string">"ok"</span>,
+  <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2025-02-08T13:05:00Z"</span>,
+  <span class="hljs-attr">"services"</span>: {
+    <span class="hljs-attr">"chromadb"</span>: <span class="hljs-string">"ok"</span>,
+    <span class="hljs-attr">"database"</span>: <span class="hljs-string">"ok"</span>,
+    <span class="hljs-attr">"gemini_api"</span>: <span class="hljs-string">"ok"</span>
+  },
+  <span class="hljs-attr">"version"</span>: <span class="hljs-string">"1.0.0"</span>
+}
+</div></code></pre>
+<hr>
+<h2 id="running-tests">Running Tests</h2>
+<pre class="hljs"><code><div><span class="hljs-comment"># Run all tests</span>
+pytest
+
+<span class="hljs-comment"># Run specific test suite</span>
+pytest tests/unit/           <span class="hljs-comment"># Unit tests only</span>
+pytest tests/integration/    <span class="hljs-comment"># Integration tests only</span>
+pytest tests/e2e/            <span class="hljs-comment"># End-to-end tests</span>
+
+<span class="hljs-comment"># Run with coverage report</span>
+pytest --cov=src/courseflow --cov-report=html
+
+<span class="hljs-comment"># View coverage report</span>
+open htmlcov/index.html  <span class="hljs-comment"># macOS</span>
+xdg-open htmlcov/index.html  <span class="hljs-comment"># Linux</span>
+</div></code></pre>
+<p><strong>Expected output</strong>:</p>
+<pre class="hljs"><code><div>======================== test session starts ========================
+collected 42 items
+
+tests/unit/test_models.py ...................... [ 52%]
+tests/unit/test_rag_service.py ................ [ 85%]
+tests/integration/test_api_query.py .......... [100%]
+
+======================== 42 passed in 12.34s ========================
+</div></code></pre>
+<hr>
+<h2 id="stopping-the-server">Stopping the Server</h2>
+<p>Press <code>CTRL+C</code> in the terminal running <code>uvicorn</code>.</p>
+<p><strong>Clean shutdown</strong>:</p>
+<pre class="hljs"><code><div><span class="hljs-comment"># Stop server</span>
+CTRL+C
+
+<span class="hljs-comment"># Deactivate virtual environment</span>
+deactivate
+</div></code></pre>
+<hr>
+<h2 id="next-steps">Next Steps</h2>
+<h3 id="add-your-own-documents">Add Your Own Documents</h3>
+<ol>
+<li>Create a new markdown file in <code>docs/</code> (e.g., <code>docs/chemistry/periodic-table.md</code>)</li>
+<li>Re-run ingestion script:<pre class="hljs"><code><div>python scripts/ingest_docs.py
+</div></code></pre>
+</li>
+<li>Query the new content</li>
+</ol>
+<h3 id="monitor-usage">Monitor Usage</h3>
+<p>Check query history:</p>
+<pre class="hljs"><code><div><span class="hljs-comment"># View SQLite database</span>
+sqlite3 data/courseflow.db
+
+<span class="hljs-comment"># SQL queries</span>
+SELECT COUNT(*) FROM queries WHERE timestamp &gt; datetime(<span class="hljs-string">'now'</span>, <span class="hljs-string">'-1 day'</span>);
+SELECT AVG(latency_ms), MAX(latency_ms) FROM queries;
+</div></code></pre>
+<h3 id="customize-settings">Customize Settings</h3>
+<p>Edit <code>.env</code> to change:</p>
+<ul>
+<li><code>SIMILARITY_THRESHOLD</code>: Lower = more results, less relevant</li>
+<li><code>TOP_K_RESULTS</code>: More results = better context, slower response</li>
+<li><code>RATE_LIMIT_RPM</code>: Adjust based on your API quota</li>
+</ul>
+<hr>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="api-returns-500-errors">API returns 500 errors</h3>
+<ul>
+<li>Check server logs in terminal</li>
+<li>Verify <code>GEMINI_API_KEY</code> is valid</li>
+<li>Ensure ChromaDB initialized: <code>ls -la data/chroma/</code></li>
+</ul>
+<h3 id="%22no-module-named-courseflow%22-error">&quot;No module named 'courseflow'&quot; error</h3>
+<ul>
+<li>Ensure virtual environment is activated: <code>source .venv/bin/activate</code></li>
+<li>Re-install: <code>pip install -e .</code></li>
+</ul>
+<h3 id="slow-responses-5-seconds">Slow responses (&gt;5 seconds)</h3>
+<ul>
+<li>Check network connection to Gemini API</li>
+<li>Verify ChromaDB index exists: <code>python -c &quot;import chromadb; client = chromadb.PersistentClient(path='./data/chroma'); print(client.list_collections())&quot;</code></li>
+</ul>
+<h3 id="rate-limit-errors">Rate limit errors</h3>
+<ul>
+<li>Wait 60 seconds between requests</li>
+<li>Check daily quota: <code>SELECT COUNT(*) FROM queries WHERE timestamp &gt; datetime('now', '-1 day');</code> (should be &lt;1500)</li>
+</ul>
+<hr>
+<h2 id="architecture-overview">Architecture Overview</h2>
+<pre class="hljs"><code><div>User Query
+    ↓
+FastAPI Endpoint (/api/v1/query)
+    ↓
+Rate Limiter (15 RPM check)
+    ↓
+Query Embedding (Gemini text-embedding-004)
+    ↓
+Vector Search (ChromaDB, k=3, threshold=0.5)
+    ↓
+Context Retrieval (top 3 documents)
+    ↓
+Answer Generation (Gemini 1.5 Flash)
+    ↓
+Response + Logging (SQLite)
+    ↓
+JSON Response
+</div></code></pre>
+<hr>
+<h2 id="api-reference">API Reference</h2>
+<p><strong>Base URL</strong>: <code>http://localhost:8000</code></p>
+<p><strong>Endpoints</strong>:</p>
+<ul>
+<li><code>POST /api/v1/query</code> - Submit a question</li>
+<li><code>GET /api/v1/health</code> - Health check</li>
+</ul>
+<p><strong>Full API documentation</strong>: http://localhost:8000/docs (when server is running)</p>
+<p><strong>OpenAPI schema</strong>: http://localhost:8000/openapi.json</p>
+<hr>
+<h2 id="resources">Resources</h2>
+<ul>
+<li><strong>Feature Spec</strong>: <a href="./spec.md">spec.md</a></li>
+<li><strong>Data Model</strong>: <a href="./data-model.md">data-model.md</a></li>
+<li><strong>Research</strong>: <a href="./research.md">research.md</a></li>
+<li><strong>API Contract</strong>: <a href="./contracts/openapi.yaml">contracts/openapi.yaml</a></li>
+<li><strong>Gemini API Docs</strong>: https://ai.google.dev/gemini-api/docs</li>
+<li><strong>ChromaDB Docs</strong>: https://docs.trychroma.com/</li>
+</ul>
+<hr>
+<h2 id="summary">Summary</h2>
+<p>✅ <strong>You've successfully</strong>:</p>
+<ol>
+<li>Set up Python 3.11+ environment</li>
+<li>Configured Gemini API key</li>
+<li>Ingested 10 documents into ChromaDB</li>
+<li>Started FastAPI server</li>
+<li>Tested question answering API</li>
+<li>Understood rate limits and error handling</li>
+</ol>
+<p><strong>Total time</strong>: ~10 minutes</p>
+<p><strong>Next</strong>: Try asking your own questions or add custom documents to the knowledge base!</p>
+
+</body>
+</html>

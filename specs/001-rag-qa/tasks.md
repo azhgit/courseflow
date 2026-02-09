@@ -25,16 +25,16 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project structure following hexagonal architecture: src/courseflow/{domain/,application/,infrastructure/,api/,config.py}
-- [ ] T002 Initialize Python 3.11+ project with pyproject.toml dependencies (FastAPI 0.109+, ChromaDB 0.4.22+, httpx, aiosqlite, pydantic, pydantic-settings, google-generativeai)
-- [ ] T003 [P] Configure ruff (linting + formatting) in pyproject.toml with line-length=100
-- [ ] T004 [P] Configure mypy strict type checking in pyproject.toml
-- [ ] T005 [P] Configure pytest and pytest-asyncio in pyproject.toml
-- [ ] T006 [P] Create .env.example with all required environment variables (GEMINI_API_KEY, RATE_LIMIT_RPM, SIMILARITY_THRESHOLD, etc.)
-- [ ] T007 [P] Create .gitignore with data/, .venv/, .env, __pycache__/, .pytest_cache/
-- [ ] T008 Create data/ directory structure: data/chroma/ and data/ (for courseflow.db)
-- [ ] T009 Create docs/ directory structure with sample documents: docs/biology/, docs/programming/, docs/history/, docs/math/
-- [ ] T010 [P] Add 10 sample markdown documents (2-3 per subject: photosynthesis.md, mitosis.md, python-async.md, python-functions.md, wwii.md, derivatives.md, etc.)
+- [X] T001 Create project structure following hexagonal architecture: src/courseflow/{domain/,application/,infrastructure/,api/,config.py}
+- [X] T002 Initialize Python 3.11+ project with pyproject.toml dependencies (FastAPI 0.109+, ChromaDB 0.4.22+, httpx, aiosqlite, pydantic, pydantic-settings, google-generativeai)
+- [X] T003 [P] Configure ruff (linting + formatting) in pyproject.toml with line-length=100
+- [X] T004 [P] Configure mypy strict type checking in pyproject.toml
+- [X] T005 [P] Configure pytest and pytest-asyncio in pyproject.toml
+- [X] T006 [P] Create .env.example with all required environment variables (GEMINI_API_KEY, RATE_LIMIT_RPM, SIMILARITY_THRESHOLD, etc.)
+- [X] T007 [P] Create .gitignore with data/, .venv/, .env, __pycache__/, .pytest_cache/
+- [X] T008 Create data/ directory structure: data/chroma/ and data/ (for courseflow.db)
+- [X] T009 Create docs/ directory structure with sample documents: docs/biology/, docs/programming/, docs/history/, docs/math/
+- [X] T010 [P] Add 10 sample markdown documents (2-3 per subject: photosynthesis.md, mitosis.md, python-async.md, python-functions.md, wwii.md, derivatives.md, etc.)
 
 ---
 
@@ -44,18 +44,18 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T011 Create domain models in src/courseflow/domain/models.py (Query, Document, DocumentMetadata, SearchResult, Answer, TokenUsage, RateLimitTracker with Pydantic validators)
-- [ ] T012 [P] Create domain ports in src/courseflow/domain/ports.py (VectorStorePort, LLMPort, EmbeddingPort, QueryRepositoryPort as abstract base classes)
-- [ ] T013 [P] Create domain exceptions in src/courseflow/domain/exceptions.py (QuotaExceededError, NoRelevantDocumentsError, ServiceUnavailableError, ValidationError)
-- [ ] T014 Create configuration in src/courseflow/config.py (Settings class using Pydantic BaseSettings with validation)
-- [ ] T015 Create Gemini embedding client in src/courseflow/infrastructure/embeddings/gemini.py (implements EmbeddingPort with async generate_embedding method)
-- [ ] T016 [P] Create ChromaDB adapter in src/courseflow/infrastructure/vector_store/chroma.py (implements VectorStorePort with search, add_documents, persistence)
-- [ ] T017 [P] Create SQLite query repository in src/courseflow/infrastructure/repositories/query_repo.py (implements QueryRepositoryPort with aiosqlite for async DB operations)
-- [ ] T018 Create database initialization script in scripts/init_db.py (creates queries table with indexes per data-model.md schema)
-- [ ] T019 Create FastAPI app initialization in src/courseflow/api/main.py (app factory, CORS middleware, lifespan context manager for DB/ChromaDB initialization)
-- [ ] T020 [P] Create API dependencies in src/courseflow/api/dependencies.py (dependency injection for Settings, ChromaDB client, DB connection, rate limiter)
-- [ ] T021 [P] Create health check endpoint in src/courseflow/api/routes/health.py (GET /api/v1/health with ChromaDB, SQLite, and Gemini API connectivity checks)
-- [ ] T022 Create document ingestion script in scripts/ingest_docs.py (reads docs/ markdown files, chunks to 300-500 tokens, generates embeddings, stores in ChromaDB)
+- [X] T011 Create domain models in src/courseflow/domain/models.py (Query, Document, DocumentMetadata, SearchResult, Answer, TokenUsage, RateLimitTracker with Pydantic validators)
+- [X] T012 [P] Create domain ports in src/courseflow/domain/ports.py (VectorStorePort, LLMPort, EmbeddingPort, QueryRepositoryPort as abstract base classes)
+- [X] T013 [P] Create domain exceptions in src/courseflow/domain/exceptions.py (QuotaExceededError, NoRelevantDocumentsError, ServiceUnavailableError, ValidationError)
+- [X] T014 Create configuration in src/courseflow/config.py (Settings class using Pydantic BaseSettings with validation)
+- [X] T015 Create Gemini embedding client in src/courseflow/infrastructure/embeddings/gemini.py (implements EmbeddingPort with async generate_embedding method)
+- [X] T016 [P] Create ChromaDB adapter in src/courseflow/infrastructure/vector_store/chroma.py (implements VectorStorePort with search, add_documents, persistence)
+- [X] T017 [P] Create SQLite query repository in src/courseflow/infrastructure/repositories/query_repo.py (implements QueryRepositoryPort with aiosqlite for async DB operations)
+- [X] T018 Create database initialization script in scripts/init_db.py (creates queries table with indexes per data-model.md schema)
+- [X] T019 Create FastAPI app initialization in src/courseflow/api/main.py (app factory, CORS middleware, lifespan context manager for DB/ChromaDB initialization)
+- [X] T020 [P] Create API dependencies in src/courseflow/api/dependencies.py (dependency injection for Settings, ChromaDB client, DB connection, rate limiter)
+- [X] T021 [P] Create health check endpoint in src/courseflow/api/routes/health.py (GET /api/v1/health with ChromaDB, SQLite, and Gemini API connectivity checks)
+- [X] T022 Create document ingestion script in scripts/ingest_docs.py (reads docs/ markdown files, chunks to 300-500 tokens, generates embeddings, stores in ChromaDB)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 

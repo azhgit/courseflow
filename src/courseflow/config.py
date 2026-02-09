@@ -1,0 +1,75 @@
+"""Application configuration using Pydantic settings.
+
+Configuration is loaded from environment variables (via .env file or system env).
+All settings are validated at startup with clear error messages for missing required values.
+"""
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings with validation.
+    
+    Settings are loaded from environment variables (case-sensitive).
+    A .env file can be used for local development.
+    
+    Required variables:
+        - GEMINI_API_KEY: Google Gemini API key
+    
+    All other variables have sensible defaults.
+    """
+    
+    # Gemini API
+    GEMINI_API_KEY: str  # Required - no default
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_EMBEDDING_MODEL: str = "models/gemini-embedding-001"
+    
+    # ChromaDB
+    CHROMA_PERSIST_DIR: str = "./data/chroma"
+    CHROMA_COLLECTION_NAME: str = "courseflow_docs"
+    
+    # SQLite
+    DATABASE_URL: str = "sqlite+aiosqlite:///./data/courseflow.db"
+    
+    # Rate Limiting
+    RATE_LIMIT_RPM: int = 15
+    RATE_LIMIT_DAILY: int = 1500
+    
+    # Vector Search
+    SIMILARITY_THRESHOLD: float = Field(default=0.5, ge=0.0, le=1.0)
+    TOP_K_RESULTS: int = Field(default=3, ge=1, le=10)
+    
+    # API
+    API_V1_PREFIX: str = "/api/v1"
+    CORS_ORIGINS: str = "*"  # Comma-separated list or "*" for all
+    
+    # Timeouts (seconds)
+    LLM_TIMEOUT_SECONDS: int = Field(default=30, ge=5, le=120)
+    EMBEDDING_TIMEOUT_SECONDS: int = Field(default=10, ge=2, le=60)
+    
+    # Logging
+    LOG_LEVEL: str = "INFO"
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore"  # Ignore unknown environment variables
+    )
+    
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS_ORIGINS into a list.
+        
+        Returns:
+            List of allowed origins, or ["*"] for all origins
+        """
+        if self.CORS_ORIGINS == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+
+
+# Global settings instance (initialized once at import)
+# Will raise ValidationError if GEMINI_API_KEY is missing
+settings = Settings()
