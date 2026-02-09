@@ -65,12 +65,12 @@ class TestRAGService:
         return [
             Document(
                 id="doc-1",
-                content="Photosynthesis is the process by which plants convert light energy...",
+                content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose. It involves chlorophyll, water, and carbon dioxide, and it produces oxygen as a byproduct. ",
                 metadata=metadata1,
             ),
             Document(
                 id="doc-2",
-                content="Mitosis is a type of cell division...",
+                content="Mitosis is a type of cell division where one cell divides into two genetically identical daughter cells. It occurs in somatic cells and is essential for growth, repair, and asexual reproduction. ",
                 metadata=metadata2,
             ),
         ]

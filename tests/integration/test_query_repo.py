@@ -47,12 +47,12 @@ class TestSQLiteQueryRepository:
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
                 "SELECT query_id, query_text, answer_text, latency_ms FROM queries WHERE query_id = ?",
-                (query.query_id,),
+                (str(query.query_id),),
             )
             row = await cursor.fetchone()
             
             assert row is not None
-            assert row[0] == query.query_id
+            assert row[0] == str(query.query_id)
             assert row[1] == query.text
             assert row[2] == "Photosynthesis is..."
             assert row[3] == 1500
@@ -79,7 +79,7 @@ class TestSQLiteQueryRepository:
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
                 "SELECT prompt_tokens, completion_tokens, total_tokens FROM queries WHERE query_id = ?",
-                (query.query_id,),
+                (str(query.query_id),),
             )
             row = await cursor.fetchone()
             
@@ -127,7 +127,7 @@ class TestSQLiteQueryRepository:
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
                 "SELECT * FROM queries WHERE query_id = ?",
-                (query.query_id,),
+                (str(query.query_id),),
             )
             row = await cursor.fetchone()
             
@@ -173,7 +173,7 @@ class TestSQLiteQueryRepository:
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
                 "SELECT latency_ms FROM queries WHERE query_id = ?",
-                (query.query_id,),
+                (str(query.query_id),),
             )
             row = await cursor.fetchone()
             assert row[0] == latency_ms

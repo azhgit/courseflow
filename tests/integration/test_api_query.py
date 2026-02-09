@@ -4,6 +4,7 @@ import pytest
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 from courseflow.api.main import create_app
 from courseflow.domain.models import (
@@ -55,13 +56,13 @@ class TestQueryEndpointContract:
         )
         doc = Document(
             id="doc-1",
-            content="Photosynthesis is...",
+            content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose, producing oxygen as a byproduct. ",
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
         
         answer = Answer(
-            query_id="q-123",
+            query_id=uuid4(),
             answer_text="Photosynthesis is the process by which plants convert light energy into chemical energy.",
             sources=[search_result],
             latency_ms=1500,
@@ -211,13 +212,13 @@ class TestQueryEndpointContract:
         )
         doc = Document(
             id="doc-1",
-            content="Test content",
+            content="This is sufficiently long test content to satisfy the Document content minimum length requirement. It contains multiple sentences so that it exceeds 100 characters for validation. ",
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
         
         answer = Answer(
-            query_id="q-123",
+            query_id=uuid4(),
             answer_text="Test answer",
             sources=[search_result],
             latency_ms=1500,
@@ -251,13 +252,13 @@ class TestQueryEndpointContract:
         )
         doc = Document(
             id="doc-1",
-            content="Test content",
+            content="This is sufficiently long test content to satisfy the Document content minimum length requirement. It contains multiple sentences so that it exceeds 100 characters for validation. ",
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
         
         answer = Answer(
-            query_id="q-123",
+            query_id=uuid4(),
             answer_text="Test answer",
             sources=[search_result],
             latency_ms=1500,
@@ -288,13 +289,13 @@ class TestQueryEndpointContract:
         )
         doc = Document(
             id="doc-1",
-            content="Test content",
+            content="This is sufficiently long test content to satisfy the Document content minimum length requirement. It contains multiple sentences so that it exceeds 100 characters for validation. ",
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
         
         answer = Answer(
-            query_id="q-123",
+            query_id=uuid4(),
             answer_text="Test answer",
             sources=[search_result],
             latency_ms=1500,

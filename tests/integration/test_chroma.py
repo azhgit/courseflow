@@ -61,7 +61,7 @@ def sample_documents() -> List[Document]:
         ),
         Document(
             id="bio-2",
-            content="Mitosis is a type of cell division where one cell divides into two identical daughter cells.",
+            content="Mitosis is a type of cell division where one cell divides into two identical daughter cells. This is sufficiently long test content to satisfy the Document content minimum length requirement. It contains multiple sentences so that it exceeds 100 characters for validation. ",
             metadata=DocumentMetadata(
                 source="mitosis.md",
                 subject="biology",
@@ -71,7 +71,7 @@ def sample_documents() -> List[Document]:
         ),
         Document(
             id="prog-1",
-            content="Python async/await syntax enables asynchronous programming for concurrent I/O operations.",
+            content="Python async/await syntax enables asynchronous programming for concurrent I/O operations. This is sufficiently long test content to satisfy the Document content minimum length requirement. It contains multiple sentences so that it exceeds 100 characters for validation. ",
             metadata=DocumentMetadata(
                 source="python-async.md",
                 subject="programming",
@@ -81,7 +81,7 @@ def sample_documents() -> List[Document]:
         ),
         Document(
             id="math-1",
-            content="Derivatives measure the rate of change of a function with respect to its variable.",
+            content="Derivatives measure the rate of change of a function with respect to its variable. This is sufficiently long test content to satisfy the Document content minimum length requirement. It contains multiple sentences so that it exceeds 100 characters for validation. ",
             metadata=DocumentMetadata(
                 source="derivatives.md",
                 subject="math",

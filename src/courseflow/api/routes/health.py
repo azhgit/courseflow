@@ -7,9 +7,9 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends
 
-from src.courseflow.api.dependencies import get_query_repository, get_vector_store
-from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-from src.courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+from courseflow.api.dependencies import get_query_repository, get_vector_store
+from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
 
 router = APIRouter()
 

@@ -14,9 +14,9 @@ from tenacity import (
     retry_if_exception_type,
 )
 
-from src.courseflow.domain.ports import LLMPort
-from src.courseflow.domain.models import TokenUsage
-from src.courseflow.domain.exceptions import (
+from courseflow.domain.ports import LLMPort
+from courseflow.domain.models import TokenUsage
+from courseflow.domain.exceptions import (
     QuotaExceededError,
     ServiceUnavailableError,
 )

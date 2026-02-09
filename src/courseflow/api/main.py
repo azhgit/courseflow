@@ -13,10 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from src.courseflow.config import Settings
-
-# Global settings instance
-settings = Settings()
+from courseflow.config import settings
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +87,7 @@ def create_app() -> FastAPI:
     )
     
     # Register API routes
-    from src.courseflow.api.routes import health, query
+    from courseflow.api.routes import health, query
     
     app.include_router(
         health.router,

@@ -29,7 +29,8 @@ class ChromaAdapter(VectorStorePort):
     def __init__(
         self,
         persist_dir: str = settings.CHROMA_PERSIST_DIR,
-        collection_name: str = settings.CHROMA_COLLECTION_NAME
+        collection_name: str = settings.CHROMA_COLLECTION_NAME,
+        persist_directory: str | None = None,
     ):
         """Initialize ChromaDB adapter.
         
@@ -41,8 +42,9 @@ class ChromaAdapter(VectorStorePort):
             ServiceUnavailableError: If ChromaDB client cannot be initialized
         """
         try:
+            persist_path = persist_directory or persist_dir
             self.client = chromadb.PersistentClient(
-                path=persist_dir,
+                path=persist_path,
                 settings=ChromaSettings(
                     anonymized_telemetry=False,  # Disable telemetry
                     allow_reset=True  # Enable reset for testing
@@ -59,6 +61,14 @@ class ChromaAdapter(VectorStorePort):
             raise ServiceUnavailableError(
                 f"Failed to initialize ChromaDB: {str(e)}"
             ) from e
+
+    async def initialize(self) -> None:
+        """Initialize adapter for compatibility with tests.
+
+        The adapter eagerly initializes its client/collection in __init__,
+        so this is a no-op.
+        """
+        return None
     
     async def search(
         self,
@@ -101,34 +111,35 @@ class ChromaAdapter(VectorStorePort):
                 zip(ids, documents, embeddings or [None] * len(ids), metadatas, distances),
                 start=1
             ):
-                # Convert distance to similarity
+                # Convert distance to similarity and clamp to [0, 1] for validation.
                 similarity = 1.0 - distance
-                
+                similarity = max(0.0, min(1.0, float(similarity)))
+
                 # Filter by threshold
                 if similarity < threshold:
                     continue
-                
+
                 # Create Document object
                 doc_metadata = DocumentMetadata(
                     source=metadata.get("source", ""),
                     subject=metadata.get("subject", ""),
                     topic=metadata.get("topic"),
-                    chunk_index=metadata.get("chunk_index", 0)
+                    chunk_index=int(metadata.get("chunk_index", 0)),
+                    total_chunks=int(metadata.get("total_chunks", 1)),
                 )
-                
+
                 document = Document(
                     id=doc_id,
                     content=content,
                     embedding=embedding or query_embedding,  # Fallback if not returned
-                    metadata=doc_metadata
+                    metadata=doc_metadata,
                 )
-                
+
                 # Create SearchResult
                 search_results.append(
                     SearchResult(
                         document=document,
                         similarity_score=similarity,
-                        rank=rank
                     )
                 )
             
@@ -153,15 +164,17 @@ class ChromaAdapter(VectorStorePort):
             ids = [doc.id for doc in documents]
             contents = [doc.content for doc in documents]
             embeddings = [doc.embedding for doc in documents]
-            metadatas = [
-                {
+            metadatas = []
+            for doc in documents:
+                raw = {
                     "source": doc.metadata.source,
                     "subject": doc.metadata.subject,
                     "topic": doc.metadata.topic,
-                    "chunk_index": doc.metadata.chunk_index
+                    "chunk_index": doc.metadata.chunk_index,
+                    "total_chunks": doc.metadata.total_chunks,
                 }
-                for doc in documents
-            ]
+                # Chroma metadata values must be JSON-serializable primitives; drop None.
+                metadatas.append({k: v for k, v in raw.items() if v is not None})
             
             # Add to collection
             self.collection.add(

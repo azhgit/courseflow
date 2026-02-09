@@ -316,7 +316,7 @@ class TestRAGPipelineE2E:
             async def generate_embedding(self, text: str) -> List[float]:
                 # Return very different embedding for irrelevant query
                 if "quantum" in text.lower():
-                    return [0.01] * 768
+                    return [-0.01] * 768
                 hash_val = hash(text)
                 return [(hash_val * i) % 100 / 100.0 for i in range(768)]
         
@@ -336,7 +336,10 @@ class TestRAGPipelineE2E:
         class MockLLMClient:
             async def generate_answer(self, query: str, context: List[str]):
                 from courseflow.domain.models import TokenUsage
-                return ("Answer", TokenUsage(100, 50, 150))
+                return (
+                    "Answer",
+                    TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
+                )
         
         llm_client = MockLLMClient()
         query_repo = SQLiteQueryRepository(db_path=db_path)

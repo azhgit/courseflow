@@ -7,15 +7,12 @@ from typing import AsyncGenerator
 
 import aiosqlite
 
-from src.courseflow.config import Settings
-from src.courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
-from src.courseflow.infrastructure.llm.gemini import GeminiLLMClient
-from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-from src.courseflow.infrastructure.vector_store.chroma import ChromaAdapter
-from src.courseflow.application.rag_service import RAGService
-
-# Global settings instance
-settings = Settings()
+from courseflow.config import settings
+from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
+from courseflow.infrastructure.llm.gemini import GeminiLLMClient
+from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+from courseflow.application.rag_service import RAGService
 
 
 async def get_db_connection() -> AsyncGenerator[aiosqlite.Connection, None]:

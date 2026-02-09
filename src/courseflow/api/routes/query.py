@@ -7,15 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from src.courseflow.domain.models import Query
-from src.courseflow.domain.exceptions import (
+from courseflow.domain.models import Query
+from courseflow.domain.exceptions import (
     NoRelevantDocumentsError,
     QuotaExceededError,
     ServiceUnavailableError,
     ValidationError as DomainValidationError,
 )
-from src.courseflow.application.rag_service import RAGService
-from src.courseflow.api.dependencies import get_rag_service
+from courseflow.application.rag_service import RAGService
+from courseflow.api.dependencies import get_rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/v1", tags=["query"])
 # Request/Response schemas
 class QueryRequest(BaseModel):
     """Request schema for query endpoint."""
-    query: str = Field(..., min_length=1, max_length=1000, description="User's question")
+    query: str = Field(..., description="User's question")
 
 
 class SourceInfo(BaseModel):
@@ -86,8 +86,14 @@ async def query_endpoint(
         HTTPException: With appropriate status code for errors
     """
     try:
-        # Create Query model (validates input)
-        query = Query(text=request.query)
+        query_text = request.query.strip() if request.query is not None else ""
+        if not query_text:
+            raise ValueError("query must not be empty")
+        if len(query_text) > 1000:
+            raise ValueError("query must be <= 1000 characters")
+
+        # Create Query model (domain validation)
+        query = Query(text=query_text)
         
         logger.info(f"Received query: {query.id} - '{query.text[:50]}...'")
         
@@ -176,6 +182,10 @@ async def query_endpoint(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content=error_response.model_dump(),
         )
+
+    except HTTPException:
+        # Preserve explicit HTTP errors (e.g., manual 400 validation)
+        raise
         
     except ValueError as e:
         # Validation errors from Pydantic

@@ -7,7 +7,10 @@ These exceptions are independent of HTTP status codes and infrastructure details
 
 class CourseFlowError(Exception):
     """Base exception for all CourseFlow errors."""
-    pass
+
+    def __init__(self, message: str = ""):
+        super().__init__(message)
+        self.message = message
 
 
 class ValidationError(CourseFlowError):
@@ -49,20 +52,24 @@ class NoRelevantDocumentsError(CourseFlowError):
 
 class ServiceUnavailableError(CourseFlowError):
     """Raised when an external service is temporarily unavailable.
-    
+
     Examples:
         - Gemini API is down
         - ChromaDB connection failed
         - SQLite database is locked
     """
-    pass
+
+    def __init__(self, message: str = "Service temporarily unavailable", **_: object):
+        super().__init__(message)
 
 
 class TimeoutError(CourseFlowError):
     """Raised when an operation exceeds its timeout.
-    
+
     Examples:
         - LLM response takes too long
         - Embedding generation times out
     """
-    pass
+
+    def __init__(self, message: str = "Operation timed out", **_: object):
+        super().__init__(message)

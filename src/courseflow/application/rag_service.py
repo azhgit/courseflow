@@ -4,14 +4,14 @@ import logging
 import time
 from typing import List
 
-from src.courseflow.domain.models import Query, Answer, SearchResult, Document, DocumentMetadata
-from src.courseflow.domain.ports import (
+from courseflow.domain.models import Query, Answer, SearchResult, Document, DocumentMetadata
+from courseflow.domain.ports import (
     VectorStorePort,
     LLMPort,
     EmbeddingPort,
     QueryRepositoryPort,
 )
-from src.courseflow.domain.exceptions import NoRelevantDocumentsError
+from courseflow.domain.exceptions import NoRelevantDocumentsError
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,10 @@ class RAGService:
                 f"Max similarity: {max_similarity:.3f}, threshold: {self.similarity_threshold}"
             )
             raise NoRelevantDocumentsError(
-                message=f"No relevant information found in knowledge base",
+                message=(
+                    "No relevant information found in knowledge base "
+                    f"(threshold={self.similarity_threshold})"
+                ),
                 threshold=self.similarity_threshold,
                 max_similarity=max_similarity,
             )
