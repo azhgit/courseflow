@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "Feature: Basic RAG Question Answering (Zero-Cost, Domain Agnostic)"
 
+## Clarifications
+
+### Session 2025-01-17
+
+- Q: How should the system handle Gemini API failures (timeout or unavailability)? → A: Retry once after 2-second timeout, then return error with categorization (API down vs. timeout)
+- Q: How many documents should vector search retrieve (k value)? → A: k=3 (retrieve the top 3 most similar documents)
+- Q: Should k value be fixed or dynamically adjusted based on query? → A: Fixed k=3 for all queries (simplest, most predictable)
+- Q: Should vector search use a minimum similarity threshold to filter results? → A: Yes, require minimum similarity threshold of 0.5
+- Q: How should the system respond when no documents are found above the similarity threshold? → A: Return error message "No relevant information found in knowledge base"
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Single-Turn Question Answering (Priority: P1)
@@ -54,6 +64,7 @@ A learner wants to understand when their question cannot be answered based on th
 1. **Given** a knowledge base about biology, **When** a learner asks "What is the capital of France?", **Then** the system returns a response indicating no relevant information was found in the knowledge base
 2. **Given** any knowledge base, **When** a learner submits an empty query or query with only whitespace, **Then** the system returns an error indicating the query is invalid
 3. **Given** a knowledge base, **When** a learner asks an extremely vague question like "Tell me something", **Then** the system attempts to provide a response based on available content or indicates the query is too broad
+4. **Given** a knowledge base about biology, **When** a learner asks an unrelated question where no documents meet the 0.5 similarity threshold, **Then** the system returns the message "No relevant information found in knowledge base"
 
 ---
 
@@ -61,8 +72,8 @@ A learner wants to understand when their question cannot be answered based on th
 
 - What happens when the knowledge base is empty (no documents loaded)?
 - How does the system handle queries exceeding reasonable length limits (e.g., >1000 characters)?
-- What happens if the Gemini API is temporarily unavailable or returns an error?
-- How does the system behave when vector search returns no matching documents?
+- **Gemini API Failure**: If the Gemini API is temporarily unavailable or returns an error, the system will retry once after a 2-second timeout. If the retry fails, return an error response categorizing the failure type (API unavailable vs. timeout exceeded).
+- **Vector Search No Results Above Threshold**: When vector search returns no documents meeting the 0.5 similarity threshold, the system returns the error message "No relevant information found in knowledge base" without attempting to generate an answer.
 - What happens if a query contains special characters, emojis, or non-English text?
 - How does the system handle concurrent requests approaching the 15 RPM limit?
 
@@ -72,9 +83,13 @@ A learner wants to understand when their question cannot be answered based on th
 
 - **FR-001**: System MUST accept text queries via an API endpoint
 - **FR-002**: System MUST validate incoming queries are non-empty text strings
-- **FR-003**: System MUST search the pre-populated knowledge base to find relevant documents matching the query intent
+- **FR-003**: System MUST search the pre-populated knowledge base to find relevant documents matching the query intent by retrieving the top 3 most similar documents (k=3, fixed for all queries)
+- **FR-003a**: System MUST filter vector search results using a minimum similarity threshold of 0.5 (documents below this threshold are excluded)
 - **FR-004**: System MUST generate answers based on retrieved knowledge base content using an AI language model
+- **FR-004a**: System MUST retry Gemini API calls once with a 2-second timeout if the initial call fails
+- **FR-004b**: System MUST return a categorized error response (API unavailable vs. timeout) if the retry attempt fails
 - **FR-005**: System MUST return answers as plain text in the response
+- **FR-005a**: System MUST return the error message "No relevant information found in knowledge base" when vector search finds no documents above the 0.5 similarity threshold
 - **FR-006**: System MUST track API quota usage to enforce the 15 requests per minute limit
 - **FR-007**: System MUST return an error response with an explanatory message when the rate limit is exceeded
 - **FR-008**: System MUST respond to valid queries within 3 seconds when the knowledge base is operational and AI service is responsive
