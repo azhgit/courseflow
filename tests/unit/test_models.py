@@ -4,7 +4,8 @@ import pytest
 from uuid import UUID
 from pydantic import ValidationError
 
-from src.courseflow.domain.models import (
+from uuid import UUID, uuid4
+from courseflow.domain.models import (
     Query,
     Document,
     DocumentMetadata,
@@ -75,11 +76,11 @@ class TestDocumentModel:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="test-1",
-            content="Photosynthesis is the process...",
+            id="test-1",
+            content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose molecules. This process is essential for life on Earth. This process is essential for life on Earth. ",
             metadata=metadata,
         )
-        assert doc.doc_id == "test-1"
+        assert doc.id == "test-1"
         assert doc.content.startswith("Photosynthesis")
         assert doc.metadata.source == "test.md"
 
@@ -92,8 +93,8 @@ class TestDocumentModel:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="test-1",
-            content="Test content",
+            id="test-1",
+            content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose molecules. This process is essential for life on Earth. This process is essential for life on Earth. ",
             metadata=metadata,
         )
         assert doc.embedding is None
@@ -111,8 +112,8 @@ class TestSearchResultModel:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="test-1",
-            content="Photosynthesis content",
+            id="test-1",
+            content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose molecules. This process is essential for life on Earth. This process is essential for life on Earth. ",
             metadata=metadata,
         )
         result = SearchResult(
@@ -120,7 +121,7 @@ class TestSearchResultModel:
             similarity_score=0.85,
         )
         assert result.similarity_score == 0.85
-        assert result.document.doc_id == "test-1"
+        assert result.document.id == "test-1"
 
     def test_similarity_score_validation(self):
         """Test similarity score must be between 0 and 1."""
@@ -131,8 +132,8 @@ class TestSearchResultModel:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="test-1",
-            content="Test",
+            id="test-1",
+            content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose molecules. This process is essential for life on Earth. This process is essential for life on Earth. ",
             metadata=metadata,
         )
         
@@ -160,20 +161,21 @@ class TestAnswerModel:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="test-1",
-            content="Photosynthesis content",
+            id="test-1",
+            content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose molecules. This process is essential for life on Earth. This process is essential for life on Earth. ",
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
         
+        test_query_id = uuid4()
         answer = Answer(
-            query_id="q-123",
+            query_id=test_query_id,
             answer_text="Photosynthesis is...",
             sources=[search_result],
             latency_ms=1500,
         )
         
-        assert answer.query_id == "q-123"
+        assert answer.query_id == test_query_id
         assert answer.answer_text == "Photosynthesis is..."
         assert len(answer.sources) == 1
         assert answer.latency_ms == 1500
@@ -187,8 +189,8 @@ class TestAnswerModel:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="test-1",
-            content="Test content",
+            id="test-1",
+            content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose molecules. This process is essential for life on Earth. This process is essential for life on Earth. ",
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
@@ -200,7 +202,7 @@ class TestAnswerModel:
         )
         
         answer = Answer(
-            query_id="q-123",
+            query_id=uuid4(),
             answer_text="Test answer",
             sources=[search_result],
             latency_ms=1500,
@@ -216,18 +218,18 @@ class TestRateLimitTracker:
     def test_rate_limit_initialization(self):
         """Test rate limit tracker initialization."""
         tracker = RateLimitTracker(
-            requests_per_minute=15,
-            requests_per_day=1500,
+            max_requests_per_minute=15,
+            max_requests_per_day=1500,
         )
-        assert tracker.requests_per_minute == 15
-        assert tracker.requests_per_day == 1500
+        assert tracker.max_requests_per_minute == 15
+        assert tracker.max_requests_per_day == 1500
         assert len(tracker.request_timestamps) == 0
 
     def test_add_request_timestamp(self):
         """Test adding request timestamps."""
         tracker = RateLimitTracker(
-            requests_per_minute=15,
-            requests_per_day=1500,
+            max_requests_per_minute=15,
+            max_requests_per_day=1500,
         )
         import time
         timestamp = time.time()

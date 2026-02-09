@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from typing import List
 
-from src.courseflow.domain.models import (
+from courseflow.domain.models import (
     Query,
     Document,
     DocumentMetadata,
@@ -12,7 +12,7 @@ from src.courseflow.domain.models import (
     Answer,
     TokenUsage,
 )
-from src.courseflow.domain.exceptions import (
+from courseflow.domain.exceptions import (
     NoRelevantDocumentsError,
     QuotaExceededError,
 )
@@ -64,12 +64,12 @@ class TestRAGService:
         
         return [
             Document(
-                doc_id="doc-1",
+                id="doc-1",
                 content="Photosynthesis is the process by which plants convert light energy...",
                 metadata=metadata1,
             ),
             Document(
-                doc_id="doc-2",
+                id="doc-2",
                 content="Mitosis is a type of cell division...",
                 metadata=metadata2,
             ),
@@ -94,7 +94,7 @@ class TestRAGService:
     ):
         """Test successful RAG query flow."""
         # Import here to avoid circular dependency
-        from src.courseflow.application.rag_service import RAGService
+        from courseflow.application.rag_service import RAGService
         
         # Setup mocks
         mock_vector_store.search.return_value = sample_search_results
@@ -138,7 +138,7 @@ class TestRAGService:
         sample_search_results,
     ):
         """Test that results below similarity threshold are filtered."""
-        from src.courseflow.application.rag_service import RAGService
+        from courseflow.application.rag_service import RAGService
         
         # Setup mock with low-similarity results
         low_similarity_results = [
@@ -177,7 +177,7 @@ class TestRAGService:
         mock_query_repo,
     ):
         """Test handling of empty search results."""
-        from src.courseflow.application.rag_service import RAGService
+        from courseflow.application.rag_service import RAGService
         
         mock_vector_store.search.return_value = []
         
@@ -204,7 +204,7 @@ class TestRAGService:
         sample_search_results,
     ):
         """Test handling of LLM quota exceeded error."""
-        from src.courseflow.application.rag_service import RAGService
+        from courseflow.application.rag_service import RAGService
         
         mock_vector_store.search.return_value = sample_search_results
         mock_llm_port.generate_answer.side_effect = QuotaExceededError(
@@ -237,7 +237,7 @@ class TestRAGService:
         sample_search_results,
     ):
         """Test that retrieval count is properly logged."""
-        from src.courseflow.application.rag_service import RAGService
+        from courseflow.application.rag_service import RAGService
         
         mock_vector_store.search.return_value = sample_search_results
         mock_llm_port.generate_answer.return_value = (
@@ -271,7 +271,7 @@ class TestRAGService:
         sample_search_results,
     ):
         """Test that similarity scores are preserved in results."""
-        from src.courseflow.application.rag_service import RAGService
+        from courseflow.application.rag_service import RAGService
         
         mock_vector_store.search.return_value = sample_search_results
         mock_llm_port.generate_answer.return_value = (

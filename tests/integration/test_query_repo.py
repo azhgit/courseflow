@@ -6,8 +6,8 @@ import os
 import aiosqlite
 from datetime import datetime
 
-from src.courseflow.domain.models import Query, TokenUsage
-from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+from courseflow.domain.models import Query, TokenUsage
+from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
 
 
 @pytest.fixture

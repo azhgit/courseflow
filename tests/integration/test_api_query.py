@@ -5,8 +5,8 @@ from httpx import AsyncClient
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
 
-from src.courseflow.api.main import create_app
-from src.courseflow.domain.models import (
+from courseflow.api.main import create_app
+from courseflow.domain.models import (
     Query,
     Answer,
     SearchResult,
@@ -29,7 +29,7 @@ def app(mock_rag_service):
     app = create_app()
     
     # Override dependencies
-    from src.courseflow.api.dependencies import get_rag_service
+    from courseflow.api.dependencies import get_rag_service
     app.dependency_overrides[get_rag_service] = lambda: mock_rag_service
     
     return app
@@ -54,7 +54,7 @@ class TestQueryEndpointContract:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="doc-1",
+            id="doc-1",
             content="Photosynthesis is...",
             metadata=metadata,
         )
@@ -138,7 +138,7 @@ class TestQueryEndpointContract:
 
     def test_no_relevant_documents_error(self, client, mock_rag_service):
         """Test 404 response when no relevant documents found."""
-        from src.courseflow.domain.exceptions import NoRelevantDocumentsError
+        from courseflow.domain.exceptions import NoRelevantDocumentsError
         
         mock_rag_service.answer_query.side_effect = NoRelevantDocumentsError(
             message="No relevant information found",
@@ -160,7 +160,7 @@ class TestQueryEndpointContract:
 
     def test_quota_exceeded_error(self, client, mock_rag_service):
         """Test 429 response for quota exceeded."""
-        from src.courseflow.domain.exceptions import QuotaExceededError
+        from courseflow.domain.exceptions import QuotaExceededError
         
         mock_rag_service.answer_query.side_effect = QuotaExceededError(
             message="Gemini API quota exceeded",
@@ -184,7 +184,7 @@ class TestQueryEndpointContract:
 
     def test_service_unavailable_error(self, client, mock_rag_service):
         """Test 503 response for service unavailable."""
-        from src.courseflow.domain.exceptions import ServiceUnavailableError
+        from courseflow.domain.exceptions import ServiceUnavailableError
         
         mock_rag_service.answer_query.side_effect = ServiceUnavailableError(
             message="ChromaDB connection failed",
@@ -210,7 +210,7 @@ class TestQueryEndpointContract:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="doc-1",
+            id="doc-1",
             content="Test content",
             metadata=metadata,
         )
@@ -250,7 +250,7 @@ class TestQueryEndpointContract:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="doc-1",
+            id="doc-1",
             content="Test content",
             metadata=metadata,
         )
@@ -287,7 +287,7 @@ class TestQueryEndpointContract:
             total_chunks=1,
         )
         doc = Document(
-            doc_id="doc-1",
+            id="doc-1",
             content="Test content",
             metadata=metadata,
         )

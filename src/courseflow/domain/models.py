@@ -56,22 +56,22 @@ class DocumentMetadata(BaseModel):
     subject: str
     topic: Optional[str] = None
     chunk_index: int = Field(ge=0)
-    total_chunks: int = Field(ge=1)
+    total_chunks: Optional[int] = Field(default=None, ge=1)
 
 
 class Document(BaseModel):
     """Represents a chunk of educational content in the knowledge base.
     
     Attributes:
-        doc_id: Document identifier (e.g., "bio-photosynthesis-chunk-0")
+        id: Document identifier (e.g., "bio-photosynthesis-chunk-0")
         content: Text content of document chunk (100-10000 chars)
-        embedding: Gemini embedding of content (768-dim vector, optional)
+        embedding: Gemini embedding of content (768-3072 dim vector, optional)
         metadata: Subject, source, chunk info
     """
     
-    doc_id: str
+    id: str
     content: str = Field(..., min_length=100, max_length=10000)
-    embedding: Optional[list[float]] = None
+    embedding: Optional[list[float]] = Field(default=None, min_length=768, max_length=3072)
     metadata: DocumentMetadata
 
 

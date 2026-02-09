@@ -6,10 +6,10 @@ import shutil
 from pathlib import Path
 from typing import List
 
-from src.courseflow.domain.models import Document, DocumentMetadata, SearchResult
-from src.courseflow.infrastructure.vector_store.chroma import ChromaAdapter
-from src.courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
-from src.courseflow.config import Settings
+from courseflow.domain.models import Document, DocumentMetadata, SearchResult
+from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
+from courseflow.config import Settings
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def sample_documents() -> List[Document]:
     """Create sample documents for testing."""
     return [
         Document(
-            doc_id="bio-1",
+            id="bio-1",
             content="Photosynthesis is the process by which plants convert light energy into chemical energy using chlorophyll.",
             metadata=DocumentMetadata(
                 source="photosynthesis.md",
@@ -60,7 +60,7 @@ def sample_documents() -> List[Document]:
             ),
         ),
         Document(
-            doc_id="bio-2",
+            id="bio-2",
             content="Mitosis is a type of cell division where one cell divides into two identical daughter cells.",
             metadata=DocumentMetadata(
                 source="mitosis.md",
@@ -70,7 +70,7 @@ def sample_documents() -> List[Document]:
             ),
         ),
         Document(
-            doc_id="prog-1",
+            id="prog-1",
             content="Python async/await syntax enables asynchronous programming for concurrent I/O operations.",
             metadata=DocumentMetadata(
                 source="python-async.md",
@@ -80,7 +80,7 @@ def sample_documents() -> List[Document]:
             ),
         ),
         Document(
-            doc_id="math-1",
+            id="math-1",
             content="Derivatives measure the rate of change of a function with respect to its variable.",
             metadata=DocumentMetadata(
                 source="derivatives.md",

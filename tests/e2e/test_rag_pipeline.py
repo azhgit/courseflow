@@ -6,10 +6,10 @@ import shutil
 import os
 from typing import List
 
-from src.courseflow.domain.models import Document, DocumentMetadata, Query
-from src.courseflow.infrastructure.vector_store.chroma import ChromaAdapter
-from src.courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
-from src.courseflow.config import Settings
+from courseflow.domain.models import Document, DocumentMetadata, Query
+from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
+from courseflow.config import Settings
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def sample_knowledge_base() -> List[Document]:
     """Create sample knowledge base documents."""
     return [
         Document(
-            doc_id="bio-photosynthesis-1",
+            id="bio-photosynthesis-1",
             content=(
                 "Photosynthesis is the process by which plants, algae, and some bacteria "
                 "convert light energy (usually from the sun) into chemical energy stored "
@@ -46,7 +46,7 @@ def sample_knowledge_base() -> List[Document]:
             ),
         ),
         Document(
-            doc_id="bio-mitosis-1",
+            id="bio-mitosis-1",
             content=(
                 "Mitosis is a type of cell division where one parent cell divides to produce "
                 "two genetically identical daughter cells. The process consists of several phases: "
@@ -63,7 +63,7 @@ def sample_knowledge_base() -> List[Document]:
             ),
         ),
         Document(
-            doc_id="prog-async-1",
+            id="prog-async-1",
             content=(
                 "Python's async/await syntax enables asynchronous programming for handling "
                 "concurrent I/O operations efficiently. The 'async def' keyword defines "
@@ -80,7 +80,7 @@ def sample_knowledge_base() -> List[Document]:
             ),
         ),
         Document(
-            doc_id="math-derivatives-1",
+            id="math-derivatives-1",
             content=(
                 "In calculus, the derivative measures the rate of change of a function with "
                 "respect to its variable. The derivative of f(x) at point x is defined as "
@@ -97,7 +97,7 @@ def sample_knowledge_base() -> List[Document]:
             ),
         ),
         Document(
-            doc_id="hist-wwii-1",
+            id="hist-wwii-1",
             content=(
                 "World War II (1939-1945) was a global conflict involving most of the world's "
                 "nations, divided into two opposing military alliances: the Allies (led by "
@@ -144,9 +144,9 @@ class TestRAGPipelineE2E:
         await vector_store.add_documents(sample_knowledge_base)
         
         # Create RAG service (will be implemented in T031)
-        from src.courseflow.application.rag_service import RAGService
-        from src.courseflow.infrastructure.llm.gemini import GeminiLLMClient
-        from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+        from courseflow.application.rag_service import RAGService
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
+        from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
         
         llm_client = GeminiLLMClient(api_key=settings.gemini_api_key)
         query_repo = SQLiteQueryRepository(db_path=db_path)
@@ -198,7 +198,7 @@ class TestRAGPipelineE2E:
         # Mock LLM client
         class MockLLMClient:
             async def generate_answer(self, query: str, context: List[str]):
-                from src.courseflow.domain.models import TokenUsage
+                from courseflow.domain.models import TokenUsage
                 return (
                     f"Mock answer for: {query}. Based on context: {context[0][:50]}...",
                     TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
@@ -215,8 +215,8 @@ class TestRAGPipelineE2E:
         await vector_store.add_documents(sample_knowledge_base)
         
         # Create RAG service
-        from src.courseflow.application.rag_service import RAGService
-        from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+        from courseflow.application.rag_service import RAGService
+        from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
         
         llm_client = MockLLMClient()
         query_repo = SQLiteQueryRepository(db_path=db_path)
@@ -257,7 +257,7 @@ class TestRAGPipelineE2E:
         
         class MockLLMClient:
             async def generate_answer(self, query: str, context: List[str]):
-                from src.courseflow.domain.models import TokenUsage
+                from courseflow.domain.models import TokenUsage
                 return (
                     f"Answer based on context",
                     TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
@@ -272,8 +272,8 @@ class TestRAGPipelineE2E:
             doc.embedding = await embedding_client.generate_embedding(doc.content)
         await vector_store.add_documents(sample_knowledge_base)
         
-        from src.courseflow.application.rag_service import RAGService
-        from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+        from courseflow.application.rag_service import RAGService
+        from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
         
         llm_client = MockLLMClient()
         query_repo = SQLiteQueryRepository(db_path=db_path)
@@ -329,13 +329,13 @@ class TestRAGPipelineE2E:
             doc.embedding = await embedding_client.generate_embedding(doc.content)
         await vector_store.add_documents(sample_knowledge_base)
         
-        from src.courseflow.application.rag_service import RAGService
-        from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-        from src.courseflow.domain.exceptions import NoRelevantDocumentsError
+        from courseflow.application.rag_service import RAGService
+        from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+        from courseflow.domain.exceptions import NoRelevantDocumentsError
         
         class MockLLMClient:
             async def generate_answer(self, query: str, context: List[str]):
-                from src.courseflow.domain.models import TokenUsage
+                from courseflow.domain.models import TokenUsage
                 return ("Answer", TokenUsage(100, 50, 150))
         
         llm_client = MockLLMClient()
