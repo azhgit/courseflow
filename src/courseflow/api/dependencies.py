@@ -1,6 +1,7 @@
 """Dependency injection for FastAPI routes.
 
 Provides injectable dependencies for services, database connections, and configuration.
+Uses singleton pattern for expensive clients to avoid creating new instances per request.
 """
 
 from collections import deque
@@ -15,6 +16,11 @@ from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
 from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
 from courseflow.application.rag_service import RAGService
+
+# Singletons to avoid creating new clients per request (which wastes quota)
+_embedding_client: GeminiEmbeddingClient | None = None
+_llm_client: GeminiLLMClient | None = None
+_vector_store: ChromaAdapter | None = None
 
 _rate_limiter = RateLimitTracker(
     request_timestamps=deque(maxlen=settings.RATE_LIMIT_RPM),
@@ -35,39 +41,48 @@ async def get_db_connection() -> AsyncGenerator[aiosqlite.Connection, None]:
 
 
 def get_vector_store() -> ChromaAdapter:
-    """Dependency for ChromaDB vector store.
-    
+    """Dependency for ChromaDB vector store (singleton).
+
     Returns:
         ChromaDB adapter instance
     """
-    return ChromaAdapter(
-        persist_directory=settings.chroma_persist_dir,
-        collection_name=settings.chroma_collection_name,
-    )
+    global _vector_store
+    if _vector_store is None:
+        _vector_store = ChromaAdapter(
+            persist_directory=settings.CHROMA_PERSIST_DIR,
+            collection_name=settings.chroma_collection_name,
+        )
+    return _vector_store
 
 
 def get_embedding_client() -> GeminiEmbeddingClient:
-    """Dependency for Gemini embedding client.
-    
+    """Dependency for Gemini embedding client (singleton).
+
     Returns:
         Gemini embedding client instance
     """
-    return GeminiEmbeddingClient(
-        api_key=settings.gemini_api_key,
-    )
+    global _embedding_client
+    if _embedding_client is None:
+        _embedding_client = GeminiEmbeddingClient(
+            api_key=settings.gemini_api_key,
+        )
+    return _embedding_client
 
 
 def get_llm_client() -> GeminiLLMClient:
-    """Dependency for Gemini LLM client.
+    """Dependency for Gemini LLM client (singleton).
 
     Returns:
         Gemini LLM client instance
     """
-    return GeminiLLMClient(
-        api_key=settings.gemini_api_key,
-        model_name=settings.GEMINI_MODEL,
-        timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
-    )
+    global _llm_client
+    if _llm_client is None:
+        _llm_client = GeminiLLMClient(
+            api_key=settings.gemini_api_key,
+            model_name=settings.GEMINI_MODEL,
+            timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
+        )
+    return _llm_client
 
 
 def get_query_repository() -> SQLiteQueryRepository:
