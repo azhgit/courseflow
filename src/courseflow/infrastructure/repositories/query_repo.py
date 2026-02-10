@@ -5,7 +5,7 @@ Stores query history, performance metrics, and error tracking.
 """
 
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import aiosqlite
@@ -109,7 +109,7 @@ class SQLiteQueryRepository(QueryRepositoryPort):
                 else:
                     query_id = kwargs.get("query_id")
                     query_text = kwargs.get("query_text")
-                    created_at = kwargs.get("created_at") or kwargs.get("timestamp") or datetime.utcnow()
+                    created_at = kwargs.get("created_at") or kwargs.get("timestamp") or datetime.now(timezone.utc)
 
                 if latency_ms is None:
                     latency_ms = kwargs.get("latency_ms", 0)
@@ -177,7 +177,7 @@ class SQLiteQueryRepository(QueryRepositoryPort):
         """
         try:
             async with aiosqlite.connect(self.database_path) as db:
-                cutoff = datetime.utcnow() - timedelta(hours=hours)
+                cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
                 
                 async with db.execute(
                     "SELECT COUNT(*) FROM queries WHERE created_at > ?",

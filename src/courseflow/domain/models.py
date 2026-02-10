@@ -5,7 +5,7 @@ All models are independent of infrastructure concerns (database, API, external s
 """
 
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -26,7 +26,7 @@ class Query(BaseModel):
     
     id: UUID = Field(default_factory=uuid4)
     text: str = Field(..., min_length=1, max_length=1000)
-    timestamp: datetime = Field(default_factory=lambda: datetime.utcnow())
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     embedding: Optional[list[float]] = None
     
     @property
@@ -133,7 +133,7 @@ class Answer(BaseModel):
     sources: list['SearchResult'] = Field(default_factory=list)
     latency_ms: int = Field(ge=0)
     token_usage: Optional[TokenUsage] = None
-    timestamp: datetime = Field(default_factory=lambda: datetime.utcnow())
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class RateLimitTracker(BaseModel):
@@ -164,7 +164,7 @@ class RateLimitTracker(BaseModel):
             - allowed: True if request can proceed, False otherwise
             - retry_after_seconds: Seconds to wait before retry (0 if allowed)
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cutoff = now - timedelta(seconds=self.window_seconds)
         
         # Remove stale timestamps outside the window

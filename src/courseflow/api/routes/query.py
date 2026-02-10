@@ -1,7 +1,7 @@
 """Query endpoint for RAG question answering."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -164,7 +164,7 @@ async def query_endpoint(
             },
             metadata={
                 "latency_ms": 0,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "no_relevant_documents": {
                     "threshold": e.threshold,
                     "max_similarity": e.max_similarity,
