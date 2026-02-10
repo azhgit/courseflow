@@ -15,7 +15,7 @@ from courseflow.domain.exceptions import (
     ValidationError as DomainValidationError,
 )
 from courseflow.application.rag_service import RAGService
-from courseflow.api.dependencies import get_rag_service
+from courseflow.api.dependencies import get_rag_service, get_rate_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,7 @@ class ErrorResponse(BaseModel):
 async def query_endpoint(
     request: QueryRequest,
     rag_service: RAGService = Depends(get_rag_service),
+    rate_limiter=Depends(get_rate_limiter),
 ) -> QueryResponse:
     """Handle POST /api/v1/query requests.
     
@@ -94,6 +95,13 @@ async def query_endpoint(
 
         # Create Query model (domain validation)
         query = Query(text=query_text)
+
+        allowed, retry_after = rate_limiter.is_allowed()
+        if not allowed:
+            raise QuotaExceededError(
+                message="Rate limit exceeded (local guard)",
+                retry_after=retry_after,
+            )
         
         logger.info(f"Received query: {query.id} - '{query.text[:50]}...'")
         

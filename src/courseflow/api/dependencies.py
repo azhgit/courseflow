@@ -3,16 +3,24 @@
 Provides injectable dependencies for services, database connections, and configuration.
 """
 
+from collections import deque
 from typing import AsyncGenerator
 
 import aiosqlite
 
 from courseflow.config import settings
+from courseflow.domain.models import RateLimitTracker
 from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
 from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
 from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
 from courseflow.application.rag_service import RAGService
+
+_rate_limiter = RateLimitTracker(
+    request_timestamps=deque(maxlen=settings.RATE_LIMIT_RPM),
+    max_requests_per_minute=settings.RATE_LIMIT_RPM,
+    max_requests_per_day=settings.RATE_LIMIT_DAILY,
+)
 
 
 async def get_db_connection() -> AsyncGenerator[aiosqlite.Connection, None]:
@@ -69,6 +77,11 @@ def get_query_repository() -> SQLiteQueryRepository:
         SQLite query repository instance
     """
     return SQLiteQueryRepository(db_path=settings.database_path)
+
+
+def get_rate_limiter() -> RateLimitTracker:
+    """Process-local rate limiter to avoid hitting Gemini RPM quota."""
+    return _rate_limiter
 
 
 def get_rag_service() -> RAGService:
