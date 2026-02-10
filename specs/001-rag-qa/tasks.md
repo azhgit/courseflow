@@ -125,15 +125,15 @@
 
 - [X] T043 [P] [US3] Create unit tests for query validation in tests/unit/test_models.py (test empty string rejection, whitespace-only rejection, max length 1000 chars)
 - [X] T044 [P] [US3] Create integration test for threshold filtering in tests/integration/test_chroma.py (test queries with max_similarity < 0.5 return empty results)
-- [ ] T045 [P] [US3] Create contract test for validation errors in tests/integration/test_api_query.py (test empty query returns 400, irrelevant query returns 404)
+- [X] T045 [P] [US3] Create contract test for validation errors in tests/integration/test_api_query.py (test empty query returns 400, irrelevant query returns 404)
 
 ### Implementation for User Story 3
 
 - [X] T046 [US3] Add query text validation in src/courseflow/domain/models.py Query class (Pydantic validator for non-empty, max 1000 chars, strip whitespace)
 - [X] T047 [US3] Add similarity threshold filtering in src/courseflow/application/rag_service.py (filter SearchResults to only include similarity_score >= 0.5, raise NoRelevantDocumentsError if empty)
 - [X] T048 [US3] Add "No relevant information found" error handling in src/courseflow/api/routes/query.py (catch NoRelevantDocumentsError, return 404 with error message and threshold details)
-- [ ] T049 [US3] Add query length validation in src/courseflow/api/routes/query.py (return 400 if query exceeds 1000 characters with clear error message)
-- [ ] T050 [US3] Update error response to include similarity threshold details in src/courseflow/api/routes/query.py (add threshold and max_similarity to ErrorResponse.error.details for no_relevant_documents type)
+- [X] T049 [US3] Add query length validation in src/courseflow/api/routes/query.py (return 400 if query exceeds 1000 characters with clear error message)
+- [X] T050 [US3] Update error response to include similarity threshold details in src/courseflow/api/routes/query.py (add threshold and max_similarity to ErrorResponse.error.details for no_relevant_documents type)
 
 **Checkpoint**: All user stories complete - system handles successful queries, rate limits, and edge cases with appropriate error messages
 
@@ -143,19 +143,19 @@
 
 **Purpose**: Improvements that affect multiple user stories and production readiness
 
-- [ ] T051 [P] Add comprehensive docstrings to all public APIs in src/courseflow/domain/, src/courseflow/application/, src/courseflow/infrastructure/
-- [ ] T052 [P] Add inline documentation for complex RAG orchestration in src/courseflow/application/rag_service.py (document each pipeline step)
-- [ ] T053 [P] Create README.md in repository root (project overview, quickstart link, architecture diagram, contribution guidelines)
-- [ ] T054 [P] Generate API documentation from FastAPI OpenAPI schema (verify /docs endpoint matches contracts/openapi.yaml)
-- [ ] T055 Run full test suite with coverage report (pytest --cov=src/courseflow --cov-report=html, verify >= 80% coverage)
-- [ ] T056 [P] Add performance monitoring for RAG pipeline in src/courseflow/application/rag_service.py (log embedding_time_ms, search_time_ms, llm_time_ms, total_time_ms)
-- [ ] T057 Add query performance metrics to SQLite logging in src/courseflow/infrastructure/repositories/query_repo.py (store latency_ms breakdown: embedding, search, generation)
-- [ ] T058 Optimize ChromaDB persistence settings in src/courseflow/infrastructure/vector_store/chroma.py (configure batch size for bulk ingestion)
-- [ ] T059 Add input sanitization for LLM prompts in src/courseflow/infrastructure/llm/gemini.py (prevent prompt injection attacks)
-- [ ] T060 [P] Run quickstart.md validation (follow all steps, verify all commands succeed, test all example queries)
-- [ ] T061 [P] Run security audit with bandit (bandit -r src/courseflow, fix any HIGH severity issues)
-- [ ] T062 [P] Run type checking with mypy (mypy src/courseflow --strict, fix all type errors)
-- [ ] T063 Code cleanup and refactoring (remove TODOs, ensure all functions < 50 lines or documented in complexity table, remove unused imports)
+- [X] T051 [P] Add comprehensive docstrings to all public APIs in src/courseflow/domain/, src/courseflow/application/, src/courseflow/infrastructure/
+- [X] T052 [P] Add inline documentation for complex RAG orchestration in src/courseflow/application/rag_service.py (document each pipeline step)
+- [X] T053 [P] Create README.md in repository root (project overview, quickstart link, architecture diagram, contribution guidelines)
+- [X] T054 [P] Generate API documentation from FastAPI OpenAPI schema (verify /docs endpoint matches contracts/openapi.yaml)
+- [X] T055 Run full test suite with coverage report (pytest --cov=src/courseflow --cov-report=html, verify >= 80% coverage)
+- [X] T056 [P] Add performance monitoring for RAG pipeline in src/courseflow/application/rag_service.py (log embedding_time_ms, search_time_ms, llm_time_ms, total_time_ms)
+- [X] T057 Add query performance metrics to SQLite logging in src/courseflow/infrastructure/repositories/query_repo.py (store latency_ms breakdown: embedding, search, generation)
+- [X] T058 Optimize ChromaDB persistence settings in src/courseflow/infrastructure/vector_store/chroma.py (configure batch size for bulk ingestion)
+- [X] T059 Add input sanitization for LLM prompts in src/courseflow/infrastructure/llm/gemini.py (prevent prompt injection attacks)
+- [X] T060 [P] Run quickstart.md validation (follow all steps, verify all commands succeed, test all example queries)
+- [X] T061 [P] Run security audit with bandit (bandit -r src/courseflow, fix any HIGH severity issues)
+- [X] T062 [P] Run type checking with mypy (mypy src/courseflow --strict, fix all type errors)
+- [X] T063 Code cleanup and refactoring (remove TODOs, ensure all functions < 50 lines or documented in complexity table, remove unused imports)
 
 ---
 
