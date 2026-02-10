@@ -197,10 +197,10 @@ class TestRAGPipelineE2E:
         
         # Mock LLM client
         class MockLLMClient:
-            async def generate_answer(self, query: str, context: List[str]):
+            async def generate_answer(self, query: str, context: list):
                 from courseflow.domain.models import TokenUsage
                 return (
-                    f"Mock answer for: {query}. Based on context: {context[0][:50]}...",
+                    f"Mock answer for: {query}. Based on context: {context[0].content[:50]}...",
                     TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
                 )
         
@@ -256,7 +256,7 @@ class TestRAGPipelineE2E:
                 return [(hash_val * i) % 100 / 100.0 for i in range(768)]
         
         class MockLLMClient:
-            async def generate_answer(self, query: str, context: List[str]):
+            async def generate_answer(self, query: str, context: list):
                 from courseflow.domain.models import TokenUsage
                 return (
                     f"Answer based on context",
@@ -334,7 +334,7 @@ class TestRAGPipelineE2E:
         from courseflow.domain.exceptions import NoRelevantDocumentsError
         
         class MockLLMClient:
-            async def generate_answer(self, query: str, context: List[str]):
+            async def generate_answer(self, query: str, context: list):
                 from courseflow.domain.models import TokenUsage
                 return (
                     "Answer",
