@@ -316,3 +316,47 @@ class TestQueryEndpointContract:
         # CORS headers should be present
         # Note: Actual header names depend on CORS middleware configuration
         assert response.status_code == 200
+
+
+class TestQueryValidationContract:
+    """Test validation error contracts."""
+
+    async def test_empty_query_returns_400(self, client):
+        """Test that empty query returns 400 with validation error."""
+        response = client.post("/api/v1/query", json={"query": ""})
+        assert response.status_code == 400
+        data = response.json()
+        assert data["error"]["type"] == "validation_error"
+        assert "empty" in data["error"]["message"].lower()
+
+    async def test_whitespace_only_query_returns_400(self, client):
+        """Test that whitespace-only query returns 400."""
+        response = client.post("/api/v1/query", json={"query": "   "})
+        assert response.status_code == 400
+        data = response.json()
+        assert data["error"]["type"] == "validation_error"
+
+    async def test_too_long_query_returns_400(self, client):
+        """Test that query exceeding 1000 chars returns 400."""
+        long_query = "a" * 1001
+        response = client.post("/api/v1/query", json={"query": long_query})
+        assert response.status_code == 400
+        data = response.json()
+        assert data["error"]["type"] == "validation_error"
+        assert "1000" in data["error"]["message"]
+
+    async def test_irrelevant_query_returns_no_docs_response(self, client):
+        """Test that irrelevant query returns 200 with no relevant docs message."""
+        # Query completely unrelated to knowledge base
+        response = client.post(
+            "/api/v1/query", json={"query": "zxcvbnm qwerty asdfgh uiop"}
+        )
+        # Should return 200 (not 404) with helpful message
+        assert response.status_code == 200
+        data = response.json()
+        assert data["data"]["sources"] == []
+        assert "no relevant" in data["data"]["answer"].lower()
+        # Should include threshold info in metadata
+        if "no_relevant_documents" in data["metadata"]:
+            assert "threshold" in data["metadata"]["no_relevant_documents"]
+            assert "max_similarity" in data["metadata"]["no_relevant_documents"]
