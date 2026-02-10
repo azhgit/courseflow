@@ -4,7 +4,6 @@ This module provides async embedding generation using Google's Gemini API.
 Implements retry logic and error categorization for production use.
 """
 
-
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 

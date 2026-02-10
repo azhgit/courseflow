@@ -197,7 +197,9 @@ Answer (be concise and factual, citing specific information from the documents):
 
             elif "503" in error_str or "unavailable" in error_str:
                 logger.error(f"Gemini API unavailable: {e}")
-                raise ServiceUnavailableError(message="Gemini API is temporarily unavailable") from e
+                raise ServiceUnavailableError(
+                    message="Gemini API is temporarily unavailable"
+                ) from e
 
             else:
                 logger.error(f"Unexpected Gemini API error: {e}")

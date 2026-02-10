@@ -1,7 +1,5 @@
 """Unit tests for RateLimitTracker model."""
 
-
-
 from courseflow.domain.models import RateLimitTracker
 
 

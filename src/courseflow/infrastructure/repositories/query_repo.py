@@ -107,9 +107,7 @@ class SQLiteQueryRepository(QueryRepositoryPort):
                     query_id = kwargs.get("query_id")
                     query_text = kwargs.get("query_text")
                     created_at = (
-                        kwargs.get("created_at")
-                        or kwargs.get("timestamp")
-                        or datetime.now(UTC)
+                        kwargs.get("created_at") or kwargs.get("timestamp") or datetime.now(UTC)
                     )
 
                 if latency_ms is None:

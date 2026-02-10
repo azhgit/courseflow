@@ -137,7 +137,8 @@ class RAGService:
         # Passing Document objects will stringify the full Pydantic repr (including embeddings),
         # exploding prompt size and latency.
         context_snippets = [
-            f"Source: {r.document.metadata.source}\n\n{r.document.content}" for r in filtered_results
+            f"Source: {r.document.metadata.source}\n\n{r.document.content}"
+            for r in filtered_results
         ]
 
         answer_text, token_usage = await self.llm_port.generate_answer(

@@ -4,7 +4,6 @@ This module provides vector similarity search using ChromaDB with persistent loc
 Uses cosine similarity and HNSW indexing for efficient retrieval.
 """
 
-
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 
