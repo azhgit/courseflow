@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup: Initialize resources
     print("Starting up CourseFlow RAG system...")
     print(f"ChromaDB persist dir: {settings.chroma_persist_dir}")
+    print(f"ChromaDB persist dir (abs): {settings.CHROMA_PERSIST_DIR}")
     print(f"Rate limit: {settings.rate_limit_rpm} RPM")
     
     # NOTE: Resources are initialized per-request via dependencies

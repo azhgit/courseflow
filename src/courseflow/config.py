@@ -4,8 +4,12 @@ Configuration is loaded from environment variables (via .env file or system env)
 All settings are validated at startup with clear error messages for missing required values.
 """
 
-from pydantic import Field
+from pathlib import Path
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BASE_DIR = Path(__file__).resolve().parents[2]  # project root
 
 
 class Settings(BaseSettings):
@@ -28,7 +32,7 @@ class Settings(BaseSettings):
     # ChromaDB
     CHROMA_PERSIST_DIR: str = "./data/chroma"
     CHROMA_COLLECTION_NAME: str = "courseflow_docs"
-    
+
     # SQLite
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/courseflow.db"
     
@@ -82,9 +86,21 @@ class Settings(BaseSettings):
     def chroma_collection_name(self) -> str:
         return self.CHROMA_COLLECTION_NAME
     
+    @field_validator("CHROMA_PERSIST_DIR")
+    @classmethod
+    def _resolve_chroma_dir(cls, v: str) -> str:
+        p = Path(v)
+        if not p.is_absolute():
+            p = (_BASE_DIR / p).resolve()
+        return str(p)
+
     @property
     def database_path(self) -> str:
-        return self.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+        raw = self.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+        p = Path(raw)
+        if not p.is_absolute():
+            p = (_BASE_DIR / p).resolve()
+        return str(p)
     
     @property
     def rate_limit_rpm(self) -> int:

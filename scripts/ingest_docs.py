@@ -7,18 +7,13 @@ Run this script once during setup: python scripts/ingest_docs.py
 """
 
 import asyncio
-import os
 import re
-import sys
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.courseflow.config import settings
-from src.courseflow.domain.models import Document, DocumentMetadata
-from src.courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
-from src.courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+from courseflow.config import settings
+from courseflow.domain.models import Document, DocumentMetadata
+from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
+from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
 
 
 def chunk_text(text: str, max_tokens: int = 500, overlap: int = 50) -> list[str]:
@@ -79,7 +74,11 @@ async def ingest_documents(docs_dir: str = "./docs") -> None:
     """
     # Initialize clients
     print("Initializing ChromaDB and Gemini clients...")
-    vector_store = ChromaAdapter()
+    vector_store = ChromaAdapter(
+        persist_directory=settings.CHROMA_PERSIST_DIR,
+        collection_name=settings.CHROMA_COLLECTION_NAME,
+    )
+    await vector_store.initialize()
     embedding_client = GeminiEmbeddingClient(
         api_key=settings.GEMINI_API_KEY,
         model=settings.GEMINI_EMBEDDING_MODEL
