@@ -121,8 +121,8 @@ class TestRAGPipelineE2E:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        "GEMINI_API_KEY" not in os.environ,
-        reason="Requires GEMINI_API_KEY environment variable",
+        not os.environ.get("GEMINI_API_KEY"),
+        reason="Requires GEMINI_API_KEY environment variable with valid value",
     )
     async def test_full_rag_pipeline_biology_query(
         self,
