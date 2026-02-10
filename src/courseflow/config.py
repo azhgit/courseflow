@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     
     # Gemini API
     GEMINI_API_KEY: str  # Required - no default
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-1.5-flash-latest"
     GEMINI_EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     
     # ChromaDB
