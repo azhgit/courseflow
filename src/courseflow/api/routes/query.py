@@ -1,6 +1,7 @@
 """Query endpoint for RAG question answering."""
 
 import logging
+from datetime import datetime
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -150,20 +151,25 @@ async def query_endpoint(
         return QueryResponse(**response_data)
         
     except NoRelevantDocumentsError as e:
-        logger.warning(f"No relevant documents: {e.message}")
-        error_response = ErrorResponse(
-            error=ErrorDetail(
-                type="no_relevant_documents",
-                message=e.message,
-                details={
+        # Treat "no relevant documents" as a normal (non-error) outcome.
+        message = "No relevant information found in knowledge base. Please try rephrasing your question."
+        logger.info(
+            f"No relevant documents for query {query.id}: threshold={e.threshold} max_similarity={e.max_similarity}"
+        )
+        return QueryResponse(
+            data={
+                "query_id": str(query.id),
+                "answer": message,
+                "sources": [],
+            },
+            metadata={
+                "latency_ms": 0,
+                "timestamp": datetime.utcnow().isoformat(),
+                "no_relevant_documents": {
                     "threshold": e.threshold,
                     "max_similarity": e.max_similarity,
                 },
-            )
-        )
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content=error_response.model_dump(),
+            },
         )
         
     except QuotaExceededError as e:

@@ -138,26 +138,30 @@ class TestQueryEndpointContract:
         assert "error" in data
 
     def test_no_relevant_documents_error(self, client, mock_rag_service):
-        """Test 404 response when no relevant documents found."""
+        """Test 200 response when no relevant documents found."""
         from courseflow.domain.exceptions import NoRelevantDocumentsError
-        
+
         mock_rag_service.answer_query.side_effect = NoRelevantDocumentsError(
             message="No relevant information found",
             threshold=0.5,
             max_similarity=0.3,
         )
-        
+
         response = client.post(
             "/api/v1/query",
             json={"query": "Irrelevant question"},
         )
-        
-        assert response.status_code == 404
-        
+
+        assert response.status_code == 200
+
         data = response.json()
-        assert "error" in data
-        assert data["error"]["type"] == "no_relevant_documents"
-        assert "threshold" in data["error"]["details"]
+        assert "data" in data
+        assert "answer" in data["data"]
+        assert isinstance(data["data"]["sources"], list)
+        assert data["data"]["sources"] == []
+        assert "metadata" in data
+        assert "no_relevant_documents" in data["metadata"]
+        assert data["metadata"]["no_relevant_documents"]["threshold"] == 0.5
 
     def test_quota_exceeded_error(self, client, mock_rag_service):
         """Test 429 response for quota exceeded."""
