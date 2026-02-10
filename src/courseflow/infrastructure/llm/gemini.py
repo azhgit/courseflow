@@ -33,7 +33,7 @@ class GeminiLLMClient(LLMPort):
     def __init__(
         self,
         api_key: str,
-        model_name: str = "gemini-1.5-flash",
+        model_name: str = "gemini-2.5-flash-lite",
         max_retries: int = 3,
         timeout_seconds: int = 30,
     ):
@@ -41,7 +41,7 @@ class GeminiLLMClient(LLMPort):
 
         Args:
             api_key: Google Gemini API key
-            model_name: Gemini model to use (default: gemini-1.5-flash)
+            model_name: Gemini model to use (default: gemini-2.5-flash-lite)
             max_retries: Maximum retry attempts for transient failures
             timeout_seconds: Request timeout in seconds
         """
@@ -53,7 +53,7 @@ class GeminiLLMClient(LLMPort):
 
         # Configure Gemini
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(model_name)
+        self.model = genai.GenerativeModel(self.model_name)
 
         logger.info(f"Initialized Gemini LLM client with model: {model_name}")
 

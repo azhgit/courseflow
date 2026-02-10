@@ -132,10 +132,17 @@ class RAGService:
 
         # Stage 4: Generate answer using LLM
         llm_start = time.time()
-        context_documents = [result.document for result in filtered_results]
+
+        # IMPORTANT: Only pass plain text context to the LLM.
+        # Passing Document objects will stringify the full Pydantic repr (including embeddings),
+        # exploding prompt size and latency.
+        context_snippets = [
+            f"Source: {r.document.metadata.source}\n\n{r.document.content}" for r in filtered_results
+        ]
+
         answer_text, token_usage = await self.llm_port.generate_answer(
             query=query.text,
-            context=context_documents,
+            context=context_snippets,
         )
         llm_time_ms = int((time.time() - llm_start) * 1000)
         logger.debug(f"LLM generation completed in {llm_time_ms}ms")
