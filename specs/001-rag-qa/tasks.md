@@ -100,16 +100,16 @@
 
 ### Tests for User Story 2
 
-- [ ] T036 [P] [US2] Create unit tests for RateLimitTracker in tests/unit/test_rate_limiter.py (test sliding window logic, is_allowed method, retry_after calculation)
-- [ ] T037 [P] [US2] Create integration test for rate limiting in tests/integration/test_api_query.py (test 15 RPM enforcement, 429 response, Retry-After header)
+- [X] T036 [P] [US2] Create unit tests for RateLimitTracker in tests/unit/test_rate_limiter.py (test sliding window logic, is_allowed method, retry_after calculation)
+- [X] T037 [P] [US2] Create integration test for rate limiting in tests/integration/test_api_query.py (test 15 RPM enforcement, 429 response, Retry-After header)
 
 ### Implementation for User Story 2
 
-- [ ] T038 [US2] Implement rate limiter service in src/courseflow/application/rate_limiter.py (uses RateLimitTracker model, tracks per-minute and per-day windows, calculates retry_after)
-- [ ] T039 [US2] Add rate limiting middleware to query endpoint in src/courseflow/api/routes/query.py (check rate limit before RAG service call, return 429 with retry_after on quota exceeded)
-- [ ] T040 [US2] Add Retry-After HTTP header to 429 responses in src/courseflow/api/routes/query.py (set header value from QuotaExceededError retry_after attribute)
-- [ ] T041 [US2] Update error response formatting in src/courseflow/api/routes/query.py (include retry_after in ErrorResponse.error for quota_exceeded type)
-- [ ] T042 [US2] Add rate limit monitoring to health endpoint in src/courseflow/api/routes/health.py (return current quota usage: requests_in_last_minute, requests_in_last_day)
+- [X] T038 [US2] Implement rate limiter service in src/courseflow/application/rate_limiter.py (uses RateLimitTracker model, tracks per-minute and per-day windows, calculates retry_after)
+- [X] T039 [US2] Add rate limiting middleware to query endpoint in src/courseflow/api/routes/query.py (check rate limit before RAG service call, return 429 with retry_after on quota exceeded)
+- [X] T040 [US2] Add Retry-After HTTP header to 429 responses in src/courseflow/api/routes/query.py (set header value from QuotaExceededError retry_after attribute)
+- [X] T041 [US2] Update error response formatting in src/courseflow/api/routes/query.py (include retry_after in ErrorResponse.error for quota_exceeded type)
+- [X] T042 [US2] Add rate limit monitoring to health endpoint in src/courseflow/api/routes/health.py (return current quota usage: requests_in_last_minute, requests_in_last_day)
 
 **Checkpoint**: User Stories 1 AND 2 complete - system handles queries and gracefully enforces rate limits with clear user feedback
 
@@ -123,15 +123,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T043 [P] [US3] Create unit tests for query validation in tests/unit/test_models.py (test empty string rejection, whitespace-only rejection, max length 1000 chars)
-- [ ] T044 [P] [US3] Create integration test for threshold filtering in tests/integration/test_chroma.py (test queries with max_similarity < 0.5 return empty results)
+- [X] T043 [P] [US3] Create unit tests for query validation in tests/unit/test_models.py (test empty string rejection, whitespace-only rejection, max length 1000 chars)
+- [X] T044 [P] [US3] Create integration test for threshold filtering in tests/integration/test_chroma.py (test queries with max_similarity < 0.5 return empty results)
 - [ ] T045 [P] [US3] Create contract test for validation errors in tests/integration/test_api_query.py (test empty query returns 400, irrelevant query returns 404)
 
 ### Implementation for User Story 3
 
-- [ ] T046 [US3] Add query text validation in src/courseflow/domain/models.py Query class (Pydantic validator for non-empty, max 1000 chars, strip whitespace)
-- [ ] T047 [US3] Add similarity threshold filtering in src/courseflow/application/rag_service.py (filter SearchResults to only include similarity_score >= 0.5, raise NoRelevantDocumentsError if empty)
-- [ ] T048 [US3] Add "No relevant information found" error handling in src/courseflow/api/routes/query.py (catch NoRelevantDocumentsError, return 404 with error message and threshold details)
+- [X] T046 [US3] Add query text validation in src/courseflow/domain/models.py Query class (Pydantic validator for non-empty, max 1000 chars, strip whitespace)
+- [X] T047 [US3] Add similarity threshold filtering in src/courseflow/application/rag_service.py (filter SearchResults to only include similarity_score >= 0.5, raise NoRelevantDocumentsError if empty)
+- [X] T048 [US3] Add "No relevant information found" error handling in src/courseflow/api/routes/query.py (catch NoRelevantDocumentsError, return 404 with error message and threshold details)
 - [ ] T049 [US3] Add query length validation in src/courseflow/api/routes/query.py (return 400 if query exceeds 1000 characters with clear error message)
 - [ ] T050 [US3] Update error response to include similarity threshold details in src/courseflow/api/routes/query.py (add threshold and max_similarity to ErrorResponse.error.details for no_relevant_documents type)
 
