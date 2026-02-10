@@ -1,0 +1,469 @@
+openapi: 3.1.0
+info:
+  title: CourseFlow RAG API
+  description: |
+    Basic RAG (Retrieval-Augmented Generation) question answering system for educational content.
+    
+    **Features**:
+    - Single-turn question answering based on pre-loaded knowledge base
+    - Domain-agnostic support (any subject: programming, biology, history, etc.)
+    - Free-tier Gemini API with rate limiting (15 requests/minute)
+    - Vector search with similarity threshold filtering (0.5 minimum)
+    
+    **Limitations**:
+    - No conversation history (single-turn only)
+    - No document upload (10 documents pre-loaded)
+    - Rate limited to 15 requests per minute
+  version: 1.0.0
+  contact:
+    name: CourseFlow Team
+    email: support@courseflow.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.courseflow.example.com
+    description: Production server (future)
+
+tags:
+  - name: query
+    description: Question answering endpoints
+  - name: health
+    description: System health and monitoring
+
+paths:
+  /api/v1/query:
+    post:
+      summary: Submit a question
+      description: |
+        Submit a text query to the RAG system. The system will:
+        1. Check rate limits (15 RPM)
+        2. Search the knowledge base for relevant documents
+        3. Generate an answer using retrieved context
+        
+        **Response Time**: <3 seconds (p95)
+        
+        **Rate Limits**: 15 requests per minute, 1500 requests per day
+      operationId: submitQuery
+      tags:
+        - query
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+            examples:
+              biology:
+                summary: Biology question
+                value:
+                  query: "What is photosynthesis?"
+              programming:
+                summary: Programming question
+                value:
+                  query: "How do I use async/await in Python?"
+              history:
+                summary: History question
+                value:
+                  query: "What were the causes of World War II?"
+      responses:
+        '200':
+          description: Successfully generated answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResponse'
+              examples:
+                success:
+                  summary: Successful answer
+                  value:
+                    success: true
+                    data:
+                      answer: "Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose. It occurs in chloroplasts and uses carbon dioxide and water as inputs, releasing oxygen as a byproduct."
+                      sources:
+                        - "docs/biology/photosynthesis.md"
+                      retrieval_count: 3
+                      top_similarity: 0.87
+                    metadata:
+                      request_id: "req_abc123"
+                      timestamp: "2025-02-08T12:34:56Z"
+                      latency_ms: 1234
+                      token_count: 567
+                    error: null
+        '400':
+          description: Invalid query input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                empty_query:
+                  summary: Empty query
+                  value:
+                    success: false
+                    data: null
+                    metadata:
+                      request_id: "req_def456"
+                      timestamp: "2025-02-08T12:35:01Z"
+                      latency_ms: 5
+                    error:
+                      type: "validation_error"
+                      message: "Query text must not be empty or whitespace"
+                      details:
+                        field: "query"
+        '404':
+          description: No relevant documents found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_relevant_docs:
+                  summary: No relevant documents
+                  value:
+                    success: false
+                    data: null
+                    metadata:
+                      request_id: "req_ghi789"
+                      timestamp: "2025-02-08T12:36:00Z"
+                      latency_ms: 456
+                    error:
+                      type: "no_relevant_documents"
+                      message: "No relevant information found in knowledge base"
+                      details:
+                        threshold: 0.5
+                        max_similarity: 0.32
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              description: Seconds until rate limit resets
+              schema:
+                type: integer
+                example: 48
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                quota_exceeded:
+                  summary: Rate limit hit
+                  value:
+                    success: false
+                    data: null
+                    metadata:
+                      request_id: "req_jkl012"
+                      timestamp: "2025-02-08T12:37:00Z"
+                      latency_ms: 12
+                    error:
+                      type: "quota_exceeded"
+                      message: "Gemini API quota exceeded (15 RPM limit). Please retry after 48 seconds."
+                      retry_after: 48
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                internal_error:
+                  summary: Unexpected failure
+                  value:
+                    success: false
+                    data: null
+                    metadata:
+                      request_id: "req_mno345"
+                      timestamp: "2025-02-08T12:38:00Z"
+                      latency_ms: 23
+                    error:
+                      type: "internal_error"
+                      message: "An unexpected error occurred. Please try again later."
+        '503':
+          description: Service unavailable (Gemini API down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                service_unavailable:
+                  summary: Gemini API down
+                  value:
+                    success: false
+                    data: null
+                    metadata:
+                      request_id: "req_pqr678"
+                      timestamp: "2025-02-08T12:39:00Z"
+                      latency_ms: 5001
+                    error:
+                      type: "service_unavailable"
+                      message: "Gemini API is temporarily unavailable. Please try again in a few minutes."
+
+  /api/v1/health:
+    get:
+      summary: Health check
+      description: |
+        Check system health and service status. Returns OK if:
+        - API server is running
+        - ChromaDB is accessible
+        - SQLite is accessible
+        
+        **Response Time**: <100ms
+      operationId: healthCheck
+      tags:
+        - health
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: All services healthy
+                  value:
+                    status: "ok"
+                    timestamp: "2025-02-08T12:40:00Z"
+                    services:
+                      chromadb: "ok"
+                      database: "ok"
+                      gemini_api: "ok"
+                    version: "1.0.0"
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                unhealthy:
+                  summary: Service degraded
+                  value:
+                    status: "degraded"
+                    timestamp: "2025-02-08T12:41:00Z"
+                    services:
+                      chromadb: "ok"
+                      database: "ok"
+                      gemini_api: "error"
+                    version: "1.0.0"
+                    errors:
+                      - "Gemini API connectivity test failed"
+
+components:
+  schemas:
+    QueryRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: The question text submitted by the user
+          minLength: 1
+          maxLength: 1000
+          example: "What is photosynthesis?"
+      additionalProperties: false
+
+    QueryResponse:
+      type: object
+      required:
+        - success
+        - metadata
+      properties:
+        success:
+          type: boolean
+          description: Whether the query was successful
+          example: true
+        data:
+          $ref: '#/components/schemas/QueryResponseData'
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+        error:
+          $ref: '#/components/schemas/ErrorDetails'
+
+    QueryResponseData:
+      type: object
+      required:
+        - answer
+        - sources
+        - retrieval_count
+        - top_similarity
+      properties:
+        answer:
+          type: string
+          description: AI-generated answer based on knowledge base
+          example: "Photosynthesis is the process by which plants convert light energy into chemical energy..."
+        sources:
+          type: array
+          description: List of source document paths used to generate the answer
+          items:
+            type: string
+          example:
+            - "docs/biology/photosynthesis.md"
+        retrieval_count:
+          type: integer
+          description: Number of documents retrieved from vector search
+          minimum: 0
+          maximum: 10
+          example: 3
+        top_similarity:
+          type: number
+          format: float
+          description: Highest cosine similarity score from retrieval (0-1 range)
+          minimum: 0.0
+          maximum: 1.0
+          example: 0.87
+
+    ResponseMetadata:
+      type: object
+      required:
+        - request_id
+        - timestamp
+        - latency_ms
+      properties:
+        request_id:
+          type: string
+          format: uuid
+          description: Unique identifier for request tracing
+          example: "req_abc123"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the response was generated (ISO 8601 UTC)
+          example: "2025-02-08T12:34:56Z"
+        latency_ms:
+          type: integer
+          description: End-to-end response time in milliseconds
+          minimum: 0
+          example: 1234
+        token_count:
+          type: integer
+          description: Total tokens consumed (embedding + generation)
+          minimum: 0
+          example: 567
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - metadata
+        - error
+      properties:
+        success:
+          type: boolean
+          description: Always false for error responses
+          example: false
+        data:
+          type: object
+          nullable: true
+          description: Always null for error responses
+          example: null
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+        error:
+          $ref: '#/components/schemas/ErrorDetails'
+
+    ErrorDetails:
+      type: object
+      required:
+        - type
+        - message
+      properties:
+        type:
+          type: string
+          description: Error category for programmatic handling
+          enum:
+            - validation_error
+            - quota_exceeded
+            - no_relevant_documents
+            - service_unavailable
+            - timeout
+            - internal_error
+          example: "quota_exceeded"
+        message:
+          type: string
+          description: Human-readable error description
+          example: "Gemini API quota exceeded (15 RPM limit). Please retry after 48 seconds."
+        retry_after:
+          type: integer
+          description: Seconds until retry is allowed (only for quota_exceeded errors)
+          minimum: 0
+          example: 48
+        details:
+          type: object
+          description: Additional error context (varies by error type)
+          additionalProperties: true
+          example:
+            threshold: 0.5
+            max_similarity: 0.32
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - services
+        - version
+      properties:
+        status:
+          type: string
+          description: Overall system health status
+          enum:
+            - ok
+            - degraded
+            - error
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the health check was performed (ISO 8601 UTC)
+          example: "2025-02-08T12:40:00Z"
+        services:
+          type: object
+          description: Status of individual services
+          required:
+            - chromadb
+            - database
+            - gemini_api
+          properties:
+            chromadb:
+              type: string
+              enum: [ok, error]
+              example: "ok"
+            database:
+              type: string
+              enum: [ok, error]
+              example: "ok"
+            gemini_api:
+              type: string
+              enum: [ok, error]
+              example: "ok"
+        version:
+          type: string
+          description: API version
+          pattern: '^\d+\.\d+\.\d+$'
+          example: "1.0.0"
+        errors:
+          type: array
+          description: List of error messages (only present if status is degraded/error)
+          items:
+            type: string
+          example:
+            - "Gemini API connectivity test failed"
+
+  securitySchemes:
+    # Future: Add API key authentication
+    # ApiKeyAuth:
+    #   type: apiKey
+    #   in: header
+    #   name: X-API-Key
+
+# security:
+#   - ApiKeyAuth: []
+
+externalDocs:
+  description: Full API documentation and guides
+  url: https://docs.courseflow.example.com

@@ -60,8 +60,108 @@ CourseFlow is a **Retrieval-Augmented Generation (RAG)** system that helps stude
 6. **Access API documentation**
    - Swagger UI: http://localhost:8000/docs
    - ReDoc: http://localhost:8000/redoc
+   - Health Check: http://localhost:8000/api/v1/health
 
-## 📚 Usage
+## 📚 Usage Examples
+
+### Ask a Question
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is photosynthesis?"}'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "query_id": "e6bd5196-a61f-4e7a-91f2-1ddb6ce6ca85",
+    "answer": "Photosynthesis is the process by which green plants convert light energy into chemical energy...",
+    "sources": [
+      {
+        "content": "Photosynthesis is...",
+        "source": "docs/biology/photosynthesis.md",
+        "subject": "biology",
+        "similarity_score": 0.85
+      }
+    ]
+  },
+  "metadata": {
+    "latency_ms": 1310,
+    "timestamp": "2026-02-10T06:00:00",
+    "token_usage": {
+      "prompt_tokens": 2654,
+      "completion_tokens": 143,
+      "total_tokens": 2797
+    }
+  }
+}
+```
+
+### Check System Health
+
+```bash
+curl http://localhost:8000/api/v1/health
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "services": {
+    "chromadb": {
+      "status": "ok",
+      "document_count": 17
+    },
+    "sqlite": {
+      "status": "ok",
+      "queries_last_24h": 5
+    },
+    "rate_limit": {
+      "status": "ok",
+      "requests_in_last_minute": 2,
+      "max_requests_per_minute": 15,
+      "available_requests": 13
+    }
+  }
+}
+```
+
+### Query with Python
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/api/v1/query",
+    json={"query": "Explain async/await in Python"}
+)
+
+data = response.json()
+print(f"Answer: {data['data']['answer']}")
+print(f"Sources: {len(data['data']['sources'])}")
+print(f"Latency: {data['metadata']['latency_ms']}ms")
+```
+
+### Handling Rate Limits
+
+```bash
+# When quota exceeded, you'll receive:
+{
+  "error": {
+    "type": "quota_exceeded",
+    "message": "Rate limit exceeded (local guard)",
+    "details": {
+      "retry_after": 45,
+      "source": "local_guard"
+    }
+  }
+}
+# Check Retry-After header: 45 seconds
+```
+
+## 📚 Usage (Deprecated - See Above)
 
 ### Ask a Question
 
