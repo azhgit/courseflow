@@ -276,3 +276,36 @@ class TestChromaDBIntegration:
             assert result.document.metadata.subject is not None
             assert isinstance(result.document.metadata.chunk_index, int)
             assert isinstance(result.document.metadata.total_chunks, int)
+
+    async def test_threshold_filtering_empty_results(
+        self,
+        chroma_adapter,
+        mock_embedding_client,
+        sample_documents,
+    ):
+        """Test that queries with max_similarity < threshold return empty results."""
+        # Add documents
+        for doc in sample_documents:
+            embedding = await mock_embedding_client.generate_embedding(doc.content)
+            doc.embedding = embedding
+        
+        await chroma_adapter.add_documents(sample_documents)
+        
+        # Query with completely unrelated text (should have low similarity)
+        irrelevant_query = "zxcvbnm qwerty asdfgh"
+        query_embedding = await mock_embedding_client.generate_embedding(irrelevant_query)
+        
+        # Search with high threshold
+        results = await chroma_adapter.search(
+            query_embedding=query_embedding,
+            k=3,
+            threshold=0.9,  # Very high threshold
+        )
+        
+        # Should return empty or very few results
+        # (depends on hash collision, but typically empty)
+        assert len(results) <= 1, "High threshold should filter most/all results"
+        
+        # If any results, they must meet threshold
+        for result in results:
+            assert result.similarity_score >= 0.9
