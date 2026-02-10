@@ -202,7 +202,11 @@ class TestRAGPipelineE2E:
 
                 # Context is now a list of strings (snippets), not Document objects
                 first_context = context[0] if context else "no context"
-                snippet = first_context[:50] if isinstance(first_context, str) else str(first_context)[:50]
+                snippet = (
+                    first_context[:50]
+                    if isinstance(first_context, str)
+                    else str(first_context)[:50]
+                )
                 return (
                     f"Mock answer for: {query}. Based on context: {snippet}...",
                     TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
