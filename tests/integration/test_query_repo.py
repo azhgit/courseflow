@@ -1,10 +1,10 @@
 """Integration tests for SQLite query repository."""
 
-import pytest
-import tempfile
 import os
+import tempfile
+
 import aiosqlite
-from datetime import datetime
+import pytest
 
 from courseflow.domain.models import Query, TokenUsage
 from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
@@ -35,14 +35,14 @@ class TestSQLiteQueryRepository:
     async def test_save_query_success(self, query_repo):
         """Test saving a query to the database."""
         query = Query(text="What is photosynthesis?")
-        
+
         await query_repo.save_query(
             query_id=query.query_id,
             query_text=query.text,
             answer_text="Photosynthesis is...",
             latency_ms=1500,
         )
-        
+
         # Verify query was saved
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
@@ -50,7 +50,7 @@ class TestSQLiteQueryRepository:
                 (str(query.query_id),),
             )
             row = await cursor.fetchone()
-            
+
             assert row is not None
             assert row[0] == str(query.query_id)
             assert row[1] == query.text
@@ -66,7 +66,7 @@ class TestSQLiteQueryRepository:
             completion_tokens=50,
             total_tokens=150,
         )
-        
+
         await query_repo.save_query(
             query_id=query.query_id,
             query_text=query.text,
@@ -74,7 +74,7 @@ class TestSQLiteQueryRepository:
             latency_ms=1200,
             token_usage=token_usage,
         )
-        
+
         # Verify token usage was saved
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
@@ -82,7 +82,7 @@ class TestSQLiteQueryRepository:
                 (str(query.query_id),),
             )
             row = await cursor.fetchone()
-            
+
             assert row is not None
             assert row[0] == 100
             assert row[1] == 50
@@ -102,7 +102,7 @@ class TestSQLiteQueryRepository:
                 latency_ms=1000 + i * 100,
             )
             queries.append(query)
-        
+
         # Query by timestamp range should be efficient
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
@@ -115,14 +115,14 @@ class TestSQLiteQueryRepository:
     async def test_retrieve_query_by_id(self, query_repo):
         """Test retrieving a query by its ID."""
         query = Query(text="What is mitosis?")
-        
+
         await query_repo.save_query(
             query_id=query.query_id,
             query_text=query.text,
             answer_text="Mitosis is...",
             latency_ms=1800,
         )
-        
+
         # Retrieve query
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
@@ -130,7 +130,7 @@ class TestSQLiteQueryRepository:
                 (str(query.query_id),),
             )
             row = await cursor.fetchone()
-            
+
             assert row is not None
 
     @pytest.mark.asyncio
@@ -141,7 +141,7 @@ class TestSQLiteQueryRepository:
             ("q-2", "Query 2", "Answer 2", 1500),
             ("q-3", "Query 3", "Answer 3", 2000),
         ]
-        
+
         for query_id, query_text, answer_text, latency_ms in queries:
             await query_repo.save_query(
                 query_id=query_id,
@@ -149,7 +149,7 @@ class TestSQLiteQueryRepository:
                 answer_text=answer_text,
                 latency_ms=latency_ms,
             )
-        
+
         # Verify all queries were saved
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute("SELECT COUNT(*) FROM queries")
@@ -161,14 +161,14 @@ class TestSQLiteQueryRepository:
         """Test that latency is properly tracked."""
         query = Query(text="Test latency")
         latency_ms = 2500
-        
+
         await query_repo.save_query(
             query_id=query.query_id,
             query_text=query.text,
             answer_text="Test answer",
             latency_ms=latency_ms,
         )
-        
+
         # Retrieve and verify latency
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute(
@@ -183,7 +183,7 @@ class TestSQLiteQueryRepository:
         """Test that database schema is created on initialization."""
         repo = SQLiteQueryRepository(db_path=temp_db_path)
         await repo.initialize()
-        
+
         # Check that queries table exists
         async with aiosqlite.connect(temp_db_path) as db:
             cursor = await db.execute(
@@ -197,7 +197,7 @@ class TestSQLiteQueryRepository:
     async def test_concurrent_writes(self, query_repo):
         """Test concurrent query writes."""
         import asyncio
-        
+
         async def save_query(i):
             query = Query(text=f"Concurrent query {i}")
             await query_repo.save_query(
@@ -206,10 +206,10 @@ class TestSQLiteQueryRepository:
                 answer_text=f"Answer {i}",
                 latency_ms=1000 + i,
             )
-        
+
         # Save 10 queries concurrently
         await asyncio.gather(*[save_query(i) for i in range(10)])
-        
+
         # Verify all were saved
         async with aiosqlite.connect(query_repo.db_path) as db:
             cursor = await db.execute("SELECT COUNT(*) FROM queries")

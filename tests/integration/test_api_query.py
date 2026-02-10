@@ -1,18 +1,17 @@
 """Contract tests for POST /api/v1/query endpoint."""
 
-import pytest
-from httpx import AsyncClient
-from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
+
+import pytest
+from fastapi.testclient import TestClient
 
 from courseflow.api.main import create_app
 from courseflow.domain.models import (
-    Query,
     Answer,
-    SearchResult,
     Document,
     DocumentMetadata,
+    SearchResult,
     TokenUsage,
 )
 
@@ -28,11 +27,12 @@ def mock_rag_service():
 def app(mock_rag_service):
     """Create FastAPI test app with mocked dependencies."""
     app = create_app()
-    
+
     # Override dependencies
     from courseflow.api.dependencies import get_rag_service
+
     app.dependency_overrides[get_rag_service] = lambda: mock_rag_service
-    
+
     return app
 
 
@@ -60,7 +60,7 @@ class TestQueryEndpointContract:
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
-        
+
         answer = Answer(
             query_id=uuid4(),
             answer_text="Photosynthesis is the process by which plants convert light energy into chemical energy.",
@@ -68,31 +68,31 @@ class TestQueryEndpointContract:
             latency_ms=1500,
             token_usage=TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
         )
-        
+
         mock_rag_service.answer_query.return_value = answer
-        
+
         # Send request
         response = client.post(
             "/api/v1/query",
             json={"query": "What is photosynthesis?"},
         )
-        
+
         # Verify response structure per OpenAPI spec
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "data" in data
         assert "metadata" in data
-        
+
         # Verify data structure
         assert "query_id" in data["data"]
         assert "answer" in data["data"]
         assert "sources" in data["data"]
-        
+
         # Verify metadata structure
         assert "latency_ms" in data["metadata"]
         assert "timestamp" in data["metadata"]
-        
+
         # Verify source structure
         sources = data["data"]["sources"]
         assert len(sources) > 0
@@ -107,9 +107,9 @@ class TestQueryEndpointContract:
             "/api/v1/query",
             json={"query": ""},
         )
-        
+
         assert response.status_code == 400
-        
+
         data = response.json()
         assert "error" in data
         assert data["error"]["type"] == "validation_error"
@@ -120,20 +120,20 @@ class TestQueryEndpointContract:
             "/api/v1/query",
             json={},
         )
-        
+
         assert response.status_code == 422
 
     def test_query_too_long(self, client):
         """Test that query exceeding 1000 characters returns 400."""
         long_query = "a" * 1001
-        
+
         response = client.post(
             "/api/v1/query",
             json={"query": long_query},
         )
-        
+
         assert response.status_code == 400
-        
+
         data = response.json()
         assert "error" in data
 
@@ -166,23 +166,23 @@ class TestQueryEndpointContract:
     def test_quota_exceeded_error(self, client, mock_rag_service):
         """Test 429 response for quota exceeded."""
         from courseflow.domain.exceptions import QuotaExceededError
-        
+
         mock_rag_service.answer_query.side_effect = QuotaExceededError(
             message="Gemini API quota exceeded",
             retry_after=60,
         )
-        
+
         response = client.post(
             "/api/v1/query",
             json={"query": "What is photosynthesis?"},
         )
-        
+
         assert response.status_code == 429
-        
+
         data = response.json()
         assert "error" in data
         assert data["error"]["type"] == "quota_exceeded"
-        
+
         # Verify Retry-After header
         assert "retry-after" in response.headers
         assert int(response.headers["retry-after"]) == 60
@@ -190,18 +190,18 @@ class TestQueryEndpointContract:
     def test_service_unavailable_error(self, client, mock_rag_service):
         """Test 503 response for service unavailable."""
         from courseflow.domain.exceptions import ServiceUnavailableError
-        
+
         mock_rag_service.answer_query.side_effect = ServiceUnavailableError(
             message="ChromaDB connection failed",
         )
-        
+
         response = client.post(
             "/api/v1/query",
             json={"query": "What is photosynthesis?"},
         )
-        
+
         assert response.status_code == 503
-        
+
         data = response.json()
         assert "error" in data
         assert data["error"]["type"] == "service_unavailable"
@@ -220,7 +220,7 @@ class TestQueryEndpointContract:
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
-        
+
         answer = Answer(
             query_id=uuid4(),
             answer_text="Test answer",
@@ -232,16 +232,16 @@ class TestQueryEndpointContract:
                 total_tokens=150,
             ),
         )
-        
+
         mock_rag_service.answer_query.return_value = answer
-        
+
         response = client.post(
             "/api/v1/query",
             json={"query": "Test query"},
         )
-        
+
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "token_usage" in data["metadata"]
         assert data["metadata"]["token_usage"]["total_tokens"] == 150
@@ -260,26 +260,26 @@ class TestQueryEndpointContract:
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
-        
+
         answer = Answer(
             query_id=uuid4(),
             answer_text="Test answer",
             sources=[search_result],
             latency_ms=1500,
         )
-        
+
         mock_rag_service.answer_query.return_value = answer
-        
+
         response = client.post(
             "/api/v1/query",
             json={"query": "Test query"},
         )
-        
+
         assert response.status_code == 200
-        
+
         data = response.json()
         latency_ms = data["metadata"]["latency_ms"]
-        
+
         # Verify latency is reasonable (<3000ms per spec)
         assert latency_ms < 3000
 
@@ -297,22 +297,22 @@ class TestQueryEndpointContract:
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
-        
+
         answer = Answer(
             query_id=uuid4(),
             answer_text="Test answer",
             sources=[search_result],
             latency_ms=1500,
         )
-        
+
         mock_rag_service.answer_query.return_value = answer
-        
+
         response = client.post(
             "/api/v1/query",
             json={"query": "Test query"},
             headers={"Origin": "http://localhost:3000"},
         )
-        
+
         # CORS headers should be present
         # Note: Actual header names depend on CORS middleware configuration
         assert response.status_code == 200
@@ -348,9 +348,7 @@ class TestQueryValidationContract:
     async def test_irrelevant_query_returns_no_docs_response(self, client):
         """Test that irrelevant query returns 200 with no relevant docs message."""
         # Query completely unrelated to knowledge base
-        response = client.post(
-            "/api/v1/query", json={"query": "zxcvbnm qwerty asdfgh uiop"}
-        )
+        response = client.post("/api/v1/query", json={"query": "zxcvbnm qwerty asdfgh uiop"})
         # Should return 200 (not 404) with helpful message
         assert response.status_code == 200
         data = response.json()
@@ -364,6 +362,7 @@ class TestQueryValidationContract:
 
 # Skip the irrelevant query test as it requires real Gemini API call
 import pytest
+
 # Mark as skipped at module level
 pytest.mark.skip(reason="Requires real Gemini API call with actual data")(
     TestQueryValidationContract.test_irrelevant_query_returns_no_docs_response

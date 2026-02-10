@@ -5,17 +5,17 @@ Uses singleton pattern for expensive clients to avoid creating new instances per
 """
 
 from collections import deque
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import aiosqlite
 
+from courseflow.application.rag_service import RAGService
 from courseflow.config import settings
 from courseflow.domain.models import RateLimitTracker
 from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
 from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
 from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
-from courseflow.application.rag_service import RAGService
 
 # Singletons to avoid creating new clients per request (which wastes quota)
 _embedding_client: GeminiEmbeddingClient | None = None
@@ -31,7 +31,7 @@ _rate_limiter = RateLimitTracker(
 
 async def get_db_connection() -> AsyncGenerator[aiosqlite.Connection, None]:
     """Dependency for SQLite database connection.
-    
+
     Yields:
         Async SQLite database connection
     """
@@ -87,7 +87,7 @@ def get_llm_client() -> GeminiLLMClient:
 
 def get_query_repository() -> SQLiteQueryRepository:
     """Dependency for query repository.
-    
+
     Returns:
         SQLite query repository instance
     """
@@ -101,9 +101,9 @@ def get_rate_limiter() -> RateLimitTracker:
 
 def get_rag_service() -> RAGService:
     """Dependency for RAG service.
-    
+
     Creates RAG service with all required dependencies.
-    
+
     Returns:
         RAG service instance
     """
@@ -111,7 +111,7 @@ def get_rag_service() -> RAGService:
     vector_store = get_vector_store()
     llm_client = get_llm_client()
     query_repo = get_query_repository()
-    
+
     return RAGService(
         embedding_port=embedding_client,
         vector_store=vector_store,

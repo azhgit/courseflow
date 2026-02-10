@@ -1,15 +1,15 @@
 """End-to-end tests for RAG pipeline."""
 
-import pytest
-import tempfile
-import shutil
 import os
-from typing import List
+import shutil
+import tempfile
 
-from courseflow.domain.models import Document, DocumentMetadata, Query
-from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
-from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
+import pytest
+
 from courseflow.config import Settings
+from courseflow.domain.models import Document, DocumentMetadata, Query
+from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
+from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
 
 
 @pytest.fixture
@@ -18,15 +18,15 @@ def temp_dirs():
     chroma_dir = tempfile.mkdtemp()
     db_dir = tempfile.mkdtemp()
     db_path = os.path.join(db_dir, "test.db")
-    
+
     yield chroma_dir, db_path
-    
+
     shutil.rmtree(chroma_dir, ignore_errors=True)
     shutil.rmtree(db_dir, ignore_errors=True)
 
 
 @pytest.fixture
-def sample_knowledge_base() -> List[Document]:
+def sample_knowledge_base() -> list[Document]:
     """Create sample knowledge base documents."""
     return [
         Document(
@@ -131,27 +131,27 @@ class TestRAGPipelineE2E:
     ):
         """Test full RAG pipeline with biology query using real Gemini API."""
         chroma_dir, db_path = temp_dirs
-        
+
         # Initialize components
         settings = Settings()
         embedding_client = GeminiEmbeddingClient(api_key=settings.gemini_api_key)
         vector_store = ChromaAdapter(persist_directory=chroma_dir)
         await vector_store.initialize()
-        
+
         # Ingest documents
         for doc in sample_knowledge_base:
             doc.embedding = await embedding_client.generate_embedding(doc.content)
         await vector_store.add_documents(sample_knowledge_base)
-        
+
         # Create RAG service (will be implemented in T031)
         from courseflow.application.rag_service import RAGService
         from courseflow.infrastructure.llm.gemini import GeminiLLMClient
         from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-        
+
         llm_client = GeminiLLMClient(api_key=settings.gemini_api_key)
         query_repo = SQLiteQueryRepository(db_path=db_path)
         await query_repo.initialize()
-        
+
         rag_service = RAGService(
             embedding_port=embedding_client,
             vector_store=vector_store,
@@ -159,24 +159,24 @@ class TestRAGPipelineE2E:
             query_repo=query_repo,
             similarity_threshold=0.5,
         )
-        
+
         # Execute query
         query = Query(text="What is photosynthesis?")
         answer = await rag_service.answer_query(query)
-        
+
         # Verify response
         assert answer is not None
         assert answer.query_id == query.query_id
         assert len(answer.answer_text) > 0
         assert "photosynthesis" in answer.answer_text.lower()
-        
+
         # Verify sources
         assert len(answer.sources) > 0
         assert any("photosynthesis" in source.document.content.lower() for source in answer.sources)
-        
+
         # Verify similarity scores
         assert all(source.similarity_score >= 0.5 for source in answer.sources)
-        
+
         # Verify latency
         assert answer.latency_ms < 3000  # Under 3 seconds per spec
 
@@ -188,40 +188,41 @@ class TestRAGPipelineE2E:
     ):
         """Test RAG pipeline with mocked LLM (no API key required)."""
         chroma_dir, db_path = temp_dirs
-        
+
         # Mock embedding client
         class MockEmbeddingClient:
-            async def generate_embedding(self, text: str) -> List[float]:
+            async def generate_embedding(self, text: str) -> list[float]:
                 hash_val = hash(text)
                 return [(hash_val * i) % 100 / 100.0 for i in range(768)]
-        
+
         # Mock LLM client
         class MockLLMClient:
             async def generate_answer(self, query: str, context: list):
                 from courseflow.domain.models import TokenUsage
+
                 return (
                     f"Mock answer for: {query}. Based on context: {context[0].content[:50]}...",
                     TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
                 )
-        
+
         # Initialize components with mocks
         embedding_client = MockEmbeddingClient()
         vector_store = ChromaAdapter(persist_directory=chroma_dir)
         await vector_store.initialize()
-        
+
         # Ingest documents
         for doc in sample_knowledge_base:
             doc.embedding = await embedding_client.generate_embedding(doc.content)
         await vector_store.add_documents(sample_knowledge_base)
-        
+
         # Create RAG service
         from courseflow.application.rag_service import RAGService
         from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-        
+
         llm_client = MockLLMClient()
         query_repo = SQLiteQueryRepository(db_path=db_path)
         await query_repo.initialize()
-        
+
         rag_service = RAGService(
             embedding_port=embedding_client,
             vector_store=vector_store,
@@ -229,11 +230,11 @@ class TestRAGPipelineE2E:
             query_repo=query_repo,
             similarity_threshold=0.5,
         )
-        
+
         # Execute query
         query = Query(text="What is photosynthesis?")
         answer = await rag_service.answer_query(query)
-        
+
         # Verify response structure
         assert answer is not None
         assert answer.query_id == query.query_id
@@ -248,37 +249,38 @@ class TestRAGPipelineE2E:
     ):
         """Test RAG pipeline handles queries from different subjects."""
         chroma_dir, db_path = temp_dirs
-        
+
         # Mock components
         class MockEmbeddingClient:
-            async def generate_embedding(self, text: str) -> List[float]:
+            async def generate_embedding(self, text: str) -> list[float]:
                 hash_val = hash(text)
                 return [(hash_val * i) % 100 / 100.0 for i in range(768)]
-        
+
         class MockLLMClient:
             async def generate_answer(self, query: str, context: list):
                 from courseflow.domain.models import TokenUsage
+
                 return (
-                    f"Answer based on context",
+                    "Answer based on context",
                     TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
                 )
-        
+
         # Setup
         embedding_client = MockEmbeddingClient()
         vector_store = ChromaAdapter(persist_directory=chroma_dir)
         await vector_store.initialize()
-        
+
         for doc in sample_knowledge_base:
             doc.embedding = await embedding_client.generate_embedding(doc.content)
         await vector_store.add_documents(sample_knowledge_base)
-        
+
         from courseflow.application.rag_service import RAGService
         from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-        
+
         llm_client = MockLLMClient()
         query_repo = SQLiteQueryRepository(db_path=db_path)
         await query_repo.initialize()
-        
+
         rag_service = RAGService(
             embedding_port=embedding_client,
             vector_store=vector_store,
@@ -286,19 +288,19 @@ class TestRAGPipelineE2E:
             query_repo=query_repo,
             similarity_threshold=0.5,
         )
-        
+
         # Test queries from different subjects
         queries = [
             "What is photosynthesis?",  # biology
             "How to use async/await?",  # programming
-            "What are derivatives?",     # math
-            "When did WWII start?",      # history
+            "What are derivatives?",  # math
+            "When did WWII start?",  # history
         ]
-        
+
         for query_text in queries:
             query = Query(text=query_text)
             answer = await rag_service.answer_query(query)
-            
+
             assert answer is not None
             assert len(answer.sources) > 0
 
@@ -310,41 +312,42 @@ class TestRAGPipelineE2E:
     ):
         """Test that irrelevant queries are properly handled."""
         chroma_dir, db_path = temp_dirs
-        
+
         # Mock components
         class MockEmbeddingClient:
-            async def generate_embedding(self, text: str) -> List[float]:
+            async def generate_embedding(self, text: str) -> list[float]:
                 # Return very different embedding for irrelevant query
                 if "quantum" in text.lower():
                     return [-0.01] * 768
                 hash_val = hash(text)
                 return [(hash_val * i) % 100 / 100.0 for i in range(768)]
-        
+
         # Setup
         embedding_client = MockEmbeddingClient()
         vector_store = ChromaAdapter(persist_directory=chroma_dir)
         await vector_store.initialize()
-        
+
         for doc in sample_knowledge_base:
             doc.embedding = await embedding_client.generate_embedding(doc.content)
         await vector_store.add_documents(sample_knowledge_base)
-        
+
         from courseflow.application.rag_service import RAGService
-        from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
         from courseflow.domain.exceptions import NoRelevantDocumentsError
-        
+        from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+
         class MockLLMClient:
             async def generate_answer(self, query: str, context: list):
                 from courseflow.domain.models import TokenUsage
+
                 return (
                     "Answer",
                     TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
                 )
-        
+
         llm_client = MockLLMClient()
         query_repo = SQLiteQueryRepository(db_path=db_path)
         await query_repo.initialize()
-        
+
         rag_service = RAGService(
             embedding_port=embedding_client,
             vector_store=vector_store,
@@ -352,9 +355,9 @@ class TestRAGPipelineE2E:
             query_repo=query_repo,
             similarity_threshold=0.7,  # High threshold
         )
-        
+
         # Execute irrelevant query
         query = Query(text="What is quantum entanglement?")
-        
+
         with pytest.raises(NoRelevantDocumentsError):
             await rag_service.answer_query(query)

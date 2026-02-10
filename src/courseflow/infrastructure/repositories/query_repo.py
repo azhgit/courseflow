@@ -5,8 +5,7 @@ Stores query history, performance metrics, and error tracking.
 """
 
 import sqlite3
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import aiosqlite
 
@@ -29,7 +28,7 @@ class SQLiteQueryRepository(QueryRepositoryPort):
     Attributes:
         database_url: SQLite database file path
     """
-    
+
     def __init__(
         self,
         database_url: str = settings.DATABASE_URL,
@@ -75,26 +74,24 @@ class SQLiteQueryRepository(QueryRepositoryPort):
                 )
                 await db.commit()
         except sqlite3.Error as e:
-            raise ServiceUnavailableError(
-                f"Failed to initialize database schema: {str(e)}"
-            ) from e
+            raise ServiceUnavailableError(f"Failed to initialize database schema: {str(e)}") from e
 
     async def save_query(
         self,
         query: Query | None = None,
-        answer: Optional[Answer] = None,
+        answer: Answer | None = None,
         latency_ms: int | None = None,
-        error_type: Optional[str] = None,
+        error_type: str | None = None,
         **kwargs,
     ) -> None:
         """Save query metadata to persistent storage.
-        
+
         Args:
             query: The user's query
             answer: The generated answer (None if error occurred)
             latency_ms: End-to-end response time in milliseconds
             error_type: Error category if request failed (None if success)
-        
+
         Raises:
             ServiceUnavailableError: If database is unreachable
         """
@@ -109,15 +106,17 @@ class SQLiteQueryRepository(QueryRepositoryPort):
                 else:
                     query_id = kwargs.get("query_id")
                     query_text = kwargs.get("query_text")
-                    created_at = kwargs.get("created_at") or kwargs.get("timestamp") or datetime.now(timezone.utc)
+                    created_at = (
+                        kwargs.get("created_at")
+                        or kwargs.get("timestamp")
+                        or datetime.now(UTC)
+                    )
 
                 if latency_ms is None:
                     latency_ms = kwargs.get("latency_ms", 0)
 
                 answer_text = (
-                    answer.answer_text
-                    if answer is not None
-                    else kwargs.get("answer_text")
+                    answer.answer_text if answer is not None else kwargs.get("answer_text")
                 )
 
                 token_usage = (
@@ -159,34 +158,30 @@ class SQLiteQueryRepository(QueryRepositoryPort):
                 await db.commit()
 
         except sqlite3.Error as e:
-            raise ServiceUnavailableError(
-                f"Failed to save query to database: {str(e)}"
-            ) from e
-    
+            raise ServiceUnavailableError(f"Failed to save query to database: {str(e)}") from e
+
     async def get_recent_query_count(self, hours: int = 24) -> int:
         """Get number of queries in the last N hours.
-        
+
         Args:
             hours: Time window in hours (default: 24)
-        
+
         Returns:
             Number of queries in the specified time window
-        
+
         Raises:
             ServiceUnavailableError: If database is unreachable
         """
         try:
             async with aiosqlite.connect(self.database_path) as db:
-                cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-                
+                cutoff = datetime.now(UTC) - timedelta(hours=hours)
+
                 async with db.execute(
                     "SELECT COUNT(*) FROM queries WHERE created_at > ?",
-                    (cutoff.isoformat(sep=' '),)
+                    (cutoff.isoformat(sep=" "),),
                 ) as cursor:
                     result = await cursor.fetchone()
                     return result[0] if result else 0
-                    
+
         except sqlite3.Error as e:
-            raise ServiceUnavailableError(
-                f"Failed to query database: {str(e)}"
-            ) from e
+            raise ServiceUnavailableError(f"Failed to query database: {str(e)}") from e

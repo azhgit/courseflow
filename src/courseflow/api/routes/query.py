@@ -1,22 +1,21 @@
 """Query endpoint for RAG question answering."""
 
 import logging
-from datetime import datetime, timezone
-from typing import Dict, Any
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from courseflow.domain.models import Query
+from courseflow.api.dependencies import get_rag_service, get_rate_limiter
+from courseflow.application.rag_service import RAGService
 from courseflow.domain.exceptions import (
     NoRelevantDocumentsError,
     QuotaExceededError,
     ServiceUnavailableError,
-    ValidationError as DomainValidationError,
 )
-from courseflow.application.rag_service import RAGService
-from courseflow.api.dependencies import get_rag_service, get_rate_limiter
+from courseflow.domain.models import Query
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +25,13 @@ router = APIRouter(prefix="/api/v1", tags=["query"])
 # Request/Response schemas
 class QueryRequest(BaseModel):
     """Request schema for query endpoint."""
+
     query: str = Field(..., description="User's question")
 
 
 class SourceInfo(BaseModel):
     """Source document information in response."""
+
     content: str
     source: str
     subject: str
@@ -39,19 +40,22 @@ class SourceInfo(BaseModel):
 
 class QueryResponse(BaseModel):
     """Response schema for successful query."""
-    data: Dict[str, Any]
-    metadata: Dict[str, Any]
+
+    data: dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class ErrorDetail(BaseModel):
     """Error details in error response."""
+
     type: str
     message: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class ErrorResponse(BaseModel):
     """Error response schema."""
+
     error: ErrorDetail
 
 
@@ -73,17 +77,17 @@ async def query_endpoint(
     rate_limiter: Any = Depends(get_rate_limiter),
 ) -> QueryResponse:
     """Handle POST /api/v1/query requests.
-    
+
     Accepts a user question, performs RAG retrieval and generation,
     and returns an AI-generated answer with source attribution.
-    
+
     Args:
         request: Query request with user's question
         rag_service: Injected RAG service dependency
-        
+
     Returns:
         JSON response with answer, sources, and metadata
-        
+
     Raises:
         HTTPException: With appropriate status code for errors
     """
@@ -99,19 +103,17 @@ async def query_endpoint(
 
         allowed, retry_after = rate_limiter.is_allowed()
         if not allowed:
-            logger.warning(
-                f"Local rate limit exceeded; retry_after={retry_after}s"
-            )
+            logger.warning(f"Local rate limit exceeded; retry_after={retry_after}s")
             raise QuotaExceededError(
                 message="Rate limit exceeded (local guard)",
                 retry_after=retry_after,
             )
-        
+
         logger.info(f"Received query: {query.id} - '{query.text[:50]}...'")
-        
+
         # Execute RAG pipeline
         answer = await rag_service.answer_query(query)
-        
+
         # Format sources
         sources = [
             SourceInfo(
@@ -122,7 +124,7 @@ async def query_endpoint(
             )
             for source in answer.sources
         ]
-        
+
         # Build response
         response_data = {
             "data": {
@@ -135,7 +137,7 @@ async def query_endpoint(
                 "timestamp": answer.timestamp.isoformat(),
             },
         }
-        
+
         # Include token usage if available
         if answer.token_usage:
             response_data["metadata"]["token_usage"] = {
@@ -143,16 +145,16 @@ async def query_endpoint(
                 "completion_tokens": answer.token_usage.completion_tokens,
                 "total_tokens": answer.token_usage.total_tokens,
             }
-        
-        logger.info(
-            f"Query {query.id} completed successfully in {answer.latency_ms}ms"
-        )
-        
+
+        logger.info(f"Query {query.id} completed successfully in {answer.latency_ms}ms")
+
         return QueryResponse(**response_data)
-        
+
     except NoRelevantDocumentsError as e:
         # Treat "no relevant documents" as a normal (non-error) outcome.
-        message = "No relevant information found in knowledge base. Please try rephrasing your question."
+        message = (
+            "No relevant information found in knowledge base. Please try rephrasing your question."
+        )
         logger.info(
             f"No relevant documents for query {query.id}: threshold={e.threshold} max_similarity={e.max_similarity}"
         )
@@ -164,14 +166,14 @@ async def query_endpoint(
             },
             metadata={
                 "latency_ms": 0,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "no_relevant_documents": {
                     "threshold": e.threshold,
                     "max_similarity": e.max_similarity,
                 },
             },
         )
-        
+
     except QuotaExceededError as e:
         logger.error(f"Quota exceeded: {e.message}")
         source = "local_guard" if "local guard" in e.message.lower() else "gemini"
@@ -187,7 +189,7 @@ async def query_endpoint(
             content=error_response.model_dump(),
             headers={"Retry-After": str(e.retry_after)},
         )
-        
+
     except ServiceUnavailableError as e:
         logger.error(f"Service unavailable: {e.message}")
         error_response = ErrorResponse(
@@ -204,7 +206,7 @@ async def query_endpoint(
     except HTTPException:
         # Preserve explicit HTTP errors (e.g., manual 400 validation)
         raise
-        
+
     except ValueError as e:
         # Validation errors from Pydantic
         logger.warning(f"Validation error: {e}")
@@ -218,7 +220,7 @@ async def query_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=error_response.model_dump(),
         )
-        
+
     except Exception as e:
         logger.exception(f"Unexpected error processing query: {e}")
         error_response = ErrorResponse(

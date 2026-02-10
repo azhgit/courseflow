@@ -1,18 +1,18 @@
 """Unit tests for domain models."""
 
+from uuid import UUID, uuid4
+
 import pytest
-from uuid import UUID
 from pydantic import ValidationError
 
-from uuid import UUID, uuid4
 from courseflow.domain.models import (
-    Query,
+    Answer,
     Document,
     DocumentMetadata,
-    SearchResult,
-    Answer,
-    TokenUsage,
+    Query,
     RateLimitTracker,
+    SearchResult,
+    TokenUsage,
 )
 
 
@@ -136,12 +136,12 @@ class TestSearchResultModel:
             content="Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose molecules. This process is essential for life on Earth. This process is essential for life on Earth. ",
             metadata=metadata,
         )
-        
+
         # Valid scores
         SearchResult(document=doc, similarity_score=0.0)
         SearchResult(document=doc, similarity_score=0.5)
         SearchResult(document=doc, similarity_score=1.0)
-        
+
         # Invalid scores
         with pytest.raises(ValidationError):
             SearchResult(document=doc, similarity_score=-0.1)
@@ -166,7 +166,7 @@ class TestAnswerModel:
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
-        
+
         test_query_id = uuid4()
         answer = Answer(
             query_id=test_query_id,
@@ -174,7 +174,7 @@ class TestAnswerModel:
             sources=[search_result],
             latency_ms=1500,
         )
-        
+
         assert answer.query_id == test_query_id
         assert answer.answer_text == "Photosynthesis is..."
         assert len(answer.sources) == 1
@@ -194,13 +194,13 @@ class TestAnswerModel:
             metadata=metadata,
         )
         search_result = SearchResult(document=doc, similarity_score=0.85)
-        
+
         token_usage = TokenUsage(
             prompt_tokens=100,
             completion_tokens=50,
             total_tokens=150,
         )
-        
+
         answer = Answer(
             query_id=uuid4(),
             answer_text="Test answer",
@@ -208,7 +208,7 @@ class TestAnswerModel:
             latency_ms=1500,
             token_usage=token_usage,
         )
-        
+
         assert answer.token_usage.total_tokens == 150
 
 
@@ -232,6 +232,7 @@ class TestRateLimitTracker:
             max_requests_per_day=1500,
         )
         import time
+
         timestamp = time.time()
         tracker.request_timestamps.append(timestamp)
         assert len(tracker.request_timestamps) == 1

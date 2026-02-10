@@ -15,22 +15,23 @@ class CourseFlowError(Exception):
 
 class ValidationError(CourseFlowError):
     """Raised when input validation fails.
-    
+
     Examples:
         - Empty query text
         - Query text exceeds maximum length
         - Invalid parameters
     """
+
     pass
 
 
 class QuotaExceededError(CourseFlowError):
     """Raised when API quota or rate limit is exceeded.
-    
+
     Attributes:
         retry_after: Seconds to wait before retrying
     """
-    
+
     def __init__(self, message: str, retry_after: int = 0):
         super().__init__(message)
         self.retry_after = retry_after
@@ -38,12 +39,12 @@ class QuotaExceededError(CourseFlowError):
 
 class NoRelevantDocumentsError(CourseFlowError):
     """Raised when no documents meet the similarity threshold.
-    
+
     Attributes:
         threshold: Minimum similarity threshold that was used
         max_similarity: Highest similarity score found (below threshold)
     """
-    
+
     def __init__(self, message: str, threshold: float = 0.5, max_similarity: float = 0.0):
         super().__init__(message)
         self.threshold = threshold

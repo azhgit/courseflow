@@ -4,9 +4,9 @@ This module creates and configures the FastAPI application with middleware,
 CORS, and lifespan context management for database and ChromaDB initialization.
 """
 
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,19 +14,20 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from courseflow.config import settings
+
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for application startup and shutdown.
-    
+
     Handles initialization and cleanup of resources like database connections
     and ChromaDB clients.
-    
+
     Args:
         app: FastAPI application instance
-    
+
     Yields:
         None (context manager)
     """
@@ -35,12 +36,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print(f"ChromaDB persist dir: {settings.chroma_persist_dir}")
     print(f"ChromaDB persist dir (abs): {settings.CHROMA_PERSIST_DIR}")
     print(f"Rate limit: {settings.rate_limit_rpm} RPM")
-    
+
     # NOTE: Resources are initialized per-request via dependencies
     # This keeps the lifespan simple and allows for easy testing
-    
+
     yield
-    
+
     # Shutdown: Cleanup resources
     print("Shutting down CourseFlow RAG system...")
     # NOTE: Cleanup is handled by individual components (e.g., httpx client close)
@@ -48,7 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application.
-    
+
     Returns:
         Configured FastAPI application instance
     """
@@ -59,9 +60,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
-        openapi_url=f"{settings.api_v1_prefix}/openapi.json"
+        openapi_url=f"{settings.api_v1_prefix}/openapi.json",
     )
-    
+
     # Add validation exception handler
     @app.exception_handler(ValidationError)
     async def validation_exception_handler(request: Request, exc: ValidationError):
@@ -77,7 +78,7 @@ def create_app() -> FastAPI:
                 }
             },
         )
-    
+
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -86,21 +87,14 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Register API routes
     from courseflow.api.routes import health, query
-    
-    app.include_router(
-        health.router,
-        prefix=settings.api_v1_prefix,
-        tags=["health"]
-    )
-    
-    app.include_router(
-        query.router,
-        tags=["query"]
-    )
-    
+
+    app.include_router(health.router, prefix=settings.api_v1_prefix, tags=["health"])
+
+    app.include_router(query.router, tags=["query"])
+
     return app
 
 

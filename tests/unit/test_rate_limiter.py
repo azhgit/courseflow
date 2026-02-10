@@ -1,8 +1,6 @@
 """Unit tests for RateLimitTracker model."""
 
-from datetime import datetime, timedelta
 
-import pytest
 
 from courseflow.domain.models import RateLimitTracker
 
@@ -17,7 +15,7 @@ class TestRateLimitTracker:
         # First 15 requests should be allowed
         for i in range(15):
             allowed, retry_after = tracker.is_allowed()
-            assert allowed is True, f"Request {i+1} should be allowed"
+            assert allowed is True, f"Request {i + 1} should be allowed"
             assert retry_after == 0
 
     def test_blocks_requests_over_limit(self):
@@ -37,7 +35,8 @@ class TestRateLimitTracker:
     def test_sliding_window_cleanup(self):
         """Test that old timestamps are removed from sliding window."""
         tracker = RateLimitTracker(
-            max_requests_per_minute=5, window_seconds=2  # 2-second window for testing
+            max_requests_per_minute=5,
+            window_seconds=2,  # 2-second window for testing
         )
 
         # Add 5 requests

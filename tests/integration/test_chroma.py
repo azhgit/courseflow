@@ -1,15 +1,12 @@
 """Integration tests for ChromaDB vector search."""
 
-import pytest
-import tempfile
 import shutil
-from pathlib import Path
-from typing import List
+import tempfile
+
+import pytest
 
 from courseflow.domain.models import Document, DocumentMetadata, SearchResult
 from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
-from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
-from courseflow.config import Settings
 
 
 @pytest.fixture
@@ -23,14 +20,15 @@ def temp_chroma_dir():
 @pytest.fixture
 def mock_embedding_client():
     """Create mock embedding client for testing."""
+
     class MockEmbeddingClient:
-        async def generate_embedding(self, text: str) -> List[float]:
+        async def generate_embedding(self, text: str) -> list[float]:
             """Generate deterministic embedding based on text hash."""
             # Simple hash-based embedding for testing
             hash_val = hash(text)
             # Generate 768-dimensional vector (Gemini embedding size)
             return [(hash_val * i) % 100 / 100.0 for i in range(768)]
-    
+
     return MockEmbeddingClient()
 
 
@@ -46,7 +44,7 @@ async def chroma_adapter(temp_chroma_dir, mock_embedding_client):
 
 
 @pytest.fixture
-def sample_documents() -> List[Document]:
+def sample_documents() -> list[Document]:
     """Create sample documents for testing."""
     return [
         Document(
@@ -107,23 +105,23 @@ class TestChromaDBIntegration:
         for doc in sample_documents:
             embedding = await mock_embedding_client.generate_embedding(doc.content)
             doc.embedding = embedding
-        
+
         await chroma_adapter.add_documents(sample_documents)
-        
+
         # Search for biology-related query
         query_text = "How do plants make energy from sunlight?"
         query_embedding = await mock_embedding_client.generate_embedding(query_text)
-        
+
         results = await chroma_adapter.search(
             query_embedding=query_embedding,
             k=3,
         )
-        
+
         # Verify results
         assert len(results) > 0
         assert all(isinstance(r, SearchResult) for r in results)
         assert all(0.0 <= r.similarity_score <= 1.0 for r in results)
-        
+
         # Results should be sorted by similarity (highest first)
         scores = [r.similarity_score for r in results]
         assert scores == sorted(scores, reverse=True)
@@ -140,22 +138,22 @@ class TestChromaDBIntegration:
         for doc in sample_documents:
             embedding = await mock_embedding_client.generate_embedding(doc.content)
             doc.embedding = embedding
-        
+
         await chroma_adapter.add_documents(sample_documents)
-        
+
         # Search with k=3
         query_text = "photosynthesis in plants"
         query_embedding = await mock_embedding_client.generate_embedding(query_text)
-        
+
         results = await chroma_adapter.search(
             query_embedding=query_embedding,
             k=3,
         )
-        
+
         # Filter by threshold manually (threshold of 0.5)
         threshold = 0.5
         filtered_results = [r for r in results if r.similarity_score >= threshold]
-        
+
         # Verify filtering logic
         assert all(r.similarity_score >= threshold for r in filtered_results)
         assert len(filtered_results) <= len(results)
@@ -172,18 +170,18 @@ class TestChromaDBIntegration:
         for doc in sample_documents:
             embedding = await mock_embedding_client.generate_embedding(doc.content)
             doc.embedding = embedding
-        
+
         await chroma_adapter.add_documents(sample_documents)
-        
+
         # Search with k=2
         query_text = "biology concepts"
         query_embedding = await mock_embedding_client.generate_embedding(query_text)
-        
+
         results = await chroma_adapter.search(
             query_embedding=query_embedding,
             k=2,
         )
-        
+
         # Should return at most k results
         assert len(results) <= 2
 
@@ -201,29 +199,29 @@ class TestChromaDBIntegration:
             collection_name="test_persistence",
         )
         await adapter1.initialize()
-        
+
         for doc in sample_documents:
             embedding = await mock_embedding_client.generate_embedding(doc.content)
             doc.embedding = embedding
-        
+
         await adapter1.add_documents(sample_documents)
-        
+
         # Create second adapter with same directory
         adapter2 = ChromaAdapter(
             persist_directory=temp_chroma_dir,
             collection_name="test_persistence",
         )
         await adapter2.initialize()
-        
+
         # Search using second adapter
         query_text = "cell division"
         query_embedding = await mock_embedding_client.generate_embedding(query_text)
-        
+
         results = await adapter2.search(
             query_embedding=query_embedding,
             k=3,
         )
-        
+
         # Should find documents added by first adapter
         assert len(results) > 0
 
@@ -236,12 +234,12 @@ class TestChromaDBIntegration:
         """Test searching an empty collection."""
         query_text = "test query"
         query_embedding = await mock_embedding_client.generate_embedding(query_text)
-        
+
         results = await chroma_adapter.search(
             query_embedding=query_embedding,
             k=3,
         )
-        
+
         # Should return empty list
         assert results == []
 
@@ -257,18 +255,18 @@ class TestChromaDBIntegration:
         for doc in sample_documents:
             embedding = await mock_embedding_client.generate_embedding(doc.content)
             doc.embedding = embedding
-        
+
         await chroma_adapter.add_documents(sample_documents)
-        
+
         # Search
         query_text = "biology"
         query_embedding = await mock_embedding_client.generate_embedding(query_text)
-        
+
         results = await chroma_adapter.search(
             query_embedding=query_embedding,
             k=4,
         )
-        
+
         # Verify metadata is present
         for result in results:
             assert result.document.metadata is not None
@@ -288,24 +286,24 @@ class TestChromaDBIntegration:
         for doc in sample_documents:
             embedding = await mock_embedding_client.generate_embedding(doc.content)
             doc.embedding = embedding
-        
+
         await chroma_adapter.add_documents(sample_documents)
-        
+
         # Query with completely unrelated text (should have low similarity)
         irrelevant_query = "zxcvbnm qwerty asdfgh"
         query_embedding = await mock_embedding_client.generate_embedding(irrelevant_query)
-        
+
         # Search with high threshold
         results = await chroma_adapter.search(
             query_embedding=query_embedding,
             k=3,
             threshold=0.9,  # Very high threshold
         )
-        
+
         # Should return empty or very few results
         # (depends on hash collision, but typically empty)
         assert len(results) <= 1, "High threshold should filter most/all results"
-        
+
         # If any results, they must meet threshold
         for result in results:
             assert result.similarity_score >= 0.9

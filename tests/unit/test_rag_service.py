@@ -1,20 +1,19 @@
 """Unit tests for RAG service with mocked dependencies."""
 
-import pytest
-from unittest.mock import AsyncMock, Mock, patch
-from typing import List
+from unittest.mock import AsyncMock
 
-from courseflow.domain.models import (
-    Query,
-    Document,
-    DocumentMetadata,
-    SearchResult,
-    Answer,
-    TokenUsage,
-)
+import pytest
+
 from courseflow.domain.exceptions import (
     NoRelevantDocumentsError,
     QuotaExceededError,
+)
+from courseflow.domain.models import (
+    Document,
+    DocumentMetadata,
+    Query,
+    SearchResult,
+    TokenUsage,
 )
 
 
@@ -47,7 +46,7 @@ class TestRAGService:
         return mock
 
     @pytest.fixture
-    def sample_documents(self) -> List[Document]:
+    def sample_documents(self) -> list[Document]:
         """Create sample documents for testing."""
         metadata1 = DocumentMetadata(
             source="photosynthesis.md",
@@ -61,7 +60,7 @@ class TestRAGService:
             chunk_index=0,
             total_chunks=1,
         )
-        
+
         return [
             Document(
                 id="doc-1",
@@ -76,7 +75,7 @@ class TestRAGService:
         ]
 
     @pytest.fixture
-    def sample_search_results(self, sample_documents) -> List[SearchResult]:
+    def sample_search_results(self, sample_documents) -> list[SearchResult]:
         """Create sample search results."""
         return [
             SearchResult(document=sample_documents[0], similarity_score=0.85),
@@ -95,14 +94,14 @@ class TestRAGService:
         """Test successful RAG query flow."""
         # Import here to avoid circular dependency
         from courseflow.application.rag_service import RAGService
-        
+
         # Setup mocks
         mock_vector_store.search.return_value = sample_search_results
         mock_llm_port.generate_answer.return_value = (
             "Photosynthesis is the process by which plants convert light energy into chemical energy.",
             TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
         )
-        
+
         # Create service
         service = RAGService(
             embedding_port=mock_embedding_port,
@@ -111,17 +110,17 @@ class TestRAGService:
             query_repo=mock_query_repo,
             similarity_threshold=0.5,
         )
-        
+
         # Execute query
         query = Query(text="What is photosynthesis?")
         answer = await service.answer_query(query)
-        
+
         # Verify calls
         mock_embedding_port.generate_embedding.assert_called_once_with("What is photosynthesis?")
         mock_vector_store.search.assert_called_once()
         mock_llm_port.generate_answer.assert_called_once()
         mock_query_repo.save_query.assert_called_once()
-        
+
         # Verify result
         assert answer.query_id == query.query_id
         assert "Photosynthesis" in answer.answer_text
@@ -139,7 +138,7 @@ class TestRAGService:
     ):
         """Test that results below similarity threshold are filtered."""
         from courseflow.application.rag_service import RAGService
-        
+
         # Setup mock with low-similarity results
         low_similarity_results = [
             SearchResult(
@@ -148,7 +147,7 @@ class TestRAGService:
             )
         ]
         mock_vector_store.search.return_value = low_similarity_results
-        
+
         service = RAGService(
             embedding_port=mock_embedding_port,
             vector_store=mock_vector_store,
@@ -156,15 +155,15 @@ class TestRAGService:
             query_repo=mock_query_repo,
             similarity_threshold=0.5,
         )
-        
+
         query = Query(text="Irrelevant question")
-        
+
         # Should raise NoRelevantDocumentsError
         with pytest.raises(NoRelevantDocumentsError) as exc_info:
             await service.answer_query(query)
-        
+
         assert "0.5" in str(exc_info.value) or "threshold" in str(exc_info.value).lower()
-        
+
         # LLM should not be called if no relevant documents
         mock_llm_port.generate_answer.assert_not_called()
 
@@ -178,9 +177,9 @@ class TestRAGService:
     ):
         """Test handling of empty search results."""
         from courseflow.application.rag_service import RAGService
-        
+
         mock_vector_store.search.return_value = []
-        
+
         service = RAGService(
             embedding_port=mock_embedding_port,
             vector_store=mock_vector_store,
@@ -188,9 +187,9 @@ class TestRAGService:
             query_repo=mock_query_repo,
             similarity_threshold=0.5,
         )
-        
+
         query = Query(text="Unknown topic")
-        
+
         with pytest.raises(NoRelevantDocumentsError):
             await service.answer_query(query)
 
@@ -205,13 +204,13 @@ class TestRAGService:
     ):
         """Test handling of LLM quota exceeded error."""
         from courseflow.application.rag_service import RAGService
-        
+
         mock_vector_store.search.return_value = sample_search_results
         mock_llm_port.generate_answer.side_effect = QuotaExceededError(
             message="Gemini API quota exceeded",
             retry_after=60,
         )
-        
+
         service = RAGService(
             embedding_port=mock_embedding_port,
             vector_store=mock_vector_store,
@@ -219,12 +218,12 @@ class TestRAGService:
             query_repo=mock_query_repo,
             similarity_threshold=0.5,
         )
-        
+
         query = Query(text="What is photosynthesis?")
-        
+
         with pytest.raises(QuotaExceededError) as exc_info:
             await service.answer_query(query)
-        
+
         assert exc_info.value.retry_after == 60
 
     @pytest.mark.asyncio
@@ -238,13 +237,13 @@ class TestRAGService:
     ):
         """Test that retrieval count is properly logged."""
         from courseflow.application.rag_service import RAGService
-        
+
         mock_vector_store.search.return_value = sample_search_results
         mock_llm_port.generate_answer.return_value = (
             "Answer text",
             TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
         )
-        
+
         service = RAGService(
             embedding_port=mock_embedding_port,
             vector_store=mock_vector_store,
@@ -252,10 +251,10 @@ class TestRAGService:
             query_repo=mock_query_repo,
             similarity_threshold=0.5,
         )
-        
+
         query = Query(text="What is photosynthesis?")
         answer = await service.answer_query(query)
-        
+
         # Verify that 2 sources were returned (both above threshold)
         assert len(answer.sources) == 2
         assert answer.sources[0].similarity_score == 0.85
@@ -272,13 +271,13 @@ class TestRAGService:
     ):
         """Test that similarity scores are preserved in results."""
         from courseflow.application.rag_service import RAGService
-        
+
         mock_vector_store.search.return_value = sample_search_results
         mock_llm_port.generate_answer.return_value = (
             "Answer",
             TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
         )
-        
+
         service = RAGService(
             embedding_port=mock_embedding_port,
             vector_store=mock_vector_store,
@@ -286,10 +285,10 @@ class TestRAGService:
             query_repo=mock_query_repo,
             similarity_threshold=0.5,
         )
-        
+
         query = Query(text="Test query")
         answer = await service.answer_query(query)
-        
+
         # Verify similarity scores are included
         scores = [source.similarity_score for source in answer.sources]
         assert scores == [0.85, 0.65]
