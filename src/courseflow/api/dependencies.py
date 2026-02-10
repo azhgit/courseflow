@@ -51,12 +51,14 @@ def get_embedding_client() -> GeminiEmbeddingClient:
 
 def get_llm_client() -> GeminiLLMClient:
     """Dependency for Gemini LLM client.
-    
+
     Returns:
         Gemini LLM client instance
     """
     return GeminiLLMClient(
         api_key=settings.gemini_api_key,
+        model_name=settings.GEMINI_MODEL,
+        timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
     )
 
 

@@ -50,11 +50,12 @@ class GeminiLLMClient(LLMPort):
         self.model_name = model_name
         self.max_retries = max_retries
         self.timeout_seconds = timeout_seconds
-        
+        self._did_model_fallback = False
+
         # Configure Gemini
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model_name)
-        
+
         logger.info(f"Initialized Gemini LLM client with model: {model_name}")
 
     async def generate_answer(
@@ -81,23 +82,36 @@ class GeminiLLMClient(LLMPort):
         # Generate with retry logic
         try:
             response = await self._generate_with_retry(prompt)
-            
-            # Extract answer text
-            answer_text = response.text.strip()
-            
-            # Extract token usage
-            token_usage = self._extract_token_usage(response)
-            
-            logger.info(
-                f"Generated answer: {len(answer_text)} chars, "
-                f"{token_usage.total_tokens} tokens"
-            )
-            
-            return answer_text, token_usage
-            
         except Exception as e:
-            logger.error(f"Failed to generate answer: {e}")
-            raise
+            if (not self._did_model_fallback) and self._is_model_not_found_error(e):
+                fallback = self._select_fallback_model_name()
+                if fallback:
+                    self._did_model_fallback = True
+                    logger.warning(
+                        f"Gemini model '{self.model_name}' unavailable; falling back to '{fallback}'."
+                    )
+                    self.model_name = fallback
+                    self.model = genai.GenerativeModel(fallback)
+                    response = await self._generate_with_retry(prompt)
+                else:
+                    logger.error(f"Failed to generate answer: {e}")
+                    raise
+            else:
+                logger.error(f"Failed to generate answer: {e}")
+                raise
+
+        # Extract answer text
+        answer_text = response.text.strip()
+
+        # Extract token usage
+        token_usage = self._extract_token_usage(response)
+
+        logger.info(
+            f"Generated answer: {len(answer_text)} chars, "
+            f"{token_usage.total_tokens} tokens"
+        )
+
+        return answer_text, token_usage
 
     def _build_prompt(self, query: str, context: List[str]) -> str:
         """Build RAG prompt from query and context documents.
@@ -197,6 +211,46 @@ Answer (be concise and factual, citing specific information from the documents):
                 raise ServiceUnavailableError(
                     message=f"Failed to generate answer: {str(e)}"
                 )
+
+    def _is_model_not_found_error(self, exc: Exception) -> bool:
+        msg = str(exc)
+        lower = msg.lower()
+        return (
+            "404" in lower
+            and ("not found" in lower or "is not found" in lower)
+            and "model" in lower
+        ) or ("not supported for generatecontent" in lower)
+
+    def _select_fallback_model_name(self) -> str | None:
+        try:
+            models = list(genai.list_models())
+        except Exception as e:
+            logger.warning(f"Failed to list Gemini models for fallback selection: {e}")
+            return None
+
+        generation_models = [
+            m
+            for m in models
+            if "generateContent" in getattr(m, "supported_generation_methods", [])
+            and isinstance(getattr(m, "name", None), str)
+            and m.name.startswith("models/")
+        ]
+        if not generation_models:
+            return None
+
+        available = {m.name.removeprefix("models/") for m in generation_models}
+        preferred = [
+            "gemini-2.0-flash",
+            "gemini-2.0-pro",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-pro",
+        ]
+        for name in preferred:
+            if name in available:
+                return name
+
+        return sorted(available)[0]
 
     def _extract_token_usage(
         self,
