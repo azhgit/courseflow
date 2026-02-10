@@ -193,15 +193,15 @@ Answer (be concise and factual, citing specific information from the documents):
                 raise QuotaExceededError(
                     message="Gemini API quota exceeded (15 RPM limit)",
                     retry_after=retry_after,
-                )
+                ) from e
 
             elif "503" in error_str or "unavailable" in error_str:
                 logger.error(f"Gemini API unavailable: {e}")
-                raise ServiceUnavailableError(message="Gemini API is temporarily unavailable")
+                raise ServiceUnavailableError(message="Gemini API is temporarily unavailable") from e
 
             else:
                 logger.error(f"Unexpected Gemini API error: {e}")
-                raise ServiceUnavailableError(message=f"Failed to generate answer: {str(e)}")
+                raise ServiceUnavailableError(message=f"Failed to generate answer: {str(e)}") from e
 
     def _is_model_not_found_error(self, exc: Exception) -> bool:
         msg = str(exc)
