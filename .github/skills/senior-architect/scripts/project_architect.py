@@ -289,7 +289,7 @@ class CodeAnalyzer:
                     in_class = False
                     class_name = None
                     class_start = 0
-                    brace_count = 0
+                    _brace_count = 0
 
                     for i, line in enumerate(lines):
                         match = re.match(class_pattern, line)

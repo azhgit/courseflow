@@ -361,8 +361,6 @@ class TestQueryValidationContract:
 
 
 # Skip the irrelevant query test as it requires real Gemini API call
-import pytest
-
 # Mark as skipped at module level
 pytest.mark.skip(reason="Requires real Gemini API call with actual data")(
     TestQueryValidationContract.test_irrelevant_query_returns_no_docs_response

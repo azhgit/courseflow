@@ -21,10 +21,10 @@ class SQLiteQueryRepository(QueryRepositoryPort):
         return self.database_path
 
     """SQLite repository for query metadata and analytics.
-    
+
     Provides async database operations using aiosqlite for query logging
     and retrieval of historical data.
-    
+
     Attributes:
         database_url: SQLite database file path
     """

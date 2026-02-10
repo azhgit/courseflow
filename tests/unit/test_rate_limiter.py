@@ -70,7 +70,7 @@ class TestRateLimitTracker:
         tracker = RateLimitTracker(max_requests_per_minute=5)
 
         # Should allow 5 requests
-        for i in range(5):
+        for _i in range(5):
             allowed, _ = tracker.is_allowed()
             assert allowed is True
 

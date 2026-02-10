@@ -98,8 +98,16 @@ class ChromaAdapter(VectorStorePort):
             # For cosine similarity with normalized vectors: similarity = 1 - (distance^2 / 2)
             # However, ChromaDB should return cosine distance directly, so: similarity = 1 - distance
             search_results = []
-            for rank, (doc_id, content, embedding, metadata, distance) in enumerate(
-                zip(ids, documents, embeddings or [None] * len(ids), metadatas, distances), start=1
+            for _rank, (doc_id, content, embedding, metadata, distance) in enumerate(
+                zip(
+                    ids,
+                    documents,
+                    embeddings or [None] * len(ids),
+                    metadatas,
+                    distances,
+                    strict=False,
+                ),
+                start=1,
             ):
                 # Convert distance to similarity and clamp to [0, 1] for validation.
                 similarity = 1.0 - distance

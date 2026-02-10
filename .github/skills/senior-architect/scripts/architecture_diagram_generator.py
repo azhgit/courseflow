@@ -300,7 +300,7 @@ class MermaidGenerator(DiagramGenerator):
         lines.append('')
 
         # Determine if we have typical deployment components
-        has_api = any('api' in t for t in self.technologies)
+        _has_api = any('api' in t for t in self.technologies)
         has_docker = 'docker' in self.technologies
         has_k8s = 'kubernetes' in self.technologies
 
