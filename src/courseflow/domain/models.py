@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID, uuid4
 
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -104,7 +106,7 @@ class TokenUsage(BaseModel):
     
     @field_validator('total_tokens')
     @classmethod
-    def validate_total(cls, v: int, info: any) -> int:
+    def validate_total(cls, v: int, info: Any) -> int:
         """Ensure total equals sum of prompt and completion tokens."""
         prompt = info.data.get('prompt_tokens', 0)
         completion = info.data.get('completion_tokens', 0)
@@ -193,4 +195,4 @@ class ErrorResponse(BaseModel):
     type: str
     message: str
     retry_after: Optional[int] = None
-    details: Optional[dict] = None
+    details: Optional[dict[str, Any]] = None

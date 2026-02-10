@@ -118,7 +118,6 @@ class Settings(BaseSettings):
     def api_v1_prefix(self) -> str:
         return self.API_V1_PREFIX
 
-
 # Global settings instance (initialized once at import)
-# Will raise ValidationError if GEMINI_API_KEY is missing
-settings = Settings()
+# Will raise ValidationError if GEMINI_API_KEY is missing (unless tests override via env)
+settings = Settings()  # type: ignore[call-arg]

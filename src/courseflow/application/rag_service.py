@@ -134,7 +134,7 @@ class RAGService:
         
         # Stage 4: Generate answer using LLM
         llm_start = time.time()
-        context_documents = [result.document.content for result in filtered_results]
+        context_documents = [result.document for result in filtered_results]
         answer_text, token_usage = await self.llm_port.generate_answer(
             query=query.text,
             context=context_documents,

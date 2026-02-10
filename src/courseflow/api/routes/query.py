@@ -70,7 +70,7 @@ class ErrorResponse(BaseModel):
 async def query_endpoint(
     request: QueryRequest,
     rag_service: RAGService = Depends(get_rag_service),
-    rate_limiter=Depends(get_rate_limiter),
+    rate_limiter: Any = Depends(get_rate_limiter),
 ) -> QueryResponse:
     """Handle POST /api/v1/query requests.
     
