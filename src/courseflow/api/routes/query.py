@@ -98,6 +98,9 @@ async def query_endpoint(
 
         allowed, retry_after = rate_limiter.is_allowed()
         if not allowed:
+            logger.warning(
+                f"Local rate limit exceeded; retry_after={retry_after}s"
+            )
             raise QuotaExceededError(
                 message="Rate limit exceeded (local guard)",
                 retry_after=retry_after,
@@ -165,11 +168,12 @@ async def query_endpoint(
         
     except QuotaExceededError as e:
         logger.error(f"Quota exceeded: {e.message}")
+        source = "local_guard" if "local guard" in e.message.lower() else "gemini"
         error_response = ErrorResponse(
             error=ErrorDetail(
                 type="quota_exceeded",
                 message=e.message,
-                details={"retry_after": e.retry_after},
+                details={"retry_after": e.retry_after, "source": source},
             )
         )
         return JSONResponse(
