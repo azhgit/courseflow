@@ -15,7 +15,6 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from courseflow.config import settings
-from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
 
 logger = logging.getLogger(__name__)
 
@@ -39,13 +38,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print(f"ChromaDB persist dir (abs): {settings.CHROMA_PERSIST_DIR}")
     print(f"Rate limit: {settings.rate_limit_rpm} RPM")
 
-    # Initialize SQLite database schema
+    # Initialize all database tables
     try:
+        from courseflow.infrastructure.repositories.chunk_repo import SQLiteChromaChunkRepository
+        from courseflow.infrastructure.repositories.document_repo import SQLiteDocumentRepository
+        from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+        from courseflow.infrastructure.repositories.subject_repo import SQLiteSubjectRepository
+
         query_repo = SQLiteQueryRepository()
         await query_repo.initialize()
-        logger.info("SQLite query database schema initialized")
+        logger.info("SQLite queries table initialized")
+
+        subject_repo = SQLiteSubjectRepository()
+        await subject_repo.initialize()
+        logger.info("SQLite subjects table initialized")
+
+        document_repo = SQLiteDocumentRepository()
+        await document_repo.initialize()
+        logger.info("SQLite documents table initialized")
+
+        chunk_repo = SQLiteChromaChunkRepository()
+        await chunk_repo.initialize()
+        logger.info("SQLite chunks table initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize SQLite database: {e}")
+        logger.error(f"Failed to initialize database tables: {e}")
 
     # NOTE: Other resources are initialized per-request via dependencies
     # This keeps the lifespan simple and allows for easy testing
