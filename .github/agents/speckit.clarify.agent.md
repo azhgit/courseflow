@@ -6,6 +6,18 @@ handoffs:
     prompt: Create a plan for the spec. I am building with...
 ---
 
+## Available Tools & Skills
+
+### MCP Servers
+- **filesystem**: All spec file read/write operations — ALWAYS use instead of native file tools
+- **memory**: Read prior session context; write clarification results for downstream agents
+
+### Skills
+- **using-superpowers**: MUST invoke at agent startup
+- **brainstorming**: MUST invoke before generating clarification questions (Step 3)
+
+---
+
 ## User Input
 
 ```text
@@ -20,6 +32,16 @@ Goal: Detect and reduce ambiguity or missing decision points in the active featu
 
 Note: This clarification workflow is expected to run (and be completed) BEFORE invoking `/speckit.plan`. If the user explicitly states they are skipping clarification (e.g., exploratory spike), you may proceed, but must warn that downstream rework risk increases.
 
+### Startup Sequence (run once before Step 1)
+
+0. **Initialize**:
+   - Invoke `using-superpowers` skill to establish available tool context
+   - Query `memory` MCP for key `clarify:prior_context`:
+     - If exists: display a brief summary of prior session context and ask user if they want to continue from it or start fresh
+     - If not exists: proceed normally
+
+---
+
 Execution steps:
 
 1. Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly` from repo root **once** (combined `--json --paths-only` mode / `-Json -PathsOnly`). Parse minimal JSON payload fields:
@@ -27,9 +49,9 @@ Execution steps:
    - `FEATURE_SPEC`
    - (Optionally capture `IMPL_PLAN`, `TASKS` for future chained flows.)
    - If JSON parsing fails, abort and instruct user to re-run `/speckit.specify` or verify feature branch environment.
-   - For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+   - For single quotes in args like "I'm Groot", use escape syntax: e.g `'I'\''m Groot'` (or double-quote if possible: `"I'm Groot"`).
 
-2. Load the current spec file. Perform a structured ambiguity & coverage scan using this taxonomy. For each category, mark status: Clear / Partial / Missing. Produce an internal coverage map used for prioritization (do not output raw map unless no questions will be asked).
+2. Use `filesystem` MCP to load the current spec file. Perform a structured ambiguity & coverage scan using this taxonomy. For each category, mark status: Clear / Partial / Missing. Produce an internal coverage map used for prioritization (do not output raw map unless no questions will be asked).
 
    Functional Scope & Behavior:
    - Core user goals & success criteria
@@ -85,7 +107,12 @@ Execution steps:
    - Clarification would not materially change implementation or validation strategy
    - Information is better deferred to planning phase (note internally)
 
-3. Generate (internally) a prioritized queue of candidate clarification questions (maximum 5). Do NOT output them all at once. Apply these constraints:
+3. **Before generating questions — invoke `brainstorming` skill**:
+   - Use brainstorming to explore: "What are the highest-impact ambiguities in this spec that, if unresolved, would cause the most downstream rework?"
+   - Let the brainstorming output inform which candidate questions to prioritize in the queue below
+   - Only proceed to question generation after brainstorming output is clear
+
+   Generate (internally) a prioritized queue of candidate clarification questions (maximum 5). Do NOT output them all at once. Apply these constraints:
     - Maximum of 10 total questions across the whole session.
     - Each question must be answerable with EITHER:
        - A short multiple‑choice selection (2–5 distinct, mutually exclusive options), OR
@@ -146,7 +173,7 @@ Execution steps:
        - Edge case / negative flow → Add a new bullet under Edge Cases / Error Handling (or create such subsection if template provides placeholder for it).
        - Terminology conflict → Normalize term across spec; retain original only if necessary by adding `(formerly referred to as "X")` once.
     - If the clarification invalidates an earlier ambiguous statement, replace that statement instead of duplicating; leave no obsolete contradictory text.
-    - Save the spec file AFTER each integration to minimize risk of context loss (atomic overwrite).
+    - Use `filesystem` MCP to save the spec file AFTER each integration to minimize risk of context loss (atomic overwrite).
     - Preserve formatting: do not reorder unrelated sections; keep heading hierarchy intact.
     - Keep each inserted clarification minimal and testable (avoid narrative drift).
 
@@ -158,7 +185,23 @@ Execution steps:
    - Markdown structure valid; only allowed new headings: `## Clarifications`, `### Session YYYY-MM-DD`.
    - Terminology consistency: same canonical term used across all updated sections.
 
-7. Write the updated spec back to `FEATURE_SPEC`.
+7. Use `filesystem` MCP to write the updated spec back to `FEATURE_SPEC`.
+
+7a. **Persist clarification results to `memory` MCP** (for downstream agents):
+   - Write to key `clarify:results` with the following structure:
+     ```json
+     {
+       "session_date": "YYYY-MM-DD",
+       "feature_spec_path": "<FEATURE_SPEC>",
+       "questions_asked": <count>,
+       "resolved_categories": ["<category>", ...],
+       "deferred_categories": ["<category>", ...],
+       "key_decisions": [
+         { "question": "<q>", "answer": "<a>", "impact": "<section affected>" }
+       ]
+     }
+     ```
+   - This allows `speckit.plan`, `speckit.specify`, and `speckit.implement` to read prior clarification context without re-asking resolved questions.
 
 8. Report completion (after questioning loop ends or early termination):
    - Number of questions asked & answered.

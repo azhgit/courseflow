@@ -2,6 +2,19 @@
 description: Perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md after task generation.
 ---
 
+## Available Tools & Skills
+
+### MCP Servers
+- **filesystem**: All artifact read operations — ALWAYS use instead of native file tools
+- **memory**: Read prior clarify/plan context; write analysis findings for downstream agents
+- **brave-search**: Look up technical standards when evaluating ambiguous non-functional requirements (e.g., "what is acceptable p99 latency for a REST API")
+
+### Skills
+- **using-superpowers**: MUST invoke at agent startup
+- **senior-architect**: MUST invoke before Step 3 — guides semantic model construction and constitution alignment evaluation
+
+---
+
 ## User Input
 
 ```text
@@ -22,20 +35,31 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 ## Execution Steps
 
+### 0. Startup Sequence (run once before Step 1)
+
+- Invoke `using-superpowers` skill to establish available tool context
+- Query `memory` MCP for prior session context:
+  - Key `clarify:results` → resolved categories and key decisions from clarification session
+  - Key `plan:decisions` → architecture decisions from planning session
+  - If either exists, incorporate into analysis context to avoid flagging already-resolved items as issues
+  - Display a brief note: "Loaded prior context from [clarify/plan] session dated [date]" if found
+
+---
+
 ### 1. Initialize Analysis Context
 
-Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
+Use `filesystem` MCP to run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
 
 - SPEC = FEATURE_DIR/spec.md
 - PLAN = FEATURE_DIR/plan.md
 - TASKS = FEATURE_DIR/tasks.md
 
 Abort with an error message if any required file is missing (instruct the user to run missing prerequisite command).
-For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+For single quotes in args like "I'm Groot", use escape syntax: e.g `'I'\''m Groot'` (or double-quote if possible: `"I'm Groot"`).
 
 ### 2. Load Artifacts (Progressive Disclosure)
 
-Load only the minimal necessary context from each artifact:
+Use `filesystem` MCP to load only the minimal necessary context from each artifact:
 
 **From spec.md:**
 
@@ -62,9 +86,17 @@ Load only the minimal necessary context from each artifact:
 
 **From constitution:**
 
-- Load `.specify/memory/constitution.md` for principle validation
+- Use `filesystem` MCP to load `.specify/memory/constitution.md` for principle validation
 
 ### 3. Build Semantic Models
+
+**Before building models — invoke `senior-architect` skill**:
+- Use senior-architect to guide the construction of semantic models, especially for:
+  - Evaluating architecture/stack choices in plan.md for soundness
+  - Identifying constitution alignment issues that require architectural judgment
+  - Assessing non-functional requirements against industry baselines
+  - If any NFR threshold seems unclear, use `brave-search` MCP to verify reasonable benchmarks before flagging as ambiguous
+- Only proceed to model construction after senior-architect context is established
 
 Create internal representations (do not include raw artifacts in output):
 
@@ -149,6 +181,24 @@ Output a Markdown report (no file writes) with the following structure:
 - Ambiguity Count
 - Duplication Count
 - Critical Issues Count
+
+### 6a. Persist Analysis Results to `memory` MCP
+
+Write to key `analyze:findings` with the following structure:
+```json
+{
+  "session_date": "YYYY-MM-DD",
+  "critical_count": <n>,
+  "high_count": <n>,
+  "coverage_percent": <n>,
+  "critical_issues": [
+    { "id": "<ID>", "category": "<cat>", "summary": "<summary>", "location": "<loc>" }
+  ],
+  "unresolved_ambiguities": ["<requirement-key>", ...],
+  "unmapped_tasks": ["<task-id>", ...]
+}
+```
+This allows `speckit.implement` to be aware of known issues and apply extra caution in flagged areas during execution.
 
 ### 7. Provide Next Actions
 
