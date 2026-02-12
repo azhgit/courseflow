@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from courseflow.config import settings
+from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print(f"ChromaDB persist dir (abs): {settings.CHROMA_PERSIST_DIR}")
     print(f"Rate limit: {settings.rate_limit_rpm} RPM")
 
-    # NOTE: Resources are initialized per-request via dependencies
+    # Initialize SQLite database schema
+    try:
+        query_repo = SQLiteQueryRepository()
+        await query_repo.initialize()
+        logger.info("SQLite query database schema initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize SQLite database: {e}")
+
+    # NOTE: Other resources are initialized per-request via dependencies
     # This keeps the lifespan simple and allows for easy testing
     try:
         import nltk
