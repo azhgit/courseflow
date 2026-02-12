@@ -1,0 +1,298 @@
+openapi: 3.1.0
+
+info:
+  title: CourseFlow Document Ingestion API
+  version: 1.0.0
+  description: |
+    API for ingesting educational documents (PDF, Markdown, plain text) into the CourseFlow knowledge base.
+    
+    **Features:**
+    - Upload documents in multiple formats (PDF, Markdown, plain text)
+    - Automatic text extraction and semantic chunking
+    - Duplicate detection via content hashing
+    - Subject-based organization
+    - Rate limiting with graceful queue handling
+    
+    **Base URL:** `http://localhost:8000` (development)
+    
+    **Rate Limits:**
+    - 15 requests/minute (global, Gemini API constraint)
+    - Queue depth: 100 requests max
+    
+  contact:
+    name: CourseFlow Support
+    url: https://github.com/yourusername/courseflow
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.courseflow.example.com
+    description: Production server (future)
+
+tags:
+  - name: Ingestion
+    description: Document upload and ingestion operations
+  - name: Documents
+    description: Document management and retrieval
+  - name: Subjects
+    description: Subject category management
+  - name: Health
+    description: Service health and metrics
+
+paths:
+  /api/v1/ingest:
+    post:
+      summary: Ingest a document
+      description: |
+        Upload and ingest an educational document into the knowledge base.
+        
+        **Process:**
+        1. Validates file format and size
+        2. Extracts plain text (for PDFs)
+        3. Computes content hash for duplicate detection
+        4. Creates semantic chunks (300-500 tokens each)
+        5. Generates embeddings for each chunk
+        6. Stores document and chunks in database
+        
+        **Idempotency:**
+        If the same document content (normalized) is uploaded twice, the second upload
+        is skipped and a success response is returned with `skipped: true`.
+        
+        **Rate Limiting:**
+        Subject to Gemini API quota (15 RPM). If quota is exceeded, request is queued.
+        Maximum queue depth is 100 requests. Returns 429 if queue is full.
+        
+      operationId: ingestDocument
+      tags:
+        - Ingestion
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - subject
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Document file (PDF, Markdown, or plain text)
+                subject:
+                  type: string
+                  pattern: '^[a-z][a-z0-9\-_]*$'
+                  maxLength: 50
+                  description: Subject category (must exist in subjects list)
+                  example: biology
+      
+      responses:
+        '200':
+          description: Document ingested successfully (or skipped if duplicate)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/documents:
+    get:
+      summary: List ingested documents
+      operationId: listDocuments
+      tags:
+        - Documents
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: subject
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+
+  /api/v1/subjects:
+    get:
+      summary: List available subjects
+      operationId: listSubjects
+      tags:
+        - Subjects
+      responses:
+        '200':
+          description: List of subjects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubjectListResponse'
+
+  /api/v1/health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/metrics:
+    get:
+      summary: Get metrics
+      operationId: getMetrics
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+
+components:
+  schemas:
+    IngestionResponse:
+      type: object
+      required: [success, data, metadata, error]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            document_id:
+              type: string
+            filename:
+              type: string
+            chunks_created:
+              type: integer
+            ingestion_time_ms:
+              type: integer
+            skipped:
+              type: boolean
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+        error:
+          type: object
+          nullable: true
+    
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              nullable: true
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+    
+    ResponseMetadata:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        latency_ms:
+          type: integer
+    
+    DocumentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+            pagination:
+              type: object
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+    
+    SubjectListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            subjects:
+              type: array
+              items:
+                type: object
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+    
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+        timestamp:
+          type: string
+    
+    MetricsResponse:
+      type: object
+      properties:
+        total_ingestions:
+          type: integer
+        error_rate:
+          type: number
+        latency_p95_ms:
+          type: integer
