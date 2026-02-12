@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
@@ -43,6 +44,7 @@ class IngestionService:
         document_repo: DocumentRepositoryPort,
         chunk_repo: ChunkRepositoryPort,
         rate_limiter: RateLimiter | None = None,
+        embedding_batch_size: int = 5,
     ):
         self._pdf_extractor = pdf_extractor
         self._token_counter = token_counter
@@ -53,6 +55,7 @@ class IngestionService:
         self._document_repo = document_repo
         self._chunk_repo = chunk_repo
         self._rate_limiter = rate_limiter or RateLimiter()
+        self._embedding_batch_size = embedding_batch_size
 
     async def ingest_document(
         self, file_bytes: bytes, filename: str, subject: str, request_id: str | None = None
@@ -105,11 +108,19 @@ class IngestionService:
         # Generate embeddings with retry logic and rate limiting
         embedded_chunks: list[Chunk] = []
         try:
-            for idx, chunk in enumerate(chunks):
-                embedding = await self._generate_embedding_with_retry(
-                    chunk=chunk, request_id=request_id, chunk_idx=idx
-                )
-                embedded_chunks.append(chunk.model_copy(update={"embedding": embedding}))
+            for batch_start in range(0, len(chunks), self._embedding_batch_size):
+                batch = chunks[batch_start : batch_start + self._embedding_batch_size]
+                tasks = [
+                    self._generate_embedding_with_retry(
+                        chunk=chunk,
+                        request_id=request_id,
+                        chunk_idx=batch_start + idx,
+                    )
+                    for idx, chunk in enumerate(batch)
+                ]
+                embeddings = await asyncio.gather(*tasks)
+                for chunk, embedding in zip(batch, embeddings, strict=False):
+                    embedded_chunks.append(chunk.model_copy(update={"embedding": embedding}))
         except RateLimitExceededError as e:
             logger.error(
                 f"Rate limit exceeded for document {filename} after retries "
@@ -213,4 +224,3 @@ def _detect_file_format(filename: str) -> str:
     if ext in {".md", ".markdown"}:
         return "markdown"
     raise InvalidFileFormatError("Unsupported file type. Accepted: .md, .txt, .pdf")
-

@@ -1,0 +1,5 @@
+words=3150
+chunks_created=8
+elapsed_ms=50.04
+target_ms=10000
+pass=True

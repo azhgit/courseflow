@@ -18,6 +18,11 @@ from fastapi.testclient import TestClient
 
 from courseflow.api.main import create_app
 
+pytestmark = pytest.mark.skipif(
+    not os.getenv("GEMINI_API_KEY"),
+    reason="Requires GEMINI_API_KEY for end-to-end embedding/query validation",
+)
+
 
 @pytest.fixture(scope="function")
 def temp_dirs():
@@ -39,19 +44,8 @@ def test_app(temp_dirs, monkeypatch):
 
     # Override settings for testing BEFORE any imports
     monkeypatch.setenv("CHROMA_PERSIST_DIR", chroma_dir)
-    monkeypatch.setenv("DB_PATH", db_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
     monkeypatch.setenv("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", "test-key"))
-
-    # Clear any cached settings module
-    import sys
-    if 'courseflow.config' in sys.modules:
-        del sys.modules['courseflow.config']
-    if 'courseflow.api.dependencies' in sys.modules:
-        del sys.modules['courseflow.api.dependencies']
-    if 'courseflow.api.main' in sys.modules:
-        del sys.modules['courseflow.api.main']
-
-    # Now import fresh
 
     # Initialize database with migration script
     import sqlite3

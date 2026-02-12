@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -81,6 +83,39 @@ class IngestErrorResponse(BaseModel):
 
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10MB
+ALLOWED_EXTENSIONS = {".md", ".markdown", ".txt", ".pdf"}
+ALLOWED_MIME_TYPES = {
+    ".md": {"text/markdown", "text/plain"},
+    ".markdown": {"text/markdown", "text/plain"},
+    ".txt": {"text/plain"},
+    ".pdf": {"application/pdf"},
+}
+
+
+def _sanitize_filename(filename: str) -> str:
+    cleaned = os.path.basename(filename).strip()
+    if not cleaned:
+        raise InvalidFileFormatError("Missing filename")
+    if re.search(r"[\x00-\x1f]", cleaned):
+        raise InvalidFileFormatError("Filename contains invalid characters")
+    return cleaned
+
+
+def _sanitize_subject(subject: str) -> str:
+    normalized = subject.strip().lower()
+    if not re.fullmatch(r"[a-z][a-z0-9\-_]{0,49}", normalized):
+        raise InvalidFileFormatError("Invalid subject format")
+    return normalized
+
+
+def _validate_file_type(filename: str, content_type: str | None) -> None:
+    ext = os.path.splitext(filename.lower())[1]
+    if ext not in ALLOWED_EXTENSIONS:
+        raise InvalidFileFormatError("Unsupported file type. Accepted: .md, .txt, .pdf")
+    if content_type:
+        allowed = ALLOWED_MIME_TYPES.get(ext, set())
+        if content_type not in allowed:
+            raise InvalidFileFormatError(f"Unsupported MIME type: {content_type}")
 
 
 @router.post(
@@ -102,9 +137,10 @@ async def ingest_document(
     request_id = f"req_{uuid4().hex[:12]}"
     try:
         meta = IngestMetadata.model_validate_json(metadata)
+        meta.subject = _sanitize_subject(meta.subject)
 
-        if not file.filename:
-            raise InvalidFileFormatError("Missing filename")
+        filename = _sanitize_filename(file.filename or "")
+        _validate_file_type(filename, file.content_type)
         file_bytes = await file.read()
 
         if len(file_bytes) > MAX_UPLOAD_BYTES:
@@ -116,7 +152,7 @@ async def ingest_document(
 
         result = await ingestion_service.ingest_document(
             file_bytes=file_bytes,
-            filename=file.filename,
+            filename=filename,
             subject=meta.subject,
             request_id=request_id,
         )
@@ -129,7 +165,7 @@ async def ingest_document(
             logger.info(
                 "ingest_skipped request_id=%s filename=%s subject=%s reason=duplicate",
                 request_id,
-                file.filename,
+                filename,
                 meta.subject,
             )
             return IngestSuccessResponse(
@@ -146,7 +182,7 @@ async def ingest_document(
         logger.info(
             "ingest_success request_id=%s filename=%s subject=%s chunks_created=%s ingestion_time_ms=%s",
             request_id,
-            file.filename,
+            filename,
             meta.subject,
             result.chunks_created,
             result.ingestion_time_ms,

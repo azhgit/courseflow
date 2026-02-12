@@ -1,0 +1,12 @@
+[
+  {"path": "docs/biology/photosynthesis.md", "subject": "biology"},
+  {"path": "docs/biology/mitosis.md", "subject": "biology"},
+  {"path": "docs/programming/python-async.md", "subject": "programming"},
+  {"path": "docs/programming/python-oop.md", "subject": "programming"},
+  {"path": "docs/programming/python-functions.md", "subject": "programming"},
+  {"path": "docs/history/wwii.md", "subject": "history"},
+  {"path": "docs/history/cold-war.md", "subject": "history"},
+  {"path": "docs/history/french-revolution.md", "subject": "history"},
+  {"path": "docs/math/derivatives.md", "subject": "mathematics"},
+  {"path": "docs/math/matrices.md", "subject": "mathematics"}
+]
