@@ -67,7 +67,11 @@ class ChromaAdapter(VectorStorePort):
         return None
 
     async def search(
-        self, query_embedding: list[float], k: int = 3, threshold: float = 0.5
+        self,
+        query_embedding: list[float],
+        k: int = 3,
+        threshold: float = 0.5,
+        subject: str | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents using vector similarity.
 
@@ -83,8 +87,14 @@ class ChromaAdapter(VectorStorePort):
             ServiceUnavailableError: If ChromaDB query fails
         """
         try:
-            # Query ChromaDB
-            results = self.collection.query(query_embeddings=[query_embedding], n_results=k)
+            # Query ChromaDB (optionally scoped by subject)
+            query_kwargs: dict[str, object] = {
+                "query_embeddings": [query_embedding],
+                "n_results": k,
+            }
+            if subject:
+                query_kwargs["where"] = {"subject": subject}
+            results = self.collection.query(**query_kwargs)
 
             # Extract results
             ids = results["ids"][0]

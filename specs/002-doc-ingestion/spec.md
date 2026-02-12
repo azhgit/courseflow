@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "As a content administrator, I want to upload educational documents (markdown, PDF, plain text) into the knowledge base so that learners can query against up-to-date, curated content across any subject."
 
+## Clarifications
+
+### Session 2026-02-12
+
+- Q: Duplicate detection hashing strategy → A: Hash normalized content (SHA-256) after stripping whitespace/line endings
+- Q: Chunking boundary strategy when token limits and sentence boundaries conflict → A: Sentence integrity is strict priority; token range (300-500) is a target but can be exceeded to avoid mid-sentence splits
+- Q: Subject tag management strategy → A: Predefined list of subjects maintained in database/config; content admin selects from dropdown; list extensible via admin interface
+- Q: Rate limit scope when Gemini 15 RPM limit reached → A: Global quota management system-wide; queue all ingestion requests fairly; respect 15 RPM limit across all concurrent uploads
+- Q: Observability/logging strategy → A: Structured logging (request_id, document_id, chunks_created, ingestion_time_ms, rate_limit_queue_time); metrics for throughput/error rates; no distributed tracing (v2)
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Basic Document Upload (Priority: P1)
@@ -104,19 +114,19 @@ As a content administrator, I need the system to automatically handle temporary 
 
 - **FR-002**: System MUST validate uploaded files before processing, rejecting invalid formats, empty files, and files exceeding maximum size limits with descriptive error messages
 
-- **FR-003**: System MUST split document content into semantic chunks of 300-500 tokens, preserving sentence integrity (no mid-sentence splits)
+- **FR-003**: System MUST split document content into semantic chunks targeting 300-500 tokens, with strict sentence integrity requirement taking precedence over token limits (chunks may exceed target range to preserve complete sentences; no mid-sentence splits allowed)
 
 - **FR-004**: System MUST generate semantic representations for each chunk to enable similarity-based search and retrieval
 
-- **FR-005**: System MUST store chunks with associated metadata including: source filename, subject tag, chunk index (sequential position in original document), and ingestion timestamp
+- **FR-005**: System MUST store chunks with associated metadata including: source filename, subject tag (selected from predefined list managed in database/config), chunk index (sequential position in original document), and ingestion timestamp
 
-- **FR-006**: System MUST prevent duplicate ingestion by detecting when the exact same document content has already been processed (idempotent operation)
+- **FR-006**: System MUST prevent duplicate ingestion by detecting when the exact same document content has already been processed using SHA-256 hash of normalized content (whitespace/line endings stripped) for idempotent operation
 
 - **FR-007**: System MUST return an ingestion summary response containing: unique document identifier, number of chunks created, total ingestion time in milliseconds, and skip indicator if duplicate
 
 - **FR-008**: System MUST make ingested content immediately queryable via the existing query endpoint without requiring cache refresh or index rebuild delays
 
-- **FR-009**: System MUST implement automatic retry with exponential backoff when semantic representation generation fails due to rate limits or transient errors
+- **FR-009**: System MUST implement global quota management for rate limiting, queuing all ingestion requests fairly when the 15 RPM API limit is reached, ensuring no single upload monopolizes the quota and all queued requests complete as quota resets. Automatic retry with exponential backoff applies for transient errors
 
 - **FR-010**: System MUST roll back any partially created chunks if retry attempts are exhausted, ensuring no corrupted or incomplete data persists in the knowledge base
 
@@ -125,6 +135,28 @@ As a content administrator, I need the system to automatically handle temporary 
 - **FR-012**: System MUST extract plain text from PDF files for chunk creation (advanced layout analysis and formatting preservation are out of scope for v1)
 
 - **FR-013**: System MUST validate and sanitize subject metadata tags before storage, rejecting invalid characters or excessive length
+
+### Non-Functional Requirements
+
+#### Observability & Monitoring
+
+- **Logging**: System MUST produce structured JSON logs for all ingestion operations containing the following fields:
+  - `request_id`: Unique identifier for tracing a single upload request through the system
+  - `document_id`: Identifier for the document being processed
+  - `filename`: Original filename for correlation
+  - `chunks_created`: Count of chunks successfully created
+  - `ingestion_time_ms`: Total time from upload start to completion in milliseconds
+  - `rate_limit_queue_time`: Time spent waiting in rate limit queue (milliseconds)
+  - `error_message`: Detailed error information for failures (if applicable)
+  - `timestamp`: ISO 8601 timestamp for temporal analysis
+
+- **Metrics**: System MUST expose application-level metrics for operational visibility:
+  - **Throughput**: Documents processed per hour (aggregated counter)
+  - **Error Rate**: Percentage of failed ingestions (ratio of failures to total attempts)
+  - **Average Ingestion Latency**: Mean processing time in milliseconds (p50, p95, p99)
+  - **Rate Limit Queue Depth**: Current count of requests waiting for API quota availability
+
+- **Tracing**: Distributed tracing with OpenTelemetry spans is explicitly deferred to v2. V1 relies on structured logging with correlation via `request_id` for troubleshooting
 
 ### Key Entities
 
@@ -169,23 +201,27 @@ As a content administrator, I need the system to automatically handle temporary 
 
 ## Assumptions
 
-1. **Duplicate Detection Method**: Assumes content-based hashing (comparing file content) rather than filename-based detection, allowing renamed files with same content to be recognized as duplicates
+1. **Duplicate Detection Method**: Duplicate detection uses SHA-256 hash of normalized content (whitespace/line endings stripped) to prevent false negatives from formatting differences while maintaining collision resistance. Renamed files with identical normalized content are recognized as duplicates
 
-2. **Chunk Size Rationale**: 300-500 token range is based on typical retrieval window sizes that balance context completeness with precision; exact size determined by sentence boundaries
+2. **Chunk Size Rationale**: Chunking algorithm prioritizes sentence integrity (never splits mid-sentence). Token count targets (300-500 tokens) are soft caps; chunks may exceed this range if needed to preserve complete sentences. Range is based on typical retrieval window sizes that balance context completeness with precision
 
 3. **PDF Text Extraction**: Assumes standard, searchable PDFs with selectable text; scanned PDFs requiring OCR are out of scope for v1
 
-4. **Subject Tags**: Assumes a predefined list of valid subject tags will be provided; free-form tags could lead to inconsistency (e.g., "bio" vs "biology")
+4. **Subject Tags**: Subject tags are managed as a predefined list (e.g., Biology, History, Mathematics, Physics). Content administrators select from this list during upload via dropdown UI. The list is maintained in database/config and can be extended by administrators without code changes. This prevents inconsistency from free-form entry (e.g., "bio" vs "biology")
 
-5. **Retry Strategy Parameters**: Assumes exponential backoff starts at 1 second with 2x multiplier, maximum 5 retry attempts before rollback (configurable in implementation)
+5. **Rate Limiting Strategy**: Rate limiting operates at the system level (global quota of 15 RPM for Gemini API). When limit is reached, all pending ingestion requests are queued fairly. No single upload monopolizes the API. The system completes all queued ingestions eventually as quota resets. This ensures fair distribution across concurrent uploads and prevents starvation
 
-6. **Rate Limit Handling**: Assumes semantic processing service provides rate limit feedback in responses, enabling smart throttling
+6. **Retry Strategy Parameters**: Assumes exponential backoff starts at 1 second with 2x multiplier, maximum 5 retry attempts before rollback (configurable in implementation)
 
-7. **Concurrent Upload Limit**: Assumes system can handle up to 10 concurrent uploads without degradation; higher loads may require queueing
+7. **Rate Limit Handling**: Assumes semantic processing service provides rate limit feedback in responses, enabling smart throttling
 
-8. **File Size Limits**: Assumes maximum file size of 10MB per upload to prevent resource exhaustion; larger documents should be split by administrator
+8. **Concurrent Upload Limit**: Assumes system can handle up to 10 concurrent uploads without degradation; higher loads may require queueing
 
-9. **Metadata Constraints**: Assumes subject tags are limited to 50 characters, filenames limited to 255 characters (standard filesystem limits)
+9. **File Size Limits**: Assumes maximum file size of 10MB per upload to prevent resource exhaustion; larger documents should be split by administrator
+
+10. **Metadata Constraints**: Assumes subject tags are limited to 50 characters, filenames limited to 255 characters (standard filesystem limits)
+
+11. **Observability Strategy**: Assumes observability is achieved through structured logging with request/document correlation IDs and application-level metrics (throughput, error rates, latency percentiles, queue depth). Distributed tracing is deferred to v2. Logs use JSON format for machine parsing
 
 ## Out of Scope
 

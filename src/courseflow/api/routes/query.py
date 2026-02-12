@@ -27,6 +27,10 @@ class QueryRequest(BaseModel):
     """Request schema for query endpoint."""
 
     query: str = Field(..., description="User's question")
+    subject: str | None = Field(
+        default=None,
+        description="Optional subject filter (e.g., biology, history)",
+    )
 
 
 class SourceInfo(BaseModel):
@@ -111,8 +115,8 @@ async def query_endpoint(
 
         logger.info(f"Received query: {query.id} - '{query.text[:50]}...'")
 
-        # Execute RAG pipeline
-        answer = await rag_service.answer_query(query)
+        # Execute RAG pipeline with optional subject filtering.
+        answer = await rag_service.answer_query(query, subject=request.subject)
 
         # Format sources
         sources = [

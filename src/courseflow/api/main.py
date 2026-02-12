@@ -5,6 +5,7 @@ CORS, and lifespan context management for database and ChromaDB initialization.
 """
 
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -39,6 +40,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # NOTE: Resources are initialized per-request via dependencies
     # This keeps the lifespan simple and allows for easy testing
+    try:
+        import nltk
+
+        nltk_data_dir = os.getenv("NLTK_DATA")
+        if nltk_data_dir:
+            nltk.data.path.append(nltk_data_dir)
+        nltk.download("punkt", quiet=True)
+        nltk.download("punkt_tab", quiet=True)
+        logger.info("NLTK tokenizer data verified")
+    except Exception as e:
+        logger.warning(f"Failed to initialize NLTK data: {e}")
 
     yield
 
@@ -89,11 +101,14 @@ def create_app() -> FastAPI:
     )
 
     # Register API routes
-    from courseflow.api.routes import health, query
+    from courseflow.api.routes import documents, health, ingest, query, subjects
 
     app.include_router(health.router, prefix=settings.api_v1_prefix, tags=["health"])
 
     app.include_router(query.router, tags=["query"])
+    app.include_router(ingest.router, tags=["ingestion"])
+    app.include_router(documents.router, tags=["documents"])
+    app.include_router(subjects.router, tags=["subjects"])
 
     return app
 

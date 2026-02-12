@@ -72,6 +72,29 @@ curl -X POST "http://localhost:8000/api/v1/query" \
   -d '{"query": "What is photosynthesis?"}'
 ```
 
+### Ingest a Document
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/ingest" \
+  -F "file=@docs/biology/photosynthesis.md" \
+  -F 'metadata={"subject":"biology"}'
+```
+
+**Supported formats**: `.md`, `.markdown`, `.txt`, `.pdf`  
+**Validation**: max file size 10MB, extension + MIME type checks, sanitized filename/subject.
+
+### List Ingested Documents
+
+```bash
+curl "http://localhost:8000/api/v1/documents?subject=biology&limit=20"
+```
+
+### List Available Subjects
+
+```bash
+curl "http://localhost:8000/api/v1/subjects"
+```
+
 **Response:**
 ```json
 {

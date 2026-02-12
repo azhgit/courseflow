@@ -1,0 +1,54 @@
+The Pythagorean Theorem
+
+The Pythagorean theorem is one of the most famous theorems in mathematics. It relates to right triangles and the relationship between their sides.
+
+Statement of the Theorem
+
+In a right triangle, the square of the length of the hypotenuse (the side opposite the right angle) is equal to the sum of the squares of the lengths of the other two sides.
+
+Mathematically, if a and b are the lengths of the legs and c is the length of the hypotenuse, then:
+
+a² + b² = c²
+
+Historical Background
+
+The theorem is named after the ancient Greek mathematician Pythagoras, who lived around 570-495 BCE. However, evidence suggests that Babylonian mathematicians understood this relationship at least 1000 years before Pythagoras.
+
+Proof by Rearrangement
+
+One elegant proof uses geometric rearrangement. Consider a square with side length (a + b). Inside this square, we can arrange four identical right triangles with legs a and b, and hypotenuse c.
+
+The area of the large square is (a + b)². The four triangles together have area 4 × (½ab) = 2ab. The remaining area in the center forms a square with side length c, so its area is c².
+
+Therefore: (a + b)² = 2ab + c²
+Expanding: a² + 2ab + b² = 2ab + c²
+Simplifying: a² + b² = c²
+
+Applications
+
+The Pythagorean theorem has countless applications in mathematics, physics, engineering, and computer science:
+
+1. Distance Calculations: Finding the distance between two points in a coordinate system
+2. Navigation: Calculating direct routes and distances
+3. Architecture: Ensuring structures are square and true
+4. Computer Graphics: Rendering 3D objects and calculating transformations
+5. Physics: Analyzing vectors and forces
+
+Pythagorean Triples
+
+A Pythagorean triple consists of three positive integers a, b, and c that satisfy the equation a² + b² = c². Common examples include:
+
+- (3, 4, 5): 9 + 16 = 25
+- (5, 12, 13): 25 + 144 = 169
+- (8, 15, 17): 64 + 225 = 289
+- (7, 24, 25): 49 + 576 = 625
+
+These triples were used by ancient builders to create right angles without modern measuring tools. They would use ropes with knots at these intervals to ensure corners were exactly 90 degrees.
+
+Extensions and Generalizations
+
+The theorem has been extended in various ways. Fermat's Last Theorem, proved by Andrew Wiles in 1995, states that no three positive integers a, b, and c can satisfy the equation aⁿ + bⁿ = cⁿ for any integer value of n greater than 2.
+
+In three dimensions, the distance formula extends the Pythagorean theorem: the distance d between two points is given by d² = x² + y² + z², where x, y, and z are the differences in coordinates.
+
+The theorem is fundamental to Euclidean geometry and remains one of the most important and widely used mathematical relationships.

@@ -54,7 +54,7 @@ class RAGService:
 
         logger.info(f"Initialized RAG service with threshold={similarity_threshold}, k={top_k}")
 
-    async def answer_query(self, query: Query) -> Answer:
+    async def answer_query(self, query: Query, subject: str | None = None) -> Answer:
         """Execute RAG pipeline to answer user query.
 
         Pipeline stages:
@@ -68,6 +68,7 @@ class RAGService:
 
         Args:
             query: User's question (validated Query model)
+            subject: Optional subject filter for retrieval
 
         Returns:
             Answer with generated text, sources, and metadata
@@ -92,6 +93,7 @@ class RAGService:
         search_results = await self.vector_store.search(
             query_embedding=query_embedding,
             k=self.top_k,
+            subject=subject,
         )
         search_time_ms = int((time.time() - search_start) * 1000)
         logger.debug(
