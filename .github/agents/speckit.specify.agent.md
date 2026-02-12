@@ -10,6 +10,18 @@ handoffs:
     send: true
 ---
 
+## Available Tools & Skills
+
+### MCP Servers
+- **filesystem**: All file read/write operations — ALWAYS use instead of native file tools
+- **memory**: Read constitution and clarify context; write spec summary for downstream agents
+
+### Skills
+- **using-superpowers**: MUST invoke at agent startup
+- **brainstorming**: MUST invoke before Step 4 — explore feature intent and edge cases before extracting requirements
+
+---
+
 ## User Input
 
 ```text
@@ -21,6 +33,17 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Outline
 
 The text the user typed after `/speckit.specify` in the triggering message **is** the feature description. Assume you always have it available in this conversation even if `$ARGUMENTS` appears literally below. Do not ask the user to repeat it unless they provided an empty command.
+
+### Startup Sequence (run once before Step 1)
+
+0. **Initialize**:
+   - Invoke `using-superpowers` skill to establish available tool context
+   - Query `memory` MCP for prior session context:
+     - Key `constitution:version` → load MUST principles and key constraints to enforce throughout spec writing (ensure spec doesn't violate non-negotiables)
+     - Key `clarify:results` → if exists, load resolved decisions to use as informed defaults instead of marking as [NEEDS CLARIFICATION]
+   - Display a brief note of loaded context if found
+
+---
 
 Given that feature description, do this:
 
@@ -66,22 +89,33 @@ Given that feature description, do this:
    - You must only ever run this script once per feature
    - The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for
    - The JSON output will contain BRANCH_NAME and SPEC_FILE paths
-   - For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot")
+   - For single quotes in args like "I'm Groot", use escape syntax: e.g `'I'\''m Groot'` (or double-quote if possible: `"I'm Groot"`)
 
-3. Load `.specify/templates/spec-template.md` to understand required sections.
+3. Use `filesystem` MCP to load `.specify/templates/spec-template.md` to understand required sections.
 
-4. Follow this execution flow:
+4. **Before extracting requirements — invoke `brainstorming` skill**:
+   - Use brainstorming to explore:
+     - Who are the actors and what do they actually need?
+     - What are the non-obvious edge cases for this feature?
+     - What decisions, if wrong, would cause the most rework?
+     - Are there any constitution MUST principles (loaded in Step 0) that constrain this feature's scope?
+   - Use brainstorming output to inform requirement extraction and reduce [NEEDS CLARIFICATION] markers
+   - Only proceed to execution flow after brainstorming is complete
+
+   Follow this execution flow:
 
     1. Parse user description from Input
        If empty: ERROR "No feature description provided"
     2. Extract key concepts from description
        Identify: actors, actions, data, constraints
+       Cross-reference with `clarify:results` from memory — use resolved decisions as defaults
     3. For unclear aspects:
        - Make informed guesses based on context and industry standards
        - Only mark with [NEEDS CLARIFICATION: specific question] if:
          - The choice significantly impacts feature scope or user experience
          - Multiple reasonable interpretations exist with different implications
          - No reasonable default exists
+         - The question was NOT already resolved in `clarify:results`
        - **LIMIT: Maximum 3 [NEEDS CLARIFICATION] markers total**
        - Prioritize clarifications by impact: scope > security/privacy > user experience > technical details
     4. Fill User Scenarios & Testing section
@@ -89,6 +123,7 @@ Given that feature description, do this:
     5. Generate Functional Requirements
        Each requirement must be testable
        Use reasonable defaults for unspecified details (document assumptions in Assumptions section)
+       Ensure no requirement conflicts with constitution MUST principles from memory
     6. Define Success Criteria
        Create measurable, technology-agnostic outcomes
        Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion)
@@ -96,11 +131,11 @@ Given that feature description, do this:
     7. Identify Key Entities (if data involved)
     8. Return: SUCCESS (spec ready for planning)
 
-5. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
+5. Use `filesystem` MCP to write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
 
 6. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
 
-   a. **Create Spec Quality Checklist**: Generate a checklist file at `FEATURE_DIR/checklists/requirements.md` using the checklist template structure with these validation items:
+   a. **Create Spec Quality Checklist**: Use `filesystem` MCP to write checklist file at `FEATURE_DIR/checklists/requirements.md`:
 
       ```markdown
       # Specification Quality Checklist: [FEATURE NAME]
@@ -134,6 +169,11 @@ Given that feature description, do this:
       - [ ] Feature meets measurable outcomes defined in Success Criteria
       - [ ] No implementation details leak into specification
       
+      ## Constitution Compliance
+      
+      - [ ] No functional requirement violates a constitution MUST principle
+      - [ ] Success criteria align with constitution quality gates
+      
       ## Notes
       
       - Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`
@@ -145,11 +185,11 @@ Given that feature description, do this:
 
    c. **Handle Validation Results**:
 
-      - **If all items pass**: Mark checklist complete and proceed to step 6
+      - **If all items pass**: Mark checklist complete and proceed to step 7
 
       - **If items fail (excluding [NEEDS CLARIFICATION])**:
         1. List the failing items and specific issues
-        2. Update the spec to address each issue
+        2. Update the spec to address each issue using `filesystem` MCP
         3. Re-run validation until all items pass (max 3 iterations)
         4. If still failing after 3 iterations, document remaining issues in checklist notes and warn user
 
@@ -185,18 +225,33 @@ Given that feature description, do this:
         5. Number questions sequentially (Q1, Q2, Q3 - max 3 total)
         6. Present all questions together before waiting for responses
         7. Wait for user to respond with their choices for all questions (e.g., "Q1: A, Q2: Custom - [details], Q3: B")
-        8. Update the spec by replacing each [NEEDS CLARIFICATION] marker with the user's selected or provided answer
+        8. Use `filesystem` MCP to update the spec by replacing each [NEEDS CLARIFICATION] marker with the user's selected or provided answer
         9. Re-run validation after all clarifications are resolved
 
-   d. **Update Checklist**: After each validation iteration, update the checklist file with current pass/fail status
+   d. Use `filesystem` MCP to update checklist file with current pass/fail status after each validation iteration
 
-7. Report completion with branch name, spec file path, checklist results, and readiness for the next phase (`/speckit.clarify` or `/speckit.plan`).
+7. **Persist spec summary to `memory` MCP** (for downstream agents):
+   Write to key `specify:results` with the following structure:
+   ```json
+   {
+     "session_date": "YYYY-MM-DD",
+     "branch": "<BRANCH_NAME>",
+     "spec_file": "<SPEC_FILE>",
+     "feature_name": "<short name>",
+     "actors": ["<actor>", ...],
+     "key_requirements": ["<requirement slug>", ...],
+     "clarifications_embedded": ["<question resolved inline>", ...],
+     "constitution_compliance": "pass|warn",
+     "readiness": "ready-for-clarify|ready-for-plan|needs-review"
+   }
+   ```
+   This allows `speckit.clarify` and `speckit.plan` to skip re-reading the full spec for basic context.
+
+8. Report completion with branch name, spec file path, checklist results, and readiness for the next phase (`/speckit.clarify` or `/speckit.plan`).
 
 **NOTE:** The script creates and checks out the new branch and initializes the spec file before writing.
 
 ## General Guidelines
-
-## Quick Guidelines
 
 - Focus on **WHAT** users need and **WHY**.
 - Avoid HOW to implement (no tech stack, APIs, code structure).
@@ -219,6 +274,7 @@ When creating this spec from a user prompt:
    - Significantly impact feature scope or user experience
    - Have multiple reasonable interpretations with different implications
    - Lack any reasonable default
+   - Were NOT already resolved in `clarify:results` memory
 4. **Prioritize clarifications**: scope > security/privacy > user experience > technical details
 5. **Think like a tester**: Every vague requirement should fail the "testable and unambiguous" checklist item
 6. **Common areas needing clarification** (only if no reasonable default exists):
