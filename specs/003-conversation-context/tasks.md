@@ -148,28 +148,28 @@ Implement the core feature: accept optional conversation_id in queries, create n
 
 #### Repository Implementation (SQLite Adapter)
 
-- [ ] T029 [US1] Create SQLiteConversationRepository class in `src/courseflow/infrastructure/repositories/conversation_repo.py`
-- [ ] T030 [US1] Implement __init__ to accept aiosqlite connection pool
-- [ ] T031 [US1] Implement create_conversation() → Conversation with generated UUID4
-- [ ] T032 [US1] Implement find_conversation(conversation_id: UUID) → Optional[Conversation]
-- [ ] T033 [US1] Implement get_turns(conversation_id: UUID, limit: int = 5) → TurnHistory
-- [ ] T034 [US1] Implement add_turn() to persist user + assistant turns atomically
-- [ ] T035 [US1] Add transaction handling: rollback on failure, commit on success
-- [ ] T036 [US1] Handle ConversationNotFoundError when conversation_id is invalid
+- [x] T029 [US1] Create SQLiteConversationRepository class in `src/courseflow/infrastructure/repositories/conversation_repo.py`
+- [x] T030 [US1] Implement __init__ to accept aiosqlite connection pool
+- [x] T031 [US1] Implement create_conversation() → Conversation with generated UUID4
+- [x] T032 [US1] Implement find_conversation(conversation_id: UUID) → Optional[Conversation]
+- [x] T033 [US1] Implement get_turns(conversation_id: UUID, limit: int = 5) → TurnHistory
+- [x] T034 [US1] Implement add_turn() to persist user + assistant turns atomically
+- [x] T035 [US1] Add transaction handling: rollback on failure, commit on success
+- [x] T036 [US1] Handle ConversationNotFoundError when conversation_id is invalid
 
 #### API Schema & Route Updates
 
-- [ ] T037 [US1] Update QueryRequest schema in `src/courseflow/api/schemas/query.py` to accept conversation_id: Optional[UUID] = None
-- [ ] T038 [US1] Update QueryResponse schema to include conversation_id: UUID
-- [ ] T039 [US1] Update error responses to handle ConversationNotFoundError (404 with message)
-- [ ] T040 [US1] Create new endpoint response model with conversation_id field
+- [x] T037 [US1] Update QueryRequest schema in `src/courseflow/api/schemas/query.py` to accept conversation_id: Optional[UUID] = None
+- [x] T038 [US1] Update QueryResponse schema to include conversation_id: UUID
+- [x] T039 [US1] Update error responses to handle ConversationNotFoundError (404 with message)
+- [x] T040 [US1] Create new endpoint response model with conversation_id field
 
 #### RAG Service Enhancement
 
-- [ ] T041 [US1] Modify RAGService.query() signature to accept conversation_id: Optional[UUID] = None
-- [ ] T042 [US1] Add logic to create new conversation if conversation_id is None
-- [ ] T043 [US1] Add logic to validate and retrieve existing conversation if conversation_id provided
-- [ ] T044 [US1] Format conversation history as context in LLM prompt (last 5 turns)
+- [x] T041 [US1] Modify RAGService.query() signature to accept conversation_id: Optional[UUID] = None
+- [x] T042 [US1] Add logic to create new conversation if conversation_id is None
+- [x] T043 [US1] Add logic to validate and retrieve existing conversation if conversation_id provided
+- [x] T044 [US1] Format conversation history as context in LLM prompt (last 5 turns)
 - [ ] T045 [US1] Include history in system prompt: "Previous context: {formatted_history}"
 - [ ] T046 [US1] Add token counting for history and validate total prompt tokens < 8000
 - [ ] T047 [US1] Implement atomic turn persistence: save user + assistant turns after successful LLM response

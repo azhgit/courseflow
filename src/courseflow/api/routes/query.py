@@ -27,6 +27,10 @@ class QueryRequest(BaseModel):
     """Request schema for query endpoint."""
 
     query: str = Field(..., description="User's question")
+    conversation_id: str | None = Field(
+        default=None,
+        description="Optional conversation ID for multi-turn context (UUID4 format)",
+    )
     subject: str | None = Field(
         default=None,
         description="Optional subject filter (e.g., biology, history)",

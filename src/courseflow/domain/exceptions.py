@@ -197,7 +197,7 @@ class QueueFullError(QuotaExceededError):
 # =============================================================================
 
 
-class ConversationNotFoundError(DomainError):
+class ConversationNotFoundError(CourseFlowError):
     """Raised when a conversation with given ID does not exist.
 
     Indicates the conversation_id provided to query endpoint is invalid
@@ -213,7 +213,7 @@ class ConversationNotFoundError(DomainError):
         )
 
 
-class InvalidConversationIDError(DomainError):
+class InvalidConversationIDError(CourseFlowError):
     """Raised when conversation_id format is invalid.
 
     Indicates the conversation_id does not match UUID4 format.
@@ -227,7 +227,7 @@ class InvalidConversationIDError(DomainError):
         )
 
 
-class ConversationHistoryTruncatedError(DomainError):
+class ConversationHistoryTruncatedError(CourseFlowError):
     """Informational exception indicating history was trimmed for token budget.
 
     This is not a fatal error - it's raised to allow callers to log or
@@ -258,7 +258,7 @@ class ConversationHistoryTruncatedError(DomainError):
         )
 
 
-class ConversationPersistenceError(DomainError):
+class ConversationPersistenceError(CourseFlowError):
     """Raised when conversation cannot be saved to storage.
 
     Indicates database/storage error when persisting conversation
