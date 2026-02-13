@@ -65,13 +65,13 @@ Prepare the database schema for storing conversations and turns. This is the fou
 
 ### Tasks
 
-- [ ] T001 Create database migration file at `scripts/migrations/003_add_conversation_tables.sql`
-- [ ] T002 Define conversations table schema (id TEXT PRIMARY KEY, created_at TIMESTAMP)
-- [ ] T003 Define conversation_turns table schema with all fields and CHECK constraints
-- [ ] T004 Add foreign key from conversation_turns to conversations (ON DELETE CASCADE)
-- [ ] T005 Create composite index on (conversation_id, created_at DESC) for efficient history retrieval
-- [ ] T006 Test migration execution: verify tables created correctly
-- [ ] T007 Document migration execution command in README
+- [x] T001 Create database migration file at `scripts/migrations/003_add_conversation_tables.sql`
+- [x] T002 Define conversations table schema (id TEXT PRIMARY KEY, created_at TIMESTAMP)
+- [x] T003 Define conversation_turns table schema with all fields and CHECK constraints
+- [x] T004 Add foreign key from conversation_turns to conversations (ON DELETE CASCADE)
+- [x] T005 Create composite index on (conversation_id, created_at DESC) for efficient history retrieval
+- [x] T006 Test migration execution: verify tables created correctly
+- [x] T007 Document migration execution command in README
 
 ---
 
@@ -91,36 +91,36 @@ Implement domain entities, repository port, and supporting infrastructure. This 
 
 #### Domain Models (Parallelizable)
 
-- [ ] T008 [P] Create Conversation domain entity in `src/courseflow/domain/models.py`
-- [ ] T009 [P] Create ConversationTurn domain entity in `src/courseflow/domain/models.py`
-- [ ] T010 [P] Add validation to Conversation.__post_init__ (UUID format, no future timestamps)
-- [ ] T011 [P] Add validation to ConversationTurn.__post_init__ (role check, non-empty content, non-negative token_count)
-- [ ] T012 [P] Create ConversationNotFoundError exception in `src/courseflow/domain/exceptions.py`
-- [ ] T013 [P] Create InvalidConversationIDError exception in `src/courseflow/domain/exceptions.py`
+- [x] T008 [P] Create Conversation domain entity in `src/courseflow/domain/models.py`
+- [x] T009 [P] Create ConversationTurn domain entity in `src/courseflow/domain/models.py`
+- [x] T010 [P] Add validation to Conversation.__post_init__ (UUID format, no future timestamps)
+- [x] T011 [P] Add validation to ConversationTurn.__post_init__ (role check, non-empty content, non-negative token_count)
+- [x] T012 [P] Create ConversationNotFoundError exception in `src/courseflow/domain/exceptions.py`
+- [x] T013 [P] Create InvalidConversationIDError exception in `src/courseflow/domain/exceptions.py`
 
 #### Repository Port
 
-- [ ] T014 Create ConversationRepositoryPort abstract base class in `src/courseflow/domain/ports.py`
-- [ ] T015 Define create_conversation() method signature
-- [ ] T016 Define find_conversation(conversation_id: UUID) method signature
-- [ ] T017 Define get_turns(conversation_id: UUID, limit: int = 5) method signature (returns TurnHistory)
-- [ ] T018 Create TurnHistory value object with token_count property and validation
+- [x] T014 Create ConversationRepositoryPort abstract base class in `src/courseflow/domain/ports.py`
+- [x] T015 Define create_conversation() method signature
+- [x] T016 Define find_conversation(conversation_id: UUID) method signature
+- [x] T017 Define get_turns(conversation_id: UUID, limit: int = 5) method signature (returns TurnHistory)
+- [x] T018 Create TurnHistory value object with token_count property and validation
 
 #### Token Counting Utility
 
-- [ ] T019 [P] Create token counter wrapper in `src/courseflow/infrastructure/token_counting/counter.py`
-- [ ] T020 [P] Implement calculate_token_count(content: str) using tiktoken.get_encoding("cl100k_base")
-- [ ] T021 [P] Add token counting to domain: token_count = calculate_token_count(turn.content)
+- [x] T019 [P] Create token counter wrapper in `src/courseflow/infrastructure/token_counting/counter.py`
+- [x] T020 [P] Implement calculate_token_count(content: str) using tiktoken.get_encoding("cl100k_base")
+- [x] T021 [P] Add token counting to domain: token_count = calculate_token_count(turn.content)
 
 #### Unit Tests (Parallelizable)
 
-- [ ] T022 [P] Create test_conversation_entity.py in `tests/unit/domain/`
-- [ ] T023 [P] Test Conversation validation (UUID, future timestamp check)
-- [ ] T024 [P] Create test_conversation_turn_entity.py in `tests/unit/domain/`
-- [ ] T025 [P] Test ConversationTurn validation (role, content, token_count)
-- [ ] T026 [P] Create test_token_counter.py in `tests/unit/infrastructure/`
-- [ ] T027 [P] Test token count calculation against known values
-- [ ] T028 [P] Verify coverage ≥80% for Phase 2 code
+- [x] T022 [P] Create test_conversation_entity.py in `tests/unit/domain/`
+- [x] T023 [P] Test Conversation validation (UUID, future timestamp check)
+- [x] T024 [P] Create test_conversation_turn_entity.py in `tests/unit/domain/`
+- [x] T025 [P] Test ConversationTurn validation (role, content, token_count)
+- [x] T026 [P] Create test_token_counter.py in `tests/unit/infrastructure/`
+- [x] T027 [P] Test token count calculation against known values
+- [x] T028 [P] Verify coverage ≥80% for Phase 2 code
 
 ---
 

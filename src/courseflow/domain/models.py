@@ -369,3 +369,160 @@ class IngestionResult(BaseModel):
             },
             "error": None,
         }
+
+
+# =============================================================================
+# Multi-turn Conversation Domain Models
+# =============================================================================
+
+
+class Conversation(BaseModel):
+    """Aggregate root for multi-turn conversation sessions.
+
+    Represents a conversation thread where a learner can ask multiple
+    follow-up questions while the system maintains context.
+
+    Attributes:
+        id: Unique UUID4 identifier for the conversation
+        created_at: Timestamp when conversation was created (UTC)
+    """
+
+    id: UUID
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, v: datetime) -> datetime:
+        """Ensure created_at is not in the future."""
+        now = datetime.now(UTC)
+        if v > now:
+            raise ValueError("created_at cannot be in the future")
+        return v
+
+
+class ConversationTurn(BaseModel):
+    """Entity representing a single message in a conversation.
+
+    Turns are always created in pairs (user query + assistant response)
+    and are immutable after creation.
+
+    Attributes:
+        id: Auto-increment sequence number within database
+        conversation_id: UUID of parent conversation
+        role: 'user' for learner queries, 'assistant' for AI responses
+        content: Full message text (query or answer)
+        token_count: Pre-calculated token count (using tiktoken)
+        created_at: Timestamp when turn was created (UTC)
+    """
+
+    id: int | None = None  # None before persistence, auto-assigned after
+    conversation_id: UUID
+    role: str = Field(..., pattern=r"^(user|assistant)$")
+    content: str = Field(..., min_length=1)
+    token_count: int = Field(ge=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("content")
+    @classmethod
+    def validate_content_not_empty(cls, v: str) -> str:
+        """Ensure content is not empty or whitespace-only."""
+        if not v.strip():
+            raise ValueError("Content cannot be empty or whitespace-only")
+        return v.strip()
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, v: datetime) -> datetime:
+        """Ensure created_at is not in the future."""
+        now = datetime.now(UTC)
+        if v > now:
+            raise ValueError("created_at cannot be in the future")
+        return v
+
+
+class TurnHistory(BaseModel):
+    """Value object representing trimmed conversation history.
+
+    Encapsulates token budget enforcement and turn ordering logic.
+    Immutable - created once and never modified.
+
+    Attributes:
+        turns: Tuple of turns (immutable), ordered by created_at DESC
+        total_tokens: Sum of token_count across all turns
+        is_trimmed: True if original history exceeded budget
+    """
+
+    turns: tuple[ConversationTurn, ...] = Field(default_factory=tuple)
+    total_tokens: int = Field(default=0, ge=0)
+    is_trimmed: bool = False
+
+    model_config = {"frozen": True}  # Immutable value object
+
+    @classmethod
+    def from_turns(
+        cls,
+        turns: list[ConversationTurn],
+        max_tokens: int = 2000,
+        max_count: int = 5,
+    ) -> "TurnHistory":
+        """Create TurnHistory with token budget enforcement.
+
+        Trimming algorithm (oldest-first):
+        1. Calculate total tokens of all turns
+        2. If under budget and count ≤ max_count: return all turns
+        3. Otherwise: remove oldest turns until budget met
+        4. Hard limit: keep at most max_count turns
+
+        Args:
+            turns: List of turns to filter (assumed ordered by created_at ASC)
+            max_tokens: Token budget limit (default 2000)
+            max_count: Hard limit on turn count (default 5)
+
+        Returns:
+            TurnHistory with trimmed turns and budget enforcement
+        """
+        if not turns:
+            return cls(turns=tuple(), total_tokens=0, is_trimmed=False)
+
+        # Create mutable copy for trimming
+        mutable_turns = turns.copy()
+        original_count = len(mutable_turns)
+
+        # Calculate initial total
+        total = sum(t.token_count for t in mutable_turns)
+
+        # Trim oldest turns if over budget
+        while total > max_tokens and len(mutable_turns) > 1:
+            removed = mutable_turns.pop(0)  # Remove oldest (first in ASC order)
+            total -= removed.token_count
+
+        # Apply hard limit on turn count
+        if len(mutable_turns) > max_count:
+            mutable_turns = mutable_turns[-max_count:]  # Keep last N
+            total = sum(t.token_count for t in mutable_turns)
+
+        is_trimmed = len(mutable_turns) < original_count
+
+        return cls(
+            turns=tuple(mutable_turns),
+            total_tokens=total,
+            is_trimmed=is_trimmed,
+        )
+
+    def to_llm_context(self) -> str:
+        """Format turns as LLM prompt context.
+
+        Returns:
+            Formatted string with turns separated by double newlines,
+            prefixed with "User:" or "Assistant:" labels.
+            Empty string if no turns.
+        """
+        if not self.turns:
+            return ""
+
+        context_parts = []
+        for turn in self.turns:
+            prefix = "User" if turn.role == "user" else "Assistant"
+            context_parts.append(f"{prefix}: {turn.content}")
+
+        return "\n\n".join(context_parts)
