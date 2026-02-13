@@ -26,9 +26,11 @@ Enable learners to ask follow-up questions within the same conversation so the A
 
 ### Session 2026-02-13
 
-- Q: 新對話建立語意（省略 conversation_id vs null）應如何定義？ → A: 省略欄位或傳 null 都建立新對話並回傳 conversation_id。
-- Q: conversation_id 的對外格式應為何？ → A: 對外與儲存皆使用純 UUID4 字串，不使用 `conv_` 前綴。
-- Q: LLM/檢索失敗時對話 turn 應如何落庫？ → A: 僅在成功產生 assistant 回答後，原子寫入 user+assistant 兩個 turn；失敗時不寫入任何 turn。
+- Q: How should the semantics of establishing a new conversation (omitting conversation_id vs. null) be defined? → A: Omitting fields or passing null both establish a new conversation and return the conversation_id.
+
+- Q: What should the external format of conversation_id be? → A: Use a pure UUID4 string for both external and storage purposes, without using the `conv_` prefix.
+
+- Q: How should the conversation turn be written to the database when LLM/retrieval fails? → A: Only atomically write the user+assistant turn after a successful assistant response; do not write any turn on failure.
 
 ---
 
