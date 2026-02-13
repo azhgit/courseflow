@@ -21,63 +21,55 @@ from courseflow.infrastructure.repositories.conversation_repo import (
 )
 
 
+async def create_test_db(db_path: str) -> None:
+    """Helper to create and initialize test database with schema."""
+    db = await aiosqlite.connect(db_path)
+    await db.execute("""
+        CREATE TABLE conversations (
+            id TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL
+        )
+    """)
+    await db.execute("""
+        CREATE TABLE conversation_turns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id TEXT NOT NULL,
+            role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+            content TEXT NOT NULL,
+            token_count INTEGER NOT NULL CHECK (token_count >= 0),
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+        )
+    """)
+    await db.execute("""
+        CREATE INDEX idx_turns_conversation_time
+        ON conversation_turns (conversation_id, created_at DESC)
+    """)
+    await db.commit()
+    await db.close()
+
+
 @pytest.fixture
-async def repo() -> SQLiteConversationRepository:
-    """Create test repository with temporary SQLite database."""
-    # Create temporary file for test database
-    fd, db_path = tempfile.mkstemp(suffix=".db", prefix="courseflow_test_")
+async def db_path() -> str:
+    """Create temporary database file for test."""
+    fd, path = tempfile.mkstemp(suffix=".db", prefix="courseflow_test_")
     os.close(fd)
-    os.remove(db_path)  # Remove it so sqlite can create it fresh
-
-    try:
-        # Initialize database with schema
-        db = await aiosqlite.connect(db_path)
-
-        # Create conversations table
-        await db.execute("""
-            CREATE TABLE conversations (
-                id TEXT PRIMARY KEY,
-                created_at TEXT NOT NULL
-            )
-        """)
-
-        # Create conversation_turns table
-        await db.execute("""
-            CREATE TABLE conversation_turns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id TEXT NOT NULL,
-                role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-                content TEXT NOT NULL,
-                token_count INTEGER NOT NULL CHECK (token_count >= 0),
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-            )
-        """)
-
-        # Create index on conversation_id and created_at
-        await db.execute("""
-            CREATE INDEX idx_turns_conversation_time
-            ON conversation_turns (conversation_id, created_at DESC)
-        """)
-        await db.commit()
-        await db.close()
-
-        yield SQLiteConversationRepository(db_path=db_path)
-
-    finally:
-        # Cleanup
-        if os.path.exists(db_path):
-            os.remove(db_path)
+    os.remove(path)
+    yield path
+    # Cleanup
+    if os.path.exists(path):
+        os.remove(path)
 
 
 class TestSQLiteConversationRepository:
     """Integration tests for conversation repository."""
 
     @pytest.mark.asyncio
-    async def test_create_and_retrieve_conversation(
-        self, repo: SQLiteConversationRepository
-    ) -> None:
+    async def test_create_and_retrieve_conversation(self, db_path: str) -> None:
         """Test creating and retrieving a conversation."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         # Create
         conv = await repo.create_conversation()
         assert conv.id is not None
@@ -89,8 +81,11 @@ class TestSQLiteConversationRepository:
         assert retrieved.created_at == conv.created_at
 
     @pytest.mark.asyncio
-    async def test_conversation_exists(self, repo: SQLiteConversationRepository) -> None:
+    async def test_conversation_exists(self, db_path: str) -> None:
         """Test checking conversation existence."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         conv = await repo.create_conversation()
 
         assert await repo.conversation_exists(conv.id)
@@ -98,17 +93,23 @@ class TestSQLiteConversationRepository:
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_conversation_raises_error(
-        self, repo: SQLiteConversationRepository
+        self, db_path: str
     ) -> None:
         """Test retrieving nonexistent conversation raises error."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         with pytest.raises(ConversationNotFoundError):
             await repo.get_conversation(uuid4())
 
     @pytest.mark.asyncio
     async def test_add_turn_requires_existing_conversation(
-        self, repo: SQLiteConversationRepository
+        self, db_path: str
     ) -> None:
         """Test adding turn to nonexistent conversation raises error."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         turn = ConversationTurn(
             conversation_id=uuid4(),
             role="user",
@@ -120,8 +121,11 @@ class TestSQLiteConversationRepository:
             await repo.add_turn(turn)
 
     @pytest.mark.asyncio
-    async def test_add_and_count_turns(self, repo: SQLiteConversationRepository) -> None:
+    async def test_add_and_count_turns(self, db_path: str) -> None:
         """Test adding turns and counting them."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         conv = await repo.create_conversation()
 
         # Add first turn
@@ -150,10 +154,11 @@ class TestSQLiteConversationRepository:
         assert count == 2
 
     @pytest.mark.asyncio
-    async def test_get_history_empty_conversation(
-        self, repo: SQLiteConversationRepository
-    ) -> None:
+    async def test_get_history_empty_conversation(self, db_path: str) -> None:
         """Test retrieving history from conversation with no turns."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         conv = await repo.create_conversation()
         history = await repo.get_history(conv.id)
 
@@ -162,10 +167,11 @@ class TestSQLiteConversationRepository:
         assert not history.is_trimmed
 
     @pytest.mark.asyncio
-    async def test_get_history_with_turns(
-        self, repo: SQLiteConversationRepository
-    ) -> None:
+    async def test_get_history_with_turns(self, db_path: str) -> None:
         """Test retrieving history from conversation with turns."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         conv = await repo.create_conversation()
 
         # Add 3 turns
@@ -188,10 +194,11 @@ class TestSQLiteConversationRepository:
         assert not history.is_trimmed
 
     @pytest.mark.asyncio
-    async def test_get_history_respects_max_tokens(
-        self, repo: SQLiteConversationRepository
-    ) -> None:
+    async def test_get_history_respects_max_tokens(self, db_path: str) -> None:
         """Test history trimming when exceeding token budget."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         conv = await repo.create_conversation()
 
         # Add 5 turns of 600 tokens each (3000 total)
@@ -213,10 +220,11 @@ class TestSQLiteConversationRepository:
         assert history.is_trimmed
 
     @pytest.mark.asyncio
-    async def test_get_history_respects_max_count(
-        self, repo: SQLiteConversationRepository
-    ) -> None:
+    async def test_get_history_respects_max_count(self, db_path: str) -> None:
         """Test history trimming when exceeding turn count limit."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         conv = await repo.create_conversation()
 
         # Add 10 turns of 100 tokens each
@@ -238,8 +246,11 @@ class TestSQLiteConversationRepository:
 
     @pytest.mark.asyncio
     async def test_count_turns_nonexistent_conversation_raises_error(
-        self, repo: SQLiteConversationRepository
+        self, db_path: str
     ) -> None:
         """Test counting turns in nonexistent conversation raises error."""
+        await create_test_db(db_path)
+        repo = SQLiteConversationRepository(db_path=db_path)
+
         with pytest.raises(ConversationNotFoundError):
             await repo.count_turns(uuid4())
