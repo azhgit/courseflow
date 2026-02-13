@@ -10,7 +10,16 @@ from typing import TYPE_CHECKING
 from courseflow.domain.models import Answer, Document, Query, SearchResult
 
 if TYPE_CHECKING:
-    from courseflow.domain.models import Chunk, IngestionDocument, Subject
+    from uuid import UUID
+
+    from courseflow.domain.models import (
+        Chunk,
+        Conversation,
+        ConversationTurn,
+        IngestionDocument,
+        Subject,
+        TurnHistory,
+    )
 
 
 class VectorStorePort(ABC):
@@ -279,7 +288,9 @@ class DocumentRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def list_all(self, subject: str | None = None, limit: int = 100) -> list["IngestionDocument"]:
+    async def list_all(
+        self, subject: str | None = None, limit: int = 100
+    ) -> list["IngestionDocument"]:
         """List all documents, optionally filtered by subject.
 
         Args:

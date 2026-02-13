@@ -27,4 +27,3 @@ def test_sentence_chunker_implements_chunker_port_contract():
     )
     assert chunks
     assert all(c.subject == "general" for c in chunks)
-

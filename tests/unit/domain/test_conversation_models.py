@@ -7,9 +7,10 @@ Tests cover:
 - TurnHistory immutability and LLM context formatting
 """
 
-import pytest
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
+
+import pytest
 from pydantic import ValidationError
 
 from courseflow.domain.models import Conversation, ConversationTurn, TurnHistory

@@ -46,7 +46,13 @@ async def ingestion_service(temp_dirs):
 
     # Initialize database with migration
     import sqlite3
-    migration_path = Path(__file__).parent.parent.parent / "scripts" / "migrations" / "002_add_ingestion_tables.sql"
+
+    migration_path = (
+        Path(__file__).parent.parent.parent
+        / "scripts"
+        / "migrations"
+        / "002_add_ingestion_tables.sql"
+    )
     with open(migration_path) as f:
         migration_sql = f.read()
 

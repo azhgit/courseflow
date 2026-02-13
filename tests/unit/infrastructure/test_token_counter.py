@@ -7,8 +7,6 @@ Tests cover:
 - Cache clearing
 """
 
-import pytest
-
 from courseflow.infrastructure.token_counting import TokenCounter
 
 

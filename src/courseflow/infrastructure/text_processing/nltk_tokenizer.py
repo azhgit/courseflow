@@ -13,4 +13,3 @@ class NLTKSentenceTokenizer(SentenceTokenizerPort):
     def tokenize_sentences(self, text: str) -> list[str]:
         # NLTK raises LookupError if punkt data is missing.
         return [s for s in sent_tokenize(text) if s.strip()]
-

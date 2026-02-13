@@ -43,4 +43,3 @@ async def list_documents(
             for d in docs
         ]
     )
-

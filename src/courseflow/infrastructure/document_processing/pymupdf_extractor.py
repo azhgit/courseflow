@@ -35,4 +35,3 @@ class PyMuPDFExtractor(PDFExtractorPort):
                 raise PDFCorruptedError(f"Failed to extract PDF text: {filename}") from e
 
         return await asyncio.to_thread(_extract)
-

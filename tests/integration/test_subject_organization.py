@@ -40,14 +40,19 @@ def temp_dirs():
 
 
 @pytest.fixture
-def ingestion_context(temp_dirs) -> tuple[
+def ingestion_context(
+    temp_dirs,
+) -> tuple[
     IngestionService,
     SQLiteDocumentRepository,
     SQLiteChromaChunkRepository,
 ]:
     chroma_dir, db_path = temp_dirs
     migration_path = (
-        Path(__file__).parent.parent.parent / "scripts" / "migrations" / "002_add_ingestion_tables.sql"
+        Path(__file__).parent.parent.parent
+        / "scripts"
+        / "migrations"
+        / "002_add_ingestion_tables.sql"
     )
     conn = sqlite3.connect(db_path)
     conn.executescript(migration_path.read_text(encoding="utf-8"))
@@ -72,7 +77,9 @@ def ingestion_context(temp_dirs) -> tuple[
 
 @pytest.mark.asyncio
 async def test_subject_tagging_during_ingestion(
-    ingestion_context: tuple[IngestionService, SQLiteDocumentRepository, SQLiteChromaChunkRepository],
+    ingestion_context: tuple[
+        IngestionService, SQLiteDocumentRepository, SQLiteChromaChunkRepository
+    ],
 ):
     """T049: chunks and document should keep the ingestion subject tag."""
     content = (
@@ -132,7 +139,9 @@ def test_subject_filtered_query_calls_rag_with_subject():
     app.dependency_overrides[get_rag_service] = lambda: mock_rag
     client = TestClient(app)
 
-    resp = client.post("/api/v1/query", json={"query": "What is photosynthesis?", "subject": "biology"})
+    resp = client.post(
+        "/api/v1/query", json={"query": "What is photosynthesis?", "subject": "biology"}
+    )
     assert resp.status_code == 200
     mock_rag.answer_query.assert_awaited()
     _, kwargs = mock_rag.answer_query.await_args

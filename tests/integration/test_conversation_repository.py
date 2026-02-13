@@ -7,12 +7,12 @@ Tests cover:
 - Error handling and validation
 """
 
-import pytest
-import tempfile
 import os
+import tempfile
 from uuid import uuid4
 
 import aiosqlite
+import pytest
 
 from courseflow.domain.exceptions import ConversationNotFoundError
 from courseflow.domain.models import ConversationTurn
@@ -92,9 +92,7 @@ class TestSQLiteConversationRepository:
         assert not await repo.conversation_exists(uuid4())
 
     @pytest.mark.asyncio
-    async def test_get_nonexistent_conversation_raises_error(
-        self, db_path: str
-    ) -> None:
+    async def test_get_nonexistent_conversation_raises_error(self, db_path: str) -> None:
         """Test retrieving nonexistent conversation raises error."""
         await create_test_db(db_path)
         repo = SQLiteConversationRepository(db_path=db_path)
@@ -103,9 +101,7 @@ class TestSQLiteConversationRepository:
             await repo.get_conversation(uuid4())
 
     @pytest.mark.asyncio
-    async def test_add_turn_requires_existing_conversation(
-        self, db_path: str
-    ) -> None:
+    async def test_add_turn_requires_existing_conversation(self, db_path: str) -> None:
         """Test adding turn to nonexistent conversation raises error."""
         await create_test_db(db_path)
         repo = SQLiteConversationRepository(db_path=db_path)
@@ -175,11 +171,13 @@ class TestSQLiteConversationRepository:
         conv = await repo.create_conversation()
 
         # Add 3 turns
-        for i, (role, tokens) in enumerate([
-            ("user", 5),
-            ("assistant", 50),
-            ("user", 4),
-        ]):
+        for i, (role, tokens) in enumerate(
+            [
+                ("user", 5),
+                ("assistant", 50),
+                ("user", 4),
+            ]
+        ):
             turn = ConversationTurn(
                 conversation_id=conv.id,
                 role=role,
@@ -245,9 +243,7 @@ class TestSQLiteConversationRepository:
         assert history.is_trimmed
 
     @pytest.mark.asyncio
-    async def test_count_turns_nonexistent_conversation_raises_error(
-        self, db_path: str
-    ) -> None:
+    async def test_count_turns_nonexistent_conversation_raises_error(self, db_path: str) -> None:
         """Test counting turns in nonexistent conversation raises error."""
         await create_test_db(db_path)
         repo = SQLiteConversationRepository(db_path=db_path)

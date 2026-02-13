@@ -482,7 +482,7 @@ class TurnHistory(BaseModel):
             TurnHistory with trimmed turns and budget enforcement
         """
         if not turns:
-            return cls(turns=tuple(), total_tokens=0, is_trimmed=False)
+            return cls(turns=(), total_tokens=0, is_trimmed=False)
 
         # Create mutable copy for trimming
         mutable_turns = turns.copy()

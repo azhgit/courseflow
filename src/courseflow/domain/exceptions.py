@@ -222,8 +222,7 @@ class InvalidConversationIDError(CourseFlowError):
     def __init__(self, conversation_id: str) -> None:
         self.conversation_id = conversation_id
         super().__init__(
-            f"Invalid conversation_id format: '{conversation_id}' "
-            "(must be valid UUID4)"
+            f"Invalid conversation_id format: '{conversation_id}' (must be valid UUID4)"
         )
 
 

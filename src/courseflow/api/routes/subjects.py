@@ -32,9 +32,5 @@ async def list_subjects(
 ) -> SubjectsResponse:
     subjects = await subject_repo.find_all()
     return SubjectsResponse(
-        data=[
-            SubjectItem(id=s.id, name=s.name, display_name=s.display_name)
-            for s in subjects
-        ]
+        data=[SubjectItem(id=s.id, name=s.name, display_name=s.display_name) for s in subjects]
     )
-

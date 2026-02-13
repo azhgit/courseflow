@@ -83,9 +83,10 @@ class SQLiteSubjectRepository(SubjectRepositoryPort):
     async def subject_exists(self, name: str) -> bool:
         try:
             async with aiosqlite.connect(self._db_path) as db:
-                async with db.execute("SELECT 1 FROM subjects WHERE name = ? LIMIT 1", (name,)) as cur:
+                async with db.execute(
+                    "SELECT 1 FROM subjects WHERE name = ? LIMIT 1", (name,)
+                ) as cur:
                     row = await cur.fetchone()
                     return row is not None
         except sqlite3.Error as e:
             raise ServiceUnavailableError(f"Failed to check subject existence: {str(e)}") from e
-

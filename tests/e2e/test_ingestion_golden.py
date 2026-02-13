@@ -51,7 +51,12 @@ def test_app(temp_dirs, monkeypatch):
     import sqlite3
     from pathlib import Path
 
-    migration_path = Path(__file__).parent.parent.parent / "scripts" / "migrations" / "002_add_ingestion_tables.sql"
+    migration_path = (
+        Path(__file__).parent.parent.parent
+        / "scripts"
+        / "migrations"
+        / "002_add_ingestion_tables.sql"
+    )
     with open(migration_path) as f:
         migration_sql = f.read()
 
@@ -93,7 +98,6 @@ class TestMarkdownIngestion:
         """
         markdown_path = sample_files["markdown"]
         assert markdown_path.exists(), f"Markdown fixture not found: {markdown_path}"
-
 
         with open(markdown_path, "rb") as f:
             response = test_app.post(
@@ -219,8 +223,7 @@ class TestPDFIngestion:
         assert len(query_data["results"]) > 0
         # At least one result should mention Newton or laws
         found_relevant = any(
-            "newton" in result["content"].lower()
-            or "law" in result["content"].lower()
+            "newton" in result["content"].lower() or "law" in result["content"].lower()
             for result in query_data["results"]
         )
         assert found_relevant, "Expected to find content about Newton's laws"
@@ -372,8 +375,7 @@ class TestQueryIntegration:
 
         # At least one result should be relevant (mention photosynthesis)
         found_relevant = any(
-            "photosynthesis" in result["content"].lower()
-            for result in data["results"]
+            "photosynthesis" in result["content"].lower() for result in data["results"]
         )
         assert found_relevant, "Expected to find content about photosynthesis"
 
@@ -452,8 +454,5 @@ class TestQueryIntegration:
             assert len(data["results"]) > 0, f"No results for {subject} query"
 
             # At least one result should contain expected keyword
-            found = any(
-                expected_keyword in result["content"].lower()
-                for result in data["results"]
-            )
+            found = any(expected_keyword in result["content"].lower() for result in data["results"])
             assert found, f"Expected to find {expected_keyword} in {subject} results"

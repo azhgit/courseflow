@@ -55,7 +55,7 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
         except (sqlite3.Error, FileNotFoundError, OSError) as e:
             raise ServiceUnavailableError(
                 f"Failed to connect to database at {self.db_path}: {str(e)}"
-            )
+            ) from e
 
     async def create_conversation(self) -> Conversation:
         """Create new conversation session.
@@ -69,7 +69,7 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
         """
         try:
             db = await self._get_connection()
-            async with db:
+            try:
                 conv_id = str(uuid4())
                 created_at = datetime.now(UTC).isoformat()
 
@@ -86,10 +86,10 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
                     id=UUID(conv_id),
                     created_at=datetime.fromisoformat(created_at),
                 )
+            finally:
+                await db.close()
         except sqlite3.Error as e:
-            raise ConversationPersistenceError(
-                f"Failed to create conversation: {str(e)}"
-            )
+            raise ConversationPersistenceError(f"Failed to create conversation: {str(e)}") from e
         except ServiceUnavailableError:
             raise
 
@@ -108,7 +108,7 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
         """
         try:
             db = await self._get_connection()
-            async with db:
+            try:
                 cursor = await db.execute(
                     "SELECT id, created_at FROM conversations WHERE id = ?",
                     (str(conversation_id),),
@@ -123,12 +123,12 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
                     id=UUID(conv_id),
                     created_at=datetime.fromisoformat(created_at_str),
                 )
+            finally:
+                await db.close()
         except ConversationNotFoundError:
             raise
         except sqlite3.Error as e:
-            raise ServiceUnavailableError(
-                f"Failed to retrieve conversation: {str(e)}"
-            )
+            raise ServiceUnavailableError(f"Failed to retrieve conversation: {str(e)}") from e
 
     async def conversation_exists(self, conversation_id: UUID) -> bool:
         """Check if conversation exists (for validation).
@@ -144,16 +144,18 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
         """
         try:
             db = await self._get_connection()
-            async with db:
+            try:
                 cursor = await db.execute(
                     "SELECT 1 FROM conversations WHERE id = ? LIMIT 1",
                     (str(conversation_id),),
                 )
                 return (await cursor.fetchone()) is not None
+            finally:
+                await db.close()
         except sqlite3.Error as e:
             raise ServiceUnavailableError(
                 f"Failed to check conversation existence: {str(e)}"
-            )
+            ) from e
 
     async def add_turn(self, turn: ConversationTurn) -> ConversationTurn:
         """Add turn (user query or assistant response) to conversation.
@@ -177,7 +179,7 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
                 raise ConversationNotFoundError(str(turn.conversation_id))
 
             db = await self._get_connection()
-            async with db:
+            try:
                 created_at_str = turn.created_at.isoformat()
                 await db.execute(
                     """
@@ -196,9 +198,7 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
                 await db.commit()
 
                 # Get the auto-assigned ID
-                cursor = await db.execute(
-                    "SELECT last_insert_rowid()"
-                )
+                cursor = await db.execute("SELECT last_insert_rowid()")
                 row = await cursor.fetchone()
                 turn_id = row[0] if row else None
 
@@ -210,13 +210,15 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
                     token_count=turn.token_count,
                     created_at=turn.created_at,
                 )
+            finally:
+                await db.close()
         except ConversationNotFoundError:
             raise
         except sqlite3.Error as e:
             raise ConversationPersistenceError(
                 f"Failed to add turn: {str(e)}",
                 conversation_id=str(turn.conversation_id),
-            )
+            ) from e
         except ServiceUnavailableError:
             raise
 
@@ -250,7 +252,7 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
                 raise ConversationNotFoundError(str(conversation_id))
 
             db = await self._get_connection()
-            async with db:
+            try:
                 cursor = await db.execute(
                     """
                     SELECT id, conversation_id, role, content, token_count, created_at
@@ -279,12 +281,14 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
                     max_tokens=max_tokens,
                     max_count=max_count,
                 )
+            finally:
+                await db.close()
         except ConversationNotFoundError:
             raise
         except sqlite3.Error as e:
             raise ServiceUnavailableError(
                 f"Failed to retrieve conversation history: {str(e)}"
-            )
+            ) from e
 
     async def count_turns(self, conversation_id: UUID) -> int:
         """Get total turn count for conversation (for metrics).
@@ -305,16 +309,16 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
                 raise ConversationNotFoundError(str(conversation_id))
 
             db = await self._get_connection()
-            async with db:
+            try:
                 cursor = await db.execute(
                     "SELECT COUNT(*) FROM conversation_turns WHERE conversation_id = ?",
                     (str(conversation_id),),
                 )
                 row = await cursor.fetchone()
                 return row[0] if row else 0
+            finally:
+                await db.close()
         except ConversationNotFoundError:
             raise
         except sqlite3.Error as e:
-            raise ServiceUnavailableError(
-                f"Failed to count turns: {str(e)}"
-            )
+            raise ServiceUnavailableError(f"Failed to count turns: {str(e)}") from e

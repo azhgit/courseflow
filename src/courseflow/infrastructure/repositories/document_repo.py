@@ -114,7 +114,9 @@ class SQLiteDocumentRepository(DocumentRepositoryPort):
 
         return _row_to_document(row)
 
-    async def list_all(self, subject: str | None = None, limit: int = 100) -> list[IngestionDocument]:
+    async def list_all(
+        self, subject: str | None = None, limit: int = 100
+    ) -> list[IngestionDocument]:
         try:
             async with aiosqlite.connect(self._db_path) as db:
                 if subject:
@@ -159,4 +161,3 @@ def _row_to_document(row: tuple[object, ...] | None) -> IngestionDocument | None
         ingestion_time_ms=int(row[7]),
         created_at=str(row[8]),
     )
-

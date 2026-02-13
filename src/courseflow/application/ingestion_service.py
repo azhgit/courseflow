@@ -158,8 +158,7 @@ class IngestionService:
             )
         except Exception as e:
             logger.error(
-                f"Failed to save chunks for {filename}, rolling back "
-                f"(request_id={request_id}): {e}"
+                f"Failed to save chunks for {filename}, rolling back (request_id={request_id}): {e}"
             )
             await self._chunk_repo.delete_chunks_by_document_id(document.id)
             raise
@@ -209,9 +208,7 @@ class IngestionService:
                 request_id=f"{request_id}_chunk_{chunk_idx}",
             )
         except RateLimitExceededError:
-            logger.warning(
-                f"Retry exhausted for chunk {chunk_idx} (request_id={request_id})"
-            )
+            logger.warning(f"Retry exhausted for chunk {chunk_idx} (request_id={request_id})")
             raise
 
 
