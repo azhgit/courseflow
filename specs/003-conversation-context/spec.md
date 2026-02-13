@@ -22,21 +22,30 @@ Enable learners to ask follow-up questions within the same conversation so the A
 - **Learner** (primary): Uses the query API to ask questions and expects follow-up context to be preserved within a conversation thread
 - **System**: Manages conversation state, history, and LLM context window
 
+## Clarifications
+
+### Session 2026-02-13
+
+- Q: 新對話建立語意（省略 conversation_id vs null）應如何定義？ → A: 省略欄位或傳 null 都建立新對話並回傳 conversation_id。
+- Q: conversation_id 的對外格式應為何？ → A: 對外與儲存皆使用純 UUID4 字串，不使用 `conv_` 前綴。
+- Q: LLM/檢索失敗時對話 turn 應如何落庫？ → A: 僅在成功產生 assistant 回答後，原子寫入 user+assistant 兩個 turn；失敗時不寫入任何 turn。
+
 ---
 
 ## Functional Requirements
 
 | ID | Requirement | Acceptance Criteria |
 |----|-------------|-------------------|
-| FR-001 | Accept optional `conversation_id` parameter in query requests | When `conversation_id` is provided and valid, system retrieves existing conversation; when `null`, system creates new conversation |
+| FR-001 | Accept optional `conversation_id` parameter in query requests | When `conversation_id` is provided and valid, system retrieves existing conversation; when `null` or omitted, system creates new conversation |
 | FR-002 | Generate and return conversation ID for new conversations | New conversation_id (UUID4) returned in response; persists across subsequent queries with same ID |
 | FR-003 | Store conversation turns (user & assistant messages) | Each turn (role, content, timestamp, token_count) persisted in database; retrievable by conversation_id |
 | FR-004 | Include conversation history in LLM context | Last 5 turns automatically included in LLM prompt as context; turns ordered chronologically |
 | FR-005 | Enhance retrieval via history context | Follow-up questions like "What about error handling?" correctly reference prior question topics ("async functions") in document retrieval |
 | FR-006 | Enforce token budget for history | Total tokens in history never exceed 2000 tokens; older turns trimmed first when budget exceeded |
 | FR-007 | Retrieve historical conversations | Conversations retrievable by ID; old conversations accessible across application restarts |
-| FR-008 | Maintain backward compatibility | Single-turn queries without `conversation_id` field behave identically to before this feature (stateless) |
+| FR-008 | Maintain backward compatibility | Existing clients can omit `conversation_id` and still receive valid answer + sources; omission now creates a new conversation and returns `conversation_id` without breaking request compatibility |
 | FR-009 | Validate conversation ID existence | Invalid or non-existent conversation_id returns 404 error with clear message; user directed to create new conversation |
+| FR-010 | Prevent partial turn persistence on failed queries | If retrieval or generation fails, system persists neither user turn nor assistant turn; on success, both turns are persisted atomically |
 
 ---
 
@@ -45,7 +54,7 @@ Enable learners to ask follow-up questions within the same conversation so the A
 ### Scenario 1: New Conversation (Multi-turn)
 ```
 Turn 1: Learner asks "How do async functions work in Python?"
-  → System creates conversation_id: "conv_550e8400-e29b"
+  → System creates conversation_id: "550e8400-e29b-41d4-a716-446655440000"
   → Stores: role='user', content='How do async functions...', timestamp, token_count
   → LLM answers with sources ["python-async.md"]
   → Stores: role='assistant', content='Async functions use async def...', timestamp, token_count
@@ -74,9 +83,9 @@ Then:
 ### Scenario 3: Backward Compatibility
 ```
 Learner sends query without conversation_id field:
-  → Behavior identical to before this feature (no history lookup)
-  → No conversation stored
-  → Response includes answer + sources (no conversation_id in response)
+  → Request remains valid for existing clients (field is still optional)
+  → System creates a new conversation
+  → Response includes answer + sources + generated conversation_id
 ```
 
 ### Scenario 4: Invalid Conversation
@@ -96,7 +105,7 @@ Learner sends: conversation_id = "conv_invalid_id"
 3. **History Token Budget**: Conversation with 10+ turns automatically trims to ≤5 turns when new query exceeds 2000 token limit; total prompt tokens never exceed 8000
 4. **New Conversation Creation**: Query with `conversation_id: null` creates new conversation; returned ID is valid UUID; subsequent queries with same ID retrieve history
 5. **Conversation Retrieval**: Conversations persist across application restarts; querying with same conversation_id returns stored history
-6. **Backward Compatibility**: Single-turn queries without `conversation_id` field produce identical results to before this feature; no conversation stored
+6. **Backward Compatibility**: Existing clients that omit `conversation_id` continue to work without request changes; response remains valid and now includes generated `conversation_id` for follow-up use
 7. **Error Handling**: Invalid conversation_id returns 404 with descriptive error message; valid conversation_ids return proper history context
 
 ---
@@ -125,6 +134,7 @@ Learner sends: conversation_id = "conv_invalid_id"
 - Conversation data persists across application restarts
 - Conversation retrieval succeeds for all valid IDs within 1 week of creation
 - Token budget trimming is deterministic (always removes oldest first)
+- Conversation writes are atomic per query: user+assistant turns are both stored only on successful completion
 
 ### Scalability
 - Support conversations with up to 100+ turns (after trimming, only 5 held in context)
@@ -169,7 +179,7 @@ Learner sends: conversation_id = "conv_invalid_id"
 ```json
 {
   "query": "What about error handling?",
-  "conversation_id": "conv_550e8400-e29b"  // optional; null or omitted for new conversation
+  "conversation_id": "550e8400-e29b-41d4-a716-446655440000"  // optional; null or omitted for new conversation
 }
 ```
 
@@ -180,7 +190,7 @@ Learner sends: conversation_id = "conv_invalid_id"
   "data": {
     "answer": "For error handling in async functions, use try/except around await calls...",
     "sources": ["python-async.md", "python-exceptions.md"],
-    "conversation_id": "conv_550e8400-e29b"
+    "conversation_id": "550e8400-e29b-41d4-a716-446655440000"
   }
 }
 ```
@@ -190,7 +200,7 @@ Learner sends: conversation_id = "conv_invalid_id"
 {
   "success": false,
   "error": "conversation_not_found",
-  "message": "Conversation conv_xxx does not exist. Start a new conversation by omitting conversation_id."
+  "message": "Conversation 550e8400-e29b-41d4-a716-446655440999 does not exist. Start a new conversation by omitting conversation_id."
 }
 ```
 
@@ -233,11 +243,11 @@ Learner sends: conversation_id = "conv_invalid_id"
 
 ### Test 4: Backward Compatibility (UC-004)
 **Given**: Query without `conversation_id` field  
-**When**: POST /api/v1/query { "query": "...", no conversation_id }  
+**When**: POST /api/v1/query { "query": "..." }  
 **Then**:
-- Response identical to v1 behavior (no conversation_id in response)
-- No conversation stored in database
-- Subsequent query with null conversation_id creates new conversation
+- Request is accepted without requiring client-side changes
+- Response includes answer + sources + generated conversation_id
+- A conversation is stored and can be reused for follow-up queries
 
 ### Test 5: Persistence Across Restarts (UC-005)
 **Given**: Active conversation with 3 turns stored  
@@ -248,11 +258,19 @@ Learner sends: conversation_id = "conv_invalid_id"
 - Token counts and timestamps preserved
 
 ### Test 6: Invalid Conversation (UC-006)
-**Given**: Query with non-existent conversation_id = "conv_fake123"  
-**When**: POST /api/v1/query { "query": "...", conversation_id: "conv_fake123" }  
+**Given**: Query with non-existent conversation_id = "550e8400-e29b-41d4-a716-446655440999"  
+**When**: POST /api/v1/query { "query": "...", conversation_id: "550e8400-e29b-41d4-a716-446655440999" }  
 **Then**:
 - Returns 404 conversation_not_found
 - Error message includes suggestion to omit conversation_id
+
+### Test 7: Failed Query Atomicity (UC-007)
+**Given**: Valid conversation_id and a simulated LLM/retrieval failure  
+**When**: POST /api/v1/query returns an error response  
+**Then**:
+- No new user turn is persisted
+- No assistant turn is persisted
+- Conversation history remains unchanged from before the failed request
 
 ---
 
@@ -290,7 +308,7 @@ Learner sends: conversation_id = "conv_invalid_id"
 - **User Experience**: Learners report less need to repeat context (measured via golden dataset acceptance tests)
 - **System Performance**: History retrieval completes in < 100ms for 95% of queries
 - **Data Integrity**: All conversation turns persisted; 0% data loss on valid inserts
-- **Backward Compatibility**: Single-turn query behavior identical; 0 regression in existing query accuracy
+- **Backward Compatibility**: Existing clients can keep omitting `conversation_id` with 0 request-level breakage and 0 regression in answer quality
 
 ---
 
