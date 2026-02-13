@@ -1,11 +1,12 @@
 """Gemini LLM client implementation."""
 
 import asyncio
+import functools
 import logging
 import time
 
-import google.generativeai as genai
-from google.generativeai.types import GenerateContentResponse
+from google import genai
+from google.genai import types
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -51,9 +52,8 @@ class GeminiLLMClient(LLMPort):
         self.timeout_seconds = timeout_seconds
         self._did_model_fallback = False
 
-        # Configure Gemini
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(self.model_name)
+        # Initialize Google GenAI client
+        self.client = genai.Client(api_key=api_key)
 
         logger.info(f"Initialized Gemini LLM client with model: {model_name}")
 
@@ -90,7 +90,6 @@ class GeminiLLMClient(LLMPort):
                         f"Gemini model '{self.model_name}' unavailable; falling back to '{fallback}'."
                     )
                     self.model_name = fallback
-                    self.model = genai.GenerativeModel(fallback)
                     response = await self._generate_with_retry(prompt)
                 else:
                     logger.error(f"Failed to generate answer: {e}")
@@ -100,7 +99,9 @@ class GeminiLLMClient(LLMPort):
                 raise
 
         # Extract answer text
-        answer_text = response.text.strip()
+        answer_text = (response.text or "").strip()
+        if not answer_text:
+            raise ServiceUnavailableError("Gemini API returned empty response")
 
         # Extract token usage
         token_usage = self._extract_token_usage(response)
@@ -145,7 +146,7 @@ Answer (be concise and factual, citing specific information from the documents):
     async def _generate_with_retry(
         self,
         prompt: str,
-    ) -> GenerateContentResponse:
+    ) -> types.GenerateContentResponse:
         """Generate content with exponential backoff retry.
 
         Args:
@@ -163,12 +164,15 @@ Answer (be concise and factual, citing specific information from the documents):
             start_time = time.time()
 
             # Run synchronous Gemini API in executor
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
                 loop.run_in_executor(
                     None,
-                    self.model.generate_content,
-                    prompt,
+                    functools.partial(
+                        self.client.models.generate_content,
+                        model=self.model_name,
+                        contents=prompt,
+                    ),
                 ),
                 timeout=self.timeout_seconds,
             )
@@ -216,7 +220,7 @@ Answer (be concise and factual, citing specific information from the documents):
 
     def _select_fallback_model_name(self) -> str | None:
         try:
-            models = list(genai.list_models())
+            models = list(self.client.models.list())
         except Exception as e:
             logger.warning(f"Failed to list Gemini models for fallback selection: {e}")
             return None
@@ -224,14 +228,22 @@ Answer (be concise and factual, citing specific information from the documents):
         generation_models = [
             m
             for m in models
-            if "generateContent" in getattr(m, "supported_generation_methods", [])
-            and isinstance(getattr(m, "name", None), str)
-            and m.name.startswith("models/")
+            if isinstance(getattr(m, "name", None), str)
+            and any(
+                action in {"generatecontent", "generate_content"}
+                for action in [
+                    str(a).lower()
+                    for a in getattr(m, "supported_actions", [])
+                    if isinstance(a, str)
+                ]
+            )
         ]
         if not generation_models:
             return None
 
-        available = {m.name.removeprefix("models/") for m in generation_models}
+        available = {
+            m.name.removeprefix("models/") for m in generation_models if isinstance(m.name, str)
+        }
         preferred = [
             "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
@@ -250,7 +262,7 @@ Answer (be concise and factual, citing specific information from the documents):
 
     def _extract_token_usage(
         self,
-        response: GenerateContentResponse,
+        response: types.GenerateContentResponse,
     ) -> TokenUsage:
         """Extract token usage from Gemini response.
 
@@ -263,11 +275,13 @@ Answer (be concise and factual, citing specific information from the documents):
         try:
             # Gemini provides usage metadata
             usage = response.usage_metadata
+            if usage is None:
+                raise AttributeError("usage_metadata is missing")
 
             return TokenUsage(
-                prompt_tokens=usage.prompt_token_count,
-                completion_tokens=usage.candidates_token_count,
-                total_tokens=usage.total_token_count,
+                prompt_tokens=usage.prompt_token_count or 0,
+                completion_tokens=usage.candidates_token_count or 0,
+                total_tokens=usage.total_token_count or 0,
             )
         except (AttributeError, KeyError) as e:
             logger.warning(f"Failed to extract token usage: {e}")
