@@ -97,7 +97,9 @@ class SQLiteChromaChunkRepository(ChunkRepositoryPort):
             total_chunks = len(chunks)
             for c in chunks:
                 if c.embedding is None:
-                    raise ServiceUnavailableError("Chunk embedding missing; cannot index in vector store")
+                    raise ServiceUnavailableError(
+                        "Chunk embedding missing; cannot index in vector store"
+                    )
 
                 documents.append(
                     Document(
@@ -151,7 +153,9 @@ class SQLiteChromaChunkRepository(ChunkRepositoryPort):
             try:
                 self._collection.delete(ids=chunk_ids)
             except Exception as e:
-                raise ServiceUnavailableError(f"Failed to delete chunks from ChromaDB: {str(e)}") from e
+                raise ServiceUnavailableError(
+                    f"Failed to delete chunks from ChromaDB: {str(e)}"
+                ) from e
 
     async def find_chunks_by_document_id(self, document_id: str) -> list[Chunk]:
         try:

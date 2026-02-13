@@ -83,8 +83,7 @@ class RateLimiter:
             # Check queue depth
             if len(self.queue) >= self.max_queue_depth:
                 raise QueueFullError(
-                    f"Rate limiter queue full ({self.max_queue_depth} requests). "
-                    "Try again later."
+                    f"Rate limiter queue full ({self.max_queue_depth} requests). Try again later."
                 )
 
             # Add to queue

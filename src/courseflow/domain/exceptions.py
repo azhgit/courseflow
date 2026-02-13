@@ -190,3 +190,84 @@ class QueueFullError(QuotaExceededError):
     """
 
     pass
+
+
+# =============================================================================
+# Conversation Domain Exceptions
+# =============================================================================
+
+
+class ConversationNotFoundError(CourseFlowError):
+    """Raised when a conversation with given ID does not exist.
+
+    Indicates the conversation_id provided to query endpoint is invalid
+    or was never created. Client should start new conversation by
+    omitting conversation_id.
+    """
+
+    def __init__(self, conversation_id: str) -> None:
+        self.conversation_id = conversation_id
+        super().__init__(
+            f"Conversation '{conversation_id}' does not exist. "
+            "Start a new conversation by omitting conversation_id."
+        )
+
+
+class InvalidConversationIDError(CourseFlowError):
+    """Raised when conversation_id format is invalid.
+
+    Indicates the conversation_id does not match UUID4 format.
+    """
+
+    def __init__(self, conversation_id: str) -> None:
+        self.conversation_id = conversation_id
+        super().__init__(
+            f"Invalid conversation_id format: '{conversation_id}' (must be valid UUID4)"
+        )
+
+
+class ConversationHistoryTruncatedError(CourseFlowError):
+    """Informational exception indicating history was trimmed for token budget.
+
+    This is not a fatal error - it's raised to allow callers to log or
+    track when history had to be truncated due to token limits.
+
+    Attributes:
+        original_count: Number of turns before trimming
+        final_count: Number of turns after trimming
+        tokens_before: Total tokens before trimming
+        tokens_after: Total tokens after trimming
+    """
+
+    def __init__(
+        self,
+        original_count: int,
+        final_count: int,
+        tokens_before: int,
+        tokens_after: int,
+    ) -> None:
+        self.original_count = original_count
+        self.final_count = final_count
+        self.tokens_before = tokens_before
+        self.tokens_after = tokens_after
+        super().__init__(
+            f"Conversation history trimmed from {original_count} turns "
+            f"({tokens_before} tokens) to {final_count} turns "
+            f"({tokens_after} tokens)"
+        )
+
+
+class ConversationPersistenceError(CourseFlowError):
+    """Raised when conversation cannot be saved to storage.
+
+    Indicates database/storage error when persisting conversation
+    or turns. This is typically a transient error - client should retry.
+    """
+
+    def __init__(self, reason: str, conversation_id: str | None = None) -> None:
+        self.reason = reason
+        self.conversation_id = conversation_id
+        msg = f"Failed to persist conversation: {reason}"
+        if conversation_id:
+            msg += f" (ID: {conversation_id})"
+        super().__init__(msg)

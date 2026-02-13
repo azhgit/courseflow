@@ -13,4 +13,3 @@ class TiktokenCounter(TokenCounterPort):
 
     def count_tokens(self, text: str) -> int:
         return len(self._encoding.encode(text))
-

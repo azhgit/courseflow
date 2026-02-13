@@ -87,30 +87,40 @@
 
 ---
 
-## 方式 3️⃣ : 使用 Bash 指令指南
+## 方式 3️⃣ : 使用 Bash 腳本工具
 
-**快速查看完整流程的指令列表**
+**適用於 macOS/Linux 環境的腳本工具集**
 
 ```bash
-./scripts/speckit-orchestrate.sh "你的功能描述"
+# 初始化實現計劃
+./.specify/scripts/bash/setup-plan.sh
+
+# 驗證前置條件
+./.specify/scripts/bash/check-prerequisites.sh
+
+# 更新 AI 代理上下文
+./.specify/scripts/bash/update-agent-context.sh
 ```
 
 **功能**:
-- 顯示完整的流程指南
-- 列出所有需要執行的指令
-- 不自動執行（僅顯示應該做什麼）
+- 支援 macOS、Linux、WSL2 環境
+- 提供完整的功能架構設置
+- 驗證依賴檔案和分支命名
+- 自動更新 AI 代理的上下文信息
+
+詳見: [Bash 腳本文檔](./.specify/scripts/bash/README.md)
 
 ---
 
 ## 🎯 對比表
 
-| 特性 | Orchestrate Agent | 手動逐步 | 指令指南 |
-|------|------------------|---------|---------|
+| 特性 | Orchestrate Agent | 手動逐步 | Bash 腳本工具 |
+|------|------------------|---------|-------------|
 | 完全自動化 | ✅ 是 | ❌ 否 | ❌ 否 |
 | 總耗時 | 45-60 分鐘 | 同上（分散執行） | - |
 | 需要互動 | 少（仅 clarify） | 多（每階段確認） | ❌ 否 |
 | 錯誤恢復 | 自動重試 | 可中斷後恢復 | 手動恢復 |
-| 適用場景 | 首次創建功能 | 需要細緻控制 | 學習流程 |
+| 適用場景 | 首次創建功能 | 需要細緻控制 | macOS/Linux 環境設置 |
 
 ---
 
@@ -167,10 +177,11 @@ specs/user-authentication/
 - ✅ 你需要對設計有細緻控制
 - ✅ 你在學習 speckit 流程
 
-### 用 Bash 指南當：
-- ✅ 你想看完整的指令序列
-- ✅ 你在編寫自動化腳本
-- ✅ 你需要文檔記錄
+### 用 Bash 腳本工具當：
+- ✅ 你使用 macOS 或 Linux 系統
+- ✅ 你需要設置功能架構
+- ✅ 你想驗證前置條件
+- ✅ 你要更新 AI 代理上下文
 
 ---
 

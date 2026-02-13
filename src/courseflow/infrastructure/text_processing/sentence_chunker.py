@@ -97,4 +97,3 @@ class SentenceChunker(ChunkerPort):
 
         flush()
         return chunks
-

@@ -17,4 +17,3 @@ def _assert_token_counter_contract(counter: TokenCounterPort) -> None:
 def test_tiktoken_counter_implements_token_counter_port_contract():
     counter = TiktokenCounter()
     _assert_token_counter_contract(counter)
-

@@ -209,3 +209,23 @@ def get_ingestion_service():
         document_repo=get_document_repository(),
         chunk_repo=get_chunk_repository(),
     )
+
+
+def get_conversation_repository():
+    """Dependency: Conversation repository for multi-turn support.
+
+    Returns:
+        SQLiteConversationRepository singleton instance
+
+    Raises:
+        RuntimeError: If repository cannot be initialized
+    """
+    try:
+        from courseflow.infrastructure.repositories.conversation_repo import (
+            SQLiteConversationRepository,
+        )
+    except Exception as e:
+        raise RuntimeError("ConversationRepository is not initialized") from e
+
+    # Use default database path
+    return SQLiteConversationRepository(db_path="./data/courseflow.db")

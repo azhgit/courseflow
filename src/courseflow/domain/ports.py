@@ -10,7 +10,16 @@ from typing import TYPE_CHECKING
 from courseflow.domain.models import Answer, Document, Query, SearchResult
 
 if TYPE_CHECKING:
-    from courseflow.domain.models import Chunk, IngestionDocument, Subject
+    from uuid import UUID
+
+    from courseflow.domain.models import (
+        Chunk,
+        Conversation,
+        ConversationTurn,
+        IngestionDocument,
+        Subject,
+        TurnHistory,
+    )
 
 
 class VectorStorePort(ABC):
@@ -279,7 +288,9 @@ class DocumentRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def list_all(self, subject: str | None = None, limit: int = 100) -> list["IngestionDocument"]:
+    async def list_all(
+        self, subject: str | None = None, limit: int = 100
+    ) -> list["IngestionDocument"]:
         """List all documents, optionally filtered by subject.
 
         Args:
@@ -379,6 +390,130 @@ class SubjectRepositoryPort(ABC):
             True if exists, False otherwise
 
         Raises:
+            ServiceUnavailableError: If database is unreachable
+        """
+        pass
+
+
+# =============================================================================
+# Conversation Repository Port
+# =============================================================================
+
+
+class ConversationRepositoryPort(ABC):
+    """Abstract port for conversation persistence.
+
+    Defines contract for storing and retrieving conversation sessions
+    and their turns. Implementations use SQLite with aiosqlite for
+    async access.
+
+    All exceptions are from domain.exceptions module.
+    """
+
+    @abstractmethod
+    async def create_conversation(self) -> "Conversation":
+        """Create new conversation session.
+
+        Returns:
+            Conversation object with id and created_at set
+
+        Raises:
+            ConversationPersistenceError: If database insert fails
+            ServiceUnavailableError: If database is unreachable
+        """
+        pass
+
+    @abstractmethod
+    async def get_conversation(self, conversation_id: "UUID") -> "Conversation":
+        """Retrieve conversation by ID.
+
+        Args:
+            conversation_id: UUID of conversation to retrieve
+
+        Returns:
+            Conversation object if found
+
+        Raises:
+            ConversationNotFoundError: If conversation_id does not exist
+            ServiceUnavailableError: If database is unreachable
+        """
+        pass
+
+    @abstractmethod
+    async def conversation_exists(self, conversation_id: "UUID") -> bool:
+        """Check if conversation exists (for validation).
+
+        Args:
+            conversation_id: UUID to check
+
+        Returns:
+            True if exists, False otherwise
+
+        Raises:
+            ServiceUnavailableError: If database is unreachable
+        """
+        pass
+
+    @abstractmethod
+    async def add_turn(self, turn: "ConversationTurn") -> "ConversationTurn":
+        """Add turn (user query or assistant response) to conversation.
+
+        The turn is persisted with its pre-calculated token_count.
+        User and assistant turns are NOT automatically paired - this is
+        the responsibility of the caller (application layer).
+
+        Args:
+            turn: ConversationTurn object (id must be None)
+
+        Returns:
+            Persisted turn with id field populated by database
+
+        Raises:
+            ConversationNotFoundError: If conversation_id does not exist
+            ConversationPersistenceError: If insert fails
+            ServiceUnavailableError: If database is unreachable
+        """
+        pass
+
+    @abstractmethod
+    async def get_history(
+        self,
+        conversation_id: "UUID",
+        max_tokens: int = 2000,
+        max_count: int = 5,
+    ) -> "TurnHistory":
+        """Retrieve conversation history with token budget enforcement.
+
+        Fetches all turns for conversation ordered by created_at ASC,
+        then applies TurnHistory.from_turns() to trim based on budget.
+
+        Args:
+            conversation_id: UUID of conversation
+            max_tokens: Token budget limit (default 2000)
+            max_count: Hard limit on turn count (default 5)
+
+        Returns:
+            TurnHistory with trimmed turns (may be empty if conversation
+            has no turns, or if oldest turns removed to meet budget)
+
+        Raises:
+            ConversationNotFoundError: If conversation_id does not exist
+            ServiceUnavailableError: If database is unreachable
+        """
+        pass
+
+    @abstractmethod
+    async def count_turns(self, conversation_id: "UUID") -> int:
+        """Get total turn count for conversation (for metrics).
+
+        Args:
+            conversation_id: UUID of conversation
+
+        Returns:
+            Number of turns (user + assistant combined)
+
+        Raises:
+            ConversationNotFoundError: If conversation_id does not exist
             ServiceUnavailableError: If database is unreachable
         """
         pass

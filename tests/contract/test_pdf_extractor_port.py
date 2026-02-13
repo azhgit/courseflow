@@ -21,4 +21,3 @@ async def test_pymupdf_extractor_implements_pdf_extractor_port_contract():
 
     with pytest.raises(InvalidFileFormatError):
         await extractor.extract_text(b"not-a-pdf", "broken.pdf")
-

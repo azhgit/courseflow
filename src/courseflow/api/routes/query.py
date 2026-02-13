@@ -8,8 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from courseflow.api.dependencies import get_rag_service, get_rate_limiter
-from courseflow.application.rag_service import RAGService
+from courseflow.api.dependencies import (
+    get_conversation_repository,
+    get_rag_service,
+    get_rate_limiter,
+)
 from courseflow.domain.exceptions import (
     NoRelevantDocumentsError,
     QuotaExceededError,
@@ -27,6 +30,10 @@ class QueryRequest(BaseModel):
     """Request schema for query endpoint."""
 
     query: str = Field(..., description="User's question")
+    conversation_id: str | None = Field(
+        default=None,
+        description="Optional conversation ID for multi-turn context (UUID4 format)",
+    )
     subject: str | None = Field(
         default=None,
         description="Optional subject filter (e.g., biology, history)",
@@ -77,8 +84,9 @@ class ErrorResponse(BaseModel):
 )
 async def query_endpoint(
     request: QueryRequest,
-    rag_service: RAGService = Depends(get_rag_service),
+    rag_service: Any = Depends(get_rag_service),
     rate_limiter: Any = Depends(get_rate_limiter),
+    _: Any = Depends(get_conversation_repository),
 ) -> QueryResponse:
     """Handle POST /api/v1/query requests.
 

@@ -3,7 +3,6 @@
 Tests the SHA-256 hashing algorithm used for duplicate detection.
 """
 
-
 from courseflow.domain.models import IngestionDocument
 
 

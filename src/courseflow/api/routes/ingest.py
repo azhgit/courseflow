@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 class IngestMetadata(BaseModel):
     """Optional metadata provided with document uploads."""
 
-    subject: str = Field(default="general", description="Subject slug (e.g., biology, programming). Defaults to 'general' if not provided.")
+    subject: str = Field(
+        default="general",
+        description="Subject slug (e.g., biology, programming). Defaults to 'general' if not provided.",
+    )
     difficulty: str | None = Field(default=None, description="Optional difficulty label")
 
 
@@ -198,7 +201,12 @@ async def ingest_document(
             metadata=response_meta,
         )
 
-    except (InvalidFileFormatError, FileSizeExceededError, EmptyContentError, SubjectNotFoundError) as e:
+    except (
+        InvalidFileFormatError,
+        FileSizeExceededError,
+        EmptyContentError,
+        SubjectNotFoundError,
+    ) as e:
         logger.warning("ingest_validation_error request_id=%s message=%s", request_id, str(e))
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -235,7 +243,9 @@ async def ingest_document(
             ).model_dump(),
         )
     except QuotaExceededError as e:
-        logger.warning("ingest_quota_exceeded request_id=%s retry_after=%s", request_id, e.retry_after)
+        logger.warning(
+            "ingest_quota_exceeded request_id=%s retry_after=%s", request_id, e.retry_after
+        )
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content=IngestErrorResponse(
