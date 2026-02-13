@@ -54,7 +54,12 @@ class RAGService:
 
         logger.info(f"Initialized RAG service with threshold={similarity_threshold}, k={top_k}")
 
-    async def answer_query(self, query: Query, subject: str | None = None) -> Answer:
+    async def answer_query(
+        self,
+        query: Query,
+        subject: str | None = None,
+        conversation_history: str | None = None,
+    ) -> Answer:
         """Execute RAG pipeline to answer user query.
 
         Pipeline stages:
@@ -62,13 +67,14 @@ class RAGService:
         2. Generate embedding for query text
         3. Search vector store for top-k similar documents
         4. Filter results by similarity threshold
-        5. Generate answer using LLM with context
+        5. Generate answer using LLM with context (including conversation history)
         6. Log query and response
         7. Return Answer with sources and metadata
 
         Args:
             query: User's question (validated Query model)
             subject: Optional subject filter for retrieval
+            conversation_history: Optional formatted conversation history for multi-turn context
 
         Returns:
             Answer with generated text, sources, and metadata
@@ -142,6 +148,11 @@ class RAGService:
             f"Source: {r.document.metadata.source}\n\n{r.document.content}"
             for r in filtered_results
         ]
+
+        # Prepend conversation history if provided (for multi-turn context)
+        if conversation_history:
+            context_snippets.insert(0, f"Conversation History:\n{conversation_history}\n")
+            logger.debug("Included conversation history in prompt context")
 
         answer_text, token_usage = await self.llm_port.generate_answer(
             query=query.text,
