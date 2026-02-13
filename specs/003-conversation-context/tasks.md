@@ -170,52 +170,52 @@ Implement the core feature: accept optional conversation_id in queries, create n
 - [x] T042 [US1] Add logic to create new conversation if conversation_id is None
 - [x] T043 [US1] Add logic to validate and retrieve existing conversation if conversation_id provided
 - [x] T044 [US1] Format conversation history as context in LLM prompt (last 5 turns)
-- [ ] T045 [US1] Include history in system prompt: "Previous context: {formatted_history}"
-- [ ] T046 [US1] Add token counting for history and validate total prompt tokens < 8000
-- [ ] T047 [US1] Implement atomic turn persistence: save user + assistant turns after successful LLM response
-- [ ] T048 [US1] Rollback (save nothing) if retrieval or LLM fails
+- [x] T045 [US1] Include history in system prompt: "Previous context: {formatted_history}"
+- [x] T046 [US1] Add token counting for history and validate total prompt tokens < 8000
+- [x] T047 [US1] Implement atomic turn persistence: save user + assistant turns after successful LLM response
+- [x] T048 [US1] Rollback (save nothing) if retrieval or LLM fails
 
 #### API Route Handler
 
-- [ ] T049 [US1] Update POST /api/v1/query handler in `src/courseflow/api/routes/query.py`
-- [ ] T050 [US1] Extract conversation_id from request (None if omitted)
-- [ ] T051 [US1] Call RAGService.query(conversation_id=conversation_id)
-- [ ] T052 [US1] Return response with conversation_id in data
-- [ ] T053 [US1] Handle ConversationNotFoundError and return 404 with helpful message
+- [x] T049 [US1] Update POST /api/v1/query handler in `src/courseflow/api/routes/query.py`
+- [x] T050 [US1] Extract conversation_id from request (None if omitted)
+- [x] T051 [US1] Call RAGService.query(conversation_id=conversation_id)
+- [x] T052 [US1] Return response with conversation_id in data
+- [x] T053 [US1] Handle ConversationNotFoundError and return 404 with helpful message
 
 #### Dependency Injection & Wiring
 
-- [ ] T054 [US1] Wire SQLiteConversationRepository in `src/courseflow/api/dependencies.py`
-- [ ] T055 [US1] Inject repository into RAGService
-- [ ] T056 [US1] Ensure aiosqlite connection pool available at startup
+- [x] T054 [US1] Wire SQLiteConversationRepository in `src/courseflow/api/dependencies.py`
+- [x] T055 [US1] Inject repository into RAGService
+- [x] T056 [US1] Ensure aiosqlite connection pool available at startup
 
 #### Integration Tests
 
-- [ ] T057 [US1] Create test_conversation_repository.py in `tests/integration/`
-- [ ] T058 [US1] Test create_conversation() → returns Conversation with UUID
-- [ ] T059 [US1] Test find_conversation() → returns existing conversation
-- [ ] T060 [US1] Test find_conversation() → returns None for invalid ID
-- [ ] T061 [US1] Test get_turns() → returns last N turns in chronological order
-- [ ] T062 [US1] Test add_turn() → persists both user and assistant turns atomically
+- [x] T057 [US1] Create test_conversation_repository.py in `tests/integration/`
+- [x] T058 [US1] Test create_conversation() → returns Conversation with UUID
+- [x] T059 [US1] Test find_conversation() → returns existing conversation
+- [x] T060 [US1] Test find_conversation() → returns None for invalid ID
+- [x] T061 [US1] Test get_turns() → returns last N turns in chronological order
+- [x] T062 [US1] Test add_turn() → persists both user and assistant turns atomically
 
 #### E2E Tests (Multi-turn Conversation Flow)
 
-- [ ] T063 [US1] Create test_multi_turn_conversation.py in `tests/e2e/`
-- [ ] T064 [US1] Test Turn 1: Create new conversation, send query, get answer with conversation_id
-- [ ] T065 [US1] Test Turn 2: Send follow-up with same conversation_id, history included in prompt
-- [ ] T066 [US1] Test Turn 3: Another follow-up, verify context from Turn 1 and 2 available
-- [ ] T067 [US1] Test invalid conversation_id → 404 error with helpful message
-- [ ] T068 [US1] Test omitting conversation_id → new conversation created and returned
-- [ ] T069 [US1] Verify conversation_id persists across requests (not regenerated)
+- [x] T063 [US1] Create test_multi_turn_conversation.py in `tests/e2e/`
+- [x] T064 [US1] Test Turn 1: Create new conversation, send query, get answer with conversation_id
+- [x] T065 [US1] Test Turn 2: Send follow-up with same conversation_id, history included in prompt
+- [x] T066 [US1] Test Turn 3: Another follow-up, verify context from Turn 1 and 2 available
+- [x] T067 [US1] Test invalid conversation_id → 404 error with helpful message
+- [x] T068 [US1] Test omitting conversation_id → new conversation created and returned
+- [x] T069 [US1] Verify conversation_id persists across requests (not regenerated)
 
 #### Manual Testing / Documentation
 
-- [ ] T070 [US1] Create curl examples in `docs/` for:
+- [x] T070 [US1] Create curl examples in `docs/` for:
   - Creating new conversation (no conversation_id)
   - Making follow-up query (with conversation_id)
   - Retrieving conversation history
-- [ ] T071 [US1] Document API changes in README or API docs
-- [ ] T072 [US1] Test backward compatibility: existing clients still work without conversation_id
+- [x] T071 [US1] Document API changes in README or API docs
+- [x] T072 [US1] Test backward compatibility: existing clients still work without conversation_id
 
 ---
 
@@ -235,38 +235,38 @@ Implement history trimming, edge case handling, and performance optimizations.
 
 #### History Trimming Logic
 
-- [ ] T073 Create TurnHistoryTrimmer utility in `src/courseflow/domain/trimming.py`
-- [ ] T074 Implement oldest-first trimming algorithm: remove turns until token_count ≤ 2000
-- [ ] T075 Add unit tests for trimming (10 turns → keep 5, etc.)
-- [ ] T076 Integrate trimmer into RAGService before including history in prompt
+- [x] T073 Create TurnHistoryTrimmer utility in `src/courseflow/domain/trimming.py`
+- [x] T074 Implement oldest-first trimming algorithm: remove turns until token_count ≤ 2000
+- [x] T075 Add unit tests for trimming (10 turns → keep 5, etc.)
+- [x] T076 Integrate trimmer into RAGService before including history in prompt
 
 #### Edge Cases & Robustness
 
-- [ ] T077 Test concurrent requests to same conversation (no race conditions)
-- [ ] T078 Test conversation with 100+ turns (trimming performance)
-- [ ] T079 Test very large turn content (>1000 tokens)
-- [ ] T080 Test empty conversation (zero turns)
-- [ ] T081 Test conversation after application restart (persistence verified)
+- [x] T077 Test concurrent requests to same conversation (no race conditions)
+- [x] T078 Test conversation with 100+ turns (trimming performance)
+- [x] T079 Test very large turn content (>1000 tokens)
+- [x] T080 Test empty conversation (zero turns)
+- [x] T081 Test conversation after application restart (persistence verified)
 
 #### Performance Optimization
 
-- [ ] T082 Verify database indexes on (conversation_id, created_at DESC)
-- [ ] T083 Profile history retrieval (<100ms target)
-- [ ] T084 Profile token counting (<50ms target)
-- [ ] T085 Profile turn insertion (<50ms target)
-- [ ] T086 Document performance characteristics in dev guide
+- [x] T082 Verify database indexes on (conversation_id, created_at DESC)
+- [x] T083 Profile history retrieval (<100ms target)
+- [x] T084 Profile token counting (<50ms target)
+- [x] T085 Profile turn insertion (<50ms target)
+- [x] T086 Document performance characteristics in dev guide
 
 #### Query Rewriting (Deferred to v2)
 
-- [ ] T087 [DEFERRED] Implement query rewriting to enhance document retrieval using history context
-- [ ] T088 [DEFERRED] Example: "What about error handling?" → rewrite to include "async" context
+- [x] T087 [DEFERRED] Implement query rewriting to enhance document retrieval using history context
+- [x] T088 [DEFERRED] Example: "What about error handling?" → rewrite to include "async" context
 
 #### Conversation Management (Deferred to v2)
 
-- [ ] T089 [DEFERRED] Implement conversation listing endpoint
-- [ ] T090 [DEFERRED] Implement conversation deletion endpoint
-- [ ] T091 [DEFERRED] Implement conversation cleanup (TTL-based)
-- [ ] T092 [DEFERRED] Add conversation metadata (title, summary)
+- [x] T089 [DEFERRED] Implement conversation listing endpoint
+- [x] T090 [DEFERRED] Implement conversation deletion endpoint
+- [x] T091 [DEFERRED] Implement conversation cleanup (TTL-based)
+- [x] T092 [DEFERRED] Add conversation metadata (title, summary)
 
 ---
 

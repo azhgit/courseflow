@@ -3,19 +3,23 @@
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from courseflow.api.dependencies import get_rag_service, get_rate_limiter
+from courseflow.api.dependencies import get_rag_service, get_rate_limiter, get_conversation_repository
 from courseflow.application.rag_service import RAGService
 from courseflow.domain.exceptions import (
+    ConversationNotFoundError,
+    InvalidConversationIDError,
     NoRelevantDocumentsError,
     QuotaExceededError,
     ServiceUnavailableError,
 )
-from courseflow.domain.models import Query
+from courseflow.domain.models import ConversationTurn, Query
+from courseflow.infrastructure.token_counting import TokenCounter
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +85,11 @@ class ErrorResponse(BaseModel):
 )
 async def query_endpoint(
     request: QueryRequest,
-    rag_service: RAGService = Depends(get_rag_service),
-    rate_limiter: Any = Depends(get_rate_limiter),
+    rag_service = Depends(get_rag_service),
+    rate_limiter = Depends(get_rate_limiter),
+    conversation_repo = Depends(get_conversation_repository),
 ) -> QueryResponse:
+
     """Handle POST /api/v1/query requests.
 
     Accepts a user question, performs RAG retrieval and generation,
