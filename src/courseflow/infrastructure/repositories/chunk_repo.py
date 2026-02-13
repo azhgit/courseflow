@@ -32,6 +32,36 @@ class SQLiteChromaChunkRepository(ChunkRepositoryPort):
             name=collection_name, metadata={"hnsw:space": "cosine"}
         )
 
+    async def initialize(self) -> None:
+        """Ensure chunks table exists."""
+        try:
+            async with aiosqlite.connect(self._db_path) as db:
+                await db.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS chunks (
+                        id TEXT PRIMARY KEY,
+                        document_id TEXT NOT NULL,
+                        chunk_index INTEGER NOT NULL,
+                        text TEXT NOT NULL,
+                        token_count INTEGER NOT NULL,
+                        source_filename TEXT NOT NULL,
+                        subject TEXT NOT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (document_id) REFERENCES documents(id),
+                        UNIQUE(document_id, chunk_index)
+                    )
+                    """
+                )
+                await db.execute(
+                    """CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON chunks(document_id)"""
+                )
+                await db.execute(
+                    """CREATE INDEX IF NOT EXISTS idx_chunks_subject ON chunks(subject)"""
+                )
+                await db.commit()
+        except sqlite3.Error as e:
+            raise ServiceUnavailableError(f"Failed to initialize chunks table: {str(e)}") from e
+
     async def save_chunks(self, chunks: list[Chunk]) -> None:
         if not chunks:
             return

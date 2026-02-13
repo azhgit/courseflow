@@ -16,6 +16,35 @@ class SQLiteDocumentRepository(DocumentRepositoryPort):
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path or settings.database_path
 
+    async def initialize(self) -> None:
+        """Ensure documents table exists."""
+        try:
+            async with aiosqlite.connect(self._db_path) as db:
+                await db.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS documents (
+                        id TEXT PRIMARY KEY,
+                        filename TEXT NOT NULL,
+                        subject TEXT NOT NULL,
+                        content_hash TEXT UNIQUE NOT NULL,
+                        file_format TEXT NOT NULL,
+                        file_size_bytes INTEGER NOT NULL,
+                        chunks_created INTEGER NOT NULL DEFAULT 0,
+                        ingestion_time_ms INTEGER NOT NULL DEFAULT 0,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+                await db.execute(
+                    """CREATE INDEX IF NOT EXISTS idx_documents_subject ON documents(subject)"""
+                )
+                await db.execute(
+                    """CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at)"""
+                )
+                await db.commit()
+        except sqlite3.Error as e:
+            raise ServiceUnavailableError(f"Failed to initialize documents table: {str(e)}") from e
+
     async def save_document(self, document: IngestionDocument) -> None:
         try:
             async with aiosqlite.connect(self._db_path) as db:
