@@ -19,7 +19,7 @@ class PyMuPDFExtractor(PDFExtractorPort):
         def _extract() -> str:
             try:
                 # PyMuPDF historically uses the `fitz` import; newer versions also support `pymupdf`.
-                import fitz  # type: ignore[import-not-found]
+                import fitz  # type: ignore[import-not-found,import-untyped]
 
                 doc = fitz.open(stream=file_bytes, filetype="pdf")
                 try:

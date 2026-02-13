@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # NOTE: Other resources are initialized per-request via dependencies
     # This keeps the lifespan simple and allows for easy testing
     try:
-        import nltk
+        import nltk  # type: ignore[import-untyped]
 
         nltk_data_dir = os.getenv("NLTK_DATA")
         if nltk_data_dir:

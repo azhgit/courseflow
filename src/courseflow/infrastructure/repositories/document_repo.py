@@ -1,6 +1,7 @@
 """SQLite document repository implementing DocumentRepositoryPort."""
 
 import sqlite3
+from typing import cast
 
 import aiosqlite
 
@@ -150,14 +151,17 @@ class SQLiteDocumentRepository(DocumentRepositoryPort):
 def _row_to_document(row: tuple[object, ...] | None) -> IngestionDocument | None:
     if not row:
         return None
+    file_size_bytes = int(cast(str | bytes | bytearray | int, row[5]))
+    chunks_created = int(cast(str | bytes | bytearray | int, row[6]))
+    ingestion_time_ms = int(cast(str | bytes | bytearray | int, row[7]))
     return IngestionDocument(
         id=str(row[0]),
         filename=str(row[1]),
         subject=str(row[2]),
         content_hash=str(row[3]),
         file_format=str(row[4]),
-        file_size_bytes=int(row[5]),
-        chunks_created=int(row[6]),
-        ingestion_time_ms=int(row[7]),
+        file_size_bytes=file_size_bytes,
+        chunks_created=chunks_created,
+        ingestion_time_ms=ingestion_time_ms,
         created_at=str(row[8]),
     )
