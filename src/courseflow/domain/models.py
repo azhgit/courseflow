@@ -526,3 +526,180 @@ class TurnHistory(BaseModel):
             context_parts.append(f"{prefix}: {turn.content}")
 
         return "\n\n".join(context_parts)
+
+
+class StreamingQuery(BaseModel):
+    """Request model for streaming question answering endpoint.
+
+    Extends single-turn Query with optional conversation_id for multi-turn support.
+
+    Attributes:
+        query: Non-empty question string (validated, whitespace stripped)
+        conversation_id: Optional UUID string for continuation. None triggers new conversation.
+    """
+
+    query: str = Field(
+        ...,
+        min_length=1,
+        description="Non-empty question text",
+    )
+    conversation_id: str | None = Field(
+        default=None,
+        description="Optional conversation UUID (null creates new)",
+    )
+
+    @field_validator("query")
+    @classmethod
+    def validate_query_not_empty(cls, v: str) -> str:
+        """Ensure query is not empty or whitespace-only (per clarification Q2)."""
+        if not v.strip():
+            raise ValueError("Query cannot be empty or whitespace-only")
+        return v.strip()
+
+
+class SSEEvent(BaseModel):
+    """Server-Sent Event (SSE) message for streaming responses.
+
+    Immutable value object representing one SSE event in the streaming response.
+    Four event types: chunk, sources, done, error.
+
+    Attributes:
+        type: Event type literal ("chunk" | "sources" | "done" | "error")
+        content: Text chunk (chunk events only)
+        sources: List of document names retrieved (sources events only)
+        retrieval_count: Number of chunks retrieved (sources events only)
+        conversation_id: UUID of conversation (done events only)
+        token_count: Total tokens in response (done events only)
+        error: Error code (error events only)
+        message: Human-readable error message (error events only)
+    """
+
+    type: str = Field(
+        ...,
+        description='Event type: "chunk" | "sources" | "done" | "error"',
+    )
+    content: str | None = Field(
+        default=None,
+        description="Text content for chunk events",
+    )
+    sources: list[str] | None = Field(
+        default=None,
+        description="Document sources for sources event",
+    )
+    retrieval_count: int | None = Field(
+        default=None,
+        ge=0,
+        description="Number of chunks retrieved for sources event",
+    )
+    conversation_id: str | None = Field(
+        default=None,
+        description="Conversation UUID for done event",
+    )
+    token_count: int | None = Field(
+        default=None,
+        ge=0,
+        description="Total tokens for done event",
+    )
+    error: str | None = Field(
+        default=None,
+        description="Error code for error event",
+    )
+    message: str | None = Field(
+        default=None,
+        description="Error message for error event",
+    )
+
+    model_config = {"frozen": True}  # Immutable value object
+
+    def to_sse(self) -> str:
+        """Serialize to SSE format (data: {...}\\n\\n).
+
+        Returns:
+            String in Server-Sent Events format with double newline terminator.
+            Example: 'data: {"type": "chunk", "content": "text"}\\n\\n'
+        """
+        # Build JSON payload with only non-None fields
+        payload = {"type": self.type}
+
+        if self.content is not None:
+            payload["content"] = self.content
+        if self.sources is not None:
+            payload["sources"] = self.sources
+        if self.retrieval_count is not None:
+            payload["retrieval_count"] = self.retrieval_count
+        if self.conversation_id is not None:
+            payload["conversation_id"] = self.conversation_id
+        if self.token_count is not None:
+            payload["token_count"] = self.token_count
+        if self.error is not None:
+            payload["error"] = self.error
+        if self.message is not None:
+            payload["message"] = self.message
+
+        import json
+
+        json_str = json.dumps(payload, ensure_ascii=False)
+        return f"data: {json_str}\n\n"
+
+    @classmethod
+    def chunk(cls, content: str) -> "SSEEvent":
+        """Factory: Chunk event.
+
+        Args:
+            content: Text chunk from LLM response
+
+        Returns:
+            SSEEvent with type="chunk"
+        """
+        return cls(type="chunk", content=content)
+
+    @classmethod
+    def with_sources(cls, sources: list[str], retrieval_count: int) -> "SSEEvent":
+        """Factory: Sources event.
+
+        Args:
+            sources: List of document filenames retrieved
+            retrieval_count: Number of chunks used from retrieval
+
+        Returns:
+            SSEEvent with type="sources"
+        """
+        return cls(
+            type="sources",
+            sources=sources,
+            retrieval_count=retrieval_count,
+        )
+
+    @classmethod
+    def done(cls, conversation_id: str, token_count: int) -> "SSEEvent":
+        """Factory: Done event.
+
+        Args:
+            conversation_id: UUID of conversation (new or existing)
+            token_count: Total tokens in complete response
+
+        Returns:
+            SSEEvent with type="done"
+        """
+        return cls(
+            type="done",
+            conversation_id=conversation_id,
+            token_count=token_count,
+        )
+
+    @classmethod
+    def failure(cls, error: str, message: str) -> "SSEEvent":
+        """Factory: Error event.
+
+        Args:
+            error: Error code (e.g., "no_relevant_documents", "rate_limit_exceeded")
+            message: Human-readable error description
+
+        Returns:
+            SSEEvent with type="error"
+        """
+        return cls(
+            type="error",
+            error=error,
+            message=message,
+        )
