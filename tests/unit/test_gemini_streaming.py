@@ -20,14 +20,14 @@ class TestGeminiStreamingAdapter:
         """Gemini stream() should return async generator."""
         # This test documents the contract:
         # The adapter should have a stream() method that returns async generator
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 
         # Mock the Gemini client
         with patch("genai.Client") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             # The stream method should exist
             assert hasattr(llm, "stream")
@@ -38,7 +38,7 @@ class TestGeminiStreamingAdapter:
         """Streaming should yield text chunks as they arrive."""
         # This test verifies the streaming protocol:
         # Each chunk is yielded as it arrives from Gemini
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 
         with patch("genai.Client") as mock_client_class:
             # Mock response object
@@ -58,7 +58,7 @@ class TestGeminiStreamingAdapter:
             )
             mock_client_class.return_value = mock_client
 
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             # Collect chunks from stream
             chunks = []
@@ -74,7 +74,7 @@ class TestGeminiStreamingAdapter:
     @pytest.mark.asyncio
     async def test_streaming_handles_empty_chunks(self) -> None:
         """Streaming should gracefully handle empty chunks from Gemini."""
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 
         with patch("genai.Client") as mock_client_class:
             # Mock stream with empty chunk
@@ -90,7 +90,7 @@ class TestGeminiStreamingAdapter:
             )
             mock_client_class.return_value = mock_client
 
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             # Should handle empty chunks gracefully
             chunks = []
@@ -105,7 +105,7 @@ class TestGeminiStreamingAdapter:
     @pytest.mark.asyncio
     async def test_streaming_respects_context(self) -> None:
         """Streaming should use provided context in prompt."""
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 
         with patch("genai.Client") as mock_client_class:
             mock_stream = [MagicMock(text="Answer")]
@@ -115,7 +115,7 @@ class TestGeminiStreamingAdapter:
             )
             mock_client_class.return_value = mock_client
 
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             # Stream with context
             context = ["Context document 1", "Context document 2"]
@@ -128,7 +128,7 @@ class TestGeminiStreamingAdapter:
     @pytest.mark.asyncio
     async def test_streaming_supports_optional_system_prompt(self) -> None:
         """Streaming should support optional system prompt parameter."""
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 
         with patch("genai.Client") as mock_client_class:
             mock_stream = [MagicMock(text="Answer")]
@@ -138,7 +138,7 @@ class TestGeminiStreamingAdapter:
             )
             mock_client_class.return_value = mock_client
 
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             # Stream with system prompt
             async for _ in llm.stream(
@@ -152,10 +152,10 @@ class TestGeminiStreamingAdapter:
 
     def test_streaming_configuration_available(self) -> None:
         """GeminiLLM should be configured for streaming."""
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 
         with patch("genai.Client"):
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             # Should have streaming-relevant attributes
             assert hasattr(llm, "model_name")
@@ -164,7 +164,7 @@ class TestGeminiStreamingAdapter:
     @pytest.mark.asyncio
     async def test_streaming_error_on_network_failure(self) -> None:
         """Streaming should propagate network errors."""
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 
         with patch("genai.Client") as mock_client_class:
             mock_client = MagicMock()
@@ -173,7 +173,7 @@ class TestGeminiStreamingAdapter:
             )
             mock_client_class.return_value = mock_client
 
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             # Should raise network error
             with pytest.raises(ConnectionError):
@@ -183,7 +183,7 @@ class TestGeminiStreamingAdapter:
     @pytest.mark.asyncio
     async def test_streaming_error_on_rate_limit(self) -> None:
         """Streaming should propagate rate limit errors."""
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
         from courseflow.domain.exceptions import RateLimitExceededError
 
         with patch("genai.Client") as mock_client_class:
@@ -194,7 +194,7 @@ class TestGeminiStreamingAdapter:
             )
             mock_client_class.return_value = mock_client
 
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             # Should propagate error
             with pytest.raises(Exception):
@@ -204,7 +204,7 @@ class TestGeminiStreamingAdapter:
     @pytest.mark.asyncio
     async def test_streaming_preserves_chunk_order(self) -> None:
         """Chunks should be yielded in order received."""
-        from courseflow.infrastructure.llm.gemini import GeminiLLM
+        from courseflow.infrastructure.llm.gemini import GeminiLLMClient
 
         with patch("genai.Client") as mock_client_class:
             expected_chunks = ["The ", "quick ", "brown ", "fox"]
@@ -216,7 +216,7 @@ class TestGeminiStreamingAdapter:
             )
             mock_client_class.return_value = mock_client
 
-            llm = GeminiLLM(api_key="test_key")
+            llm = GeminiLLMClient(api_key="test_key")
 
             collected = []
             async for chunk in llm.stream(query="Test", context=["doc"]):
