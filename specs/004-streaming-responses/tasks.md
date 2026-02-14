@@ -91,29 +91,29 @@ No additional setup required. Reusing:
 
 ### Tests for Phase 2 (OPTIONAL - writing tests first per TDD)
 
-- [ ] T001 [P] Unit test for StreamingQuery validation in tests/unit/test_models_streaming.py (empty query should raise error)
-- [ ] T002 [P] Unit test for SSEEvent serialization in tests/unit/test_models_streaming.py (chunk, sources, done, error events format correctly)
+- [x] T001 [P] Unit test for StreamingQuery validation in tests/unit/test_models_streaming.py (empty query should raise error)
+- [x] T002 [P] Unit test for SSEEvent serialization in tests/unit/test_models_streaming.py (chunk, sources, done, error events format correctly)
 
 ### Implementation for Phase 2
 
-- [ ] T003 [P] Create StreamingQuery and SSEEvent Pydantic models in src/courseflow/domain/models.py
+- [x] T003 [P] Create StreamingQuery and SSEEvent Pydantic models in src/courseflow/domain/models.py
   - StreamingQuery: query (str, non-empty), conversation_id (Optional[str])
   - ChunkEvent, SourcesEvent, DoneEvent, ErrorEvent Pydantic models
   - Validation: query stripped and non-empty (FR-001a)
 
-- [ ] T004 [P] Create SSE event formatter utility in src/courseflow/infrastructure/sse.py
+- [x] T004 [P] Create SSE event formatter utility in src/courseflow/infrastructure/sse.py
   - Function: `format_chunk(content: str) -> str` → JSON + newlines per SSE spec
   - Function: `format_sources(sources: List[str], retrieval_count: int) -> str`
   - Function: `format_done(conversation_id: str, token_count: int) -> str`
   - Function: `format_error(error: str, message: str, retry_after: Optional[int] = None) -> str`
   - All functions return SSE-formatted strings (data: {...}\n\n)
 
-- [ ] T005 Create stream timeout context manager in src/courseflow/application/streaming_service.py
+- [x] T005 Create stream timeout context manager in src/courseflow/application/streaming_service.py
   - Class: StreamingContext(query_id, timeout_seconds=30)
   - Tracks elapsed time, raises TimeoutError if exceeded
   - Used to wrap entire stream_query() execution
 
-- [ ] T006 Extend rate limiter in src/courseflow/application/rate_limiter.py (if not already 30-second aware)
+- [x] T006 Extend rate limiter in src/courseflow/application/rate_limiter.py (if not already 30-second aware)
   - Add method: `start_streaming_request() -> bool` (returns False if rate limit hit)
   - Tracks per-request timeout (30s max) alongside RPM limits
   - Emits rate limit error if attempted mid-stream
@@ -135,35 +135,35 @@ No additional setup required. Reusing:
 
 ### Tests for US1 (TDD-first)
 
-- [ ] T007 [P] Contract test for POST /api/v1/query/stream in tests/contract/test_streaming_query.py
+- [x] T007 [P] Contract test for POST /api/v1/query/stream in tests/contract/test_streaming_query.py
   - Valid query {"query": "test", "conversation_id": null}
   - Response Content-Type: text/event-stream
   - First event arrives within 1 second
   - Events are valid JSON
 
-- [ ] T008 [P] Unit test for chunk event formatting in tests/unit/test_sse_formatter.py
+- [x] T008 [P] Unit test for chunk event formatting in tests/unit/test_sse_formatter.py
   - format_chunk("Async") → 'data: {"type": "chunk", "content": "Async"}\n\n'
 
-- [ ] T009 [P] Integration test for streaming query with mocked Gemini in tests/integration/test_streaming_endpoint.py
+- [x] T009 [P] Integration test for streaming query with mocked Gemini in tests/integration/test_streaming_endpoint.py
   - Mock Gemini stream: chunk stream returns 5 chunks
   - Verify all 5 chunks received as SSE events
   - Verify sources and done events sent
   - Verify timing: first chunk <1s, gaps <2s
 
-- [ ] T010 [P] E2E test with golden dataset query in tests/e2e/test_streaming_golden.py
+- [x] T010 [P] E2E test with golden dataset query in tests/e2e/test_streaming_golden.py
   - Query: "Explain photosynthesis" (should retrieve docs from biology knowledge base)
   - Verify chunks, sources, and done events
   - Verify answer reconstructed from chunks matches non-streaming answer
 
 ### Implementation for US1
 
-- [ ] T011 [P] Extend Gemini LLM client in src/courseflow/infrastructure/llm/gemini.py
+- [x] T011 [P] Extend Gemini LLM client in src/courseflow/infrastructure/llm/gemini.py
   - Add async method: `stream(prompt: str) -> AsyncGenerator[str, None]`
   - Uses Gemini SDK's `generate_content(stream=True)`
   - Yields only `.text` content from each chunk (filters empty chunks)
   - Logs token count at end
 
-- [ ] T012 Add stream_query() method to RAG service in src/courseflow/application/rag_service.py
+- [x] T012 Add stream_query() method to RAG service in src/courseflow/application/rag_service.py
   - Signature: `async def stream_query(query: StreamingQuery) -> AsyncGenerator[str, None]`
   - Step 1: Validate query (non-empty) → raise ValidationError if fails
   - Step 2: Retrieve documents (same as non-streaming) using ChromaDB
@@ -173,7 +173,7 @@ No additional setup required. Reusing:
   - Step 6: Track completion status (success, timeout, error) for persistence (Task T024)
   - All yields are already SSE-formatted (from T004)
 
-- [ ] T013 Create streaming query route in src/courseflow/api/routes/query.py
+- [x] T013 Create streaming query route in src/courseflow/api/routes/query.py
   - New endpoint: `POST /api/v1/query/stream`
   - Request model: StreamingQuery (from T003)
   - Validation: Check if query is empty → return 400 (FR-001a, clarification Q2)
@@ -200,52 +200,52 @@ No additional setup required. Reusing:
 
 ### Tests for US2
 
-- [ ] T014 [P] Unit test for no-relevant-documents handler in tests/unit/test_error_handlers.py
+- [x] T014 [P] Unit test for no-relevant-documents handler in tests/unit/test_error_handlers.py
   - Input: empty retrieval result
   - Output: 'data: {"type": "error", "error": "no_relevant_documents", "message": "..."}\n\n'
 
-- [ ] T015 [P] Unit test for rate_limit_exceeded handler in tests/unit/test_error_handlers.py
+- [x] T015 [P] Unit test for rate_limit_exceeded handler in tests/unit/test_error_handlers.py
   - Input: rate limit exception mid-stream
   - Output: error event with error code, message, retry_after
 
-- [ ] T016 [P] Unit test for timeout handler in tests/unit/test_error_handlers.py
+- [x] T016 [P] Unit test for timeout handler in tests/unit/test_error_handlers.py
   - Input: TimeoutError after 30 seconds
   - Output: error event "stream_timeout" with human-readable message
 
-- [ ] T017 Integration test for no-relevant-documents path in tests/integration/test_streaming_endpoint.py
+- [x] T017 Integration test for no-relevant-documents path in tests/integration/test_streaming_endpoint.py
   - Query: "xyz12345xyz" (should match no documents)
   - Verify HTTP 200 (not error code)
   - Verify single error event received (no LLM call, no chunks)
 
-- [ ] T018 Integration test for rate limit mid-stream in tests/integration/test_streaming_endpoint.py
+- [x] T018 Integration test for rate limit mid-stream in tests/integration/test_streaming_endpoint.py
   - Mock Gemini: first chunk ok, second chunk raises RateLimitError
   - Verify error event sent within 500ms
   - Verify no duplicate chunks
 
-- [ ] T019 Integration test for timeout in tests/integration/test_streaming_endpoint.py
+- [x] T019 Integration test for timeout in tests/integration/test_streaming_endpoint.py
   - Mock Gemini: stream takes >30 seconds
   - Verify timeout error event sent
   - Verify stream closed cleanly
 
 ### Implementation for US2
 
-- [ ] T020 Create error handler for no relevant documents in src/courseflow/application/streaming_service.py
+- [x] T020 Create error handler for no relevant documents in src/courseflow/application/streaming_service.py
   - Function: `handle_no_relevant_documents() -> str`
   - Returns SSE error event: {"type": "error", "error": "no_relevant_documents", "message": "No relevant content found..."}
   - Called from stream_query() when retrieval returns empty (Task T012 dependency)
 
-- [ ] T021 Create error handler for rate limit mid-stream in src/courseflow/application/streaming_service.py
+- [x] T021 Create error handler for rate limit mid-stream in src/courseflow/application/streaming_service.py
   - Wraps Gemini stream iteration with try-except for RateLimitError (from googlee-generativeai)
   - Catches: google.api_core.exceptions.ResourceExhausted (429)
   - Returns SSE error event with error code, message, retry_after=60
   - Logs error with request_id for observability (Task T027)
 
-- [ ] T022 Create error handler for timeout in src/courseflow/application/streaming_service.py
+- [x] T022 Create error handler for timeout in src/courseflow/application/streaming_service.py
   - Wraps stream_query() with `StreamingContext(timeout_seconds=30)` (Task T005)
   - Catches TimeoutError
   - Returns SSE error event: {"type": "error", "error": "stream_timeout", "message": "..."}
 
-- [ ] T023 Update stream_query() method in src/courseflow/application/rag_service.py (Task T012)
+- [x] T023 Update stream_query() method in src/courseflow/application/rag_service.py (Task T012)
   - Integrate error handlers (T020, T021, T022)
   - Step 3.5: If retrieval empty → call handle_no_relevant_documents(), yield result, return
   - Wrap Gemini iteration in try-except for RateLimitError → call handle_rate_limit()
@@ -267,25 +267,25 @@ No additional setup required. Reusing:
 
 ### Tests for US3
 
-- [ ] T024 [P] Unit test for conversation turn reconstruction in tests/unit/test_conversation_persistence.py
+- [x] T024 [P] Unit test for conversation turn reconstruction in tests/unit/test_conversation_persistence.py
   - Input: list of chunks ["Hello", " ", "world"]
   - Output: "Hello world" (reconstructed answer)
 
-- [ ] T025 [P] Unit test for conversation turn model in tests/unit/test_models_streaming.py
+- [x] T025 [P] Unit test for conversation turn model in tests/unit/test_models_streaming.py
   - ConversationTurn includes: query, answer, sources, completion_status, timeout_flag, token_count
   - completion_status: "success" | "timeout" | "error"
 
-- [ ] T026 Integration test for conversation creation in tests/integration/test_streaming_conversation.py
+- [x] T026 Integration test for conversation creation in tests/integration/test_streaming_conversation.py
   - Stream query without conversation_id
   - Verify done event contains new conversation_id
   - Query conversation history → verify turn saved with answer reconstructed
 
-- [ ] T027 Integration test for conversation append in tests/integration/test_streaming_conversation.py
+- [x] T027 Integration test for conversation append in tests/integration/test_streaming_conversation.py
   - Create conversation via non-streaming endpoint (feature 003)
   - Stream query with that conversation_id
   - Query conversation history → verify turn appended to conversation
 
-- [ ] T028 Integration test for query-only save on error in tests/integration/test_streaming_conversation.py
+- [x] T028 Integration test for query-only save on error in tests/integration/test_streaming_conversation.py
   - Stream query to "no relevant documents" error
   - Verify query NOT saved to conversation (per FR-008 exception)
   - Stream query that raises rate limit before any content
@@ -293,11 +293,11 @@ No additional setup required. Reusing:
 
 ### Implementation for US3
 
-- [ ] T029 Update ConversationTurn model in src/courseflow/domain/models.py (if not already)
+- [x] T029 Update ConversationTurn model in src/courseflow/domain/models.py (if not already)
   - Add fields: completion_status (str), timeout_flag (bool), token_count (int)
   - Reuse from feature 003 if already present
 
-- [ ] T030 Create conversation persistence service in src/courseflow/application/streaming_service.py
+- [x] T030 Create conversation persistence service in src/courseflow/application/streaming_service.py
   - Class: StreamingConversationService
   - Method: `async save_streaming_turn(query: str, chunks: List[str], sources: List[str], conversation_id: Optional[str], completion_status: str, token_count: int) -> str`
   - Reconstructs answer from chunks
@@ -305,14 +305,14 @@ No additional setup required. Reusing:
   - Returns conversation_id (new or existing)
   - Handles: new conversation creation (conversation_id=null), existing conversation append
 
-- [ ] T031 Update stream_query() in src/courseflow/application/rag_service.py
+- [x] T031 Update stream_query() in src/courseflow/application/rag_service.py
   - Track all chunks in memory as they're yielded
   - Track completion_status and token_count
   - After stream ends (sources event sent): call StreamingConversationService.save_streaming_turn()
   - Save asynchronously (non-blocking) to avoid delaying stream close
   - Use `asyncio.create_task()` to fire-and-forget persistence
 
-- [ ] T032 Update done event handler in src/courseflow/api/routes/query.py (Task T013)
+- [x] T032 Update done event handler in src/courseflow/api/routes/query.py (Task T013)
   - Receive conversation_id from stream context
   - Include in done event: {"type": "done", "conversation_id": "...", "token_count": ...}
 
@@ -326,69 +326,69 @@ No additional setup required. Reusing:
 
 ### Tests for Cross-Cutting Concerns
 
-- [ ] T033 [P] Backward compatibility test in tests/integration/test_backward_compat.py
+- [x] T033 [P] Backward compatibility test in tests/integration/test_backward_compat.py
   - Verify non-streaming endpoint (POST /api/v1/query) unchanged
   - Same response structure, same latency, same accuracy
 
-- [ ] T034 [P] Golden dataset E2E test in tests/e2e/test_streaming_golden_full.py
+- [x] T034 [P] Golden dataset E2E test in tests/e2e/test_streaming_golden_full.py
   - 10+ golden Q&A pairs across multiple subjects (biology, programming, history)
   - Stream each query, verify answer contains expected keywords
   - Verify chunk sequence is logical (no out-of-order chunks)
   - Verify sources match retrieved documents
 
-- [ ] T035 [P] Concurrency test in tests/integration/test_streaming_concurrency.py
+- [x] T035 [P] Concurrency test in tests/integration/test_streaming_concurrency.py
   - Run 10 concurrent streaming queries
   - Verify no dropped chunks, no queue buildup
   - Verify all queries complete within 2 seconds
 
-- [ ] T036 [P] Latency test in tests/integration/test_streaming_latency.py
+- [x] T036 [P] Latency test in tests/integration/test_streaming_latency.py
   - Measure first token arrival time (should be <1 second)
   - Measure gaps between chunks (should be <2 seconds)
   - Measure total stream duration (should be <30 seconds)
 
 ### Implementation for Phase 6
 
-- [ ] T037 Add structured logging to streaming routes in src/courseflow/api/routes/query.py
+- [x] T037 Add structured logging to streaming routes in src/courseflow/api/routes/query.py
   - Log at request start: request_id, query, conversation_id
   - Log at each chunk: chunk_id, latency_ms (time since first chunk)
   - Log at stream end: final_status (success|timeout|error), total_latency_ms, token_count
   - Per FR-014
 
-- [ ] T038 Add metrics emission in src/courseflow/application/streaming_service.py
+- [x] T038 Add metrics emission in src/courseflow/application/streaming_service.py
   - Track: query_count, success_count, error_count, timeout_count
   - Track: first_token_latency_ms (histogram), chunk_gap_ms (histogram)
   - Expose via `/metrics` endpoint (reuse from existing application)
 
-- [ ] T039 [P] Update project documentation in README.md and INGEST_API_GUIDE.md
+- [x] T039 [P] Update project documentation in README.md and INGEST_API_GUIDE.md
   - Add new "Streaming Query" section to API guide
   - Example: curl to /api/v1/query/stream
   - Example: Client-side JavaScript event handling
   - Note: SSE format, error handling, retry strategy
 
-- [ ] T040 Add CHANGELOG entry for feature 004
+- [x] T040 Add CHANGELOG entry for feature 004
   - List new endpoint, new event types, breaking changes (none)
   - Link to spec and plan documents
 
 ### Final Validation
 
-- [ ] T041 Run full test suite
+- [x] T041 Run full test suite
   - pytest tests/ --cov=src/courseflow --cov-report=html
   - Verify coverage >80% (streaming code should be >85%)
   - Zero failing tests
 
-- [ ] T042 Run linting and type checks
+- [x] T042 Run linting and type checks
   - ruff check src/
   - mypy --strict src/
   - Zero errors
 
-- [ ] T043 Manual smoke test
+- [x] T043 Manual smoke test
   - Start server: uvicorn src.courseflow.api.main:app --reload
   - Test streaming query: curl -X POST http://localhost:8000/api/v1/query/stream -H "Content-Type: application/json" -d '{"query": "Explain photosynthesis", "conversation_id": null}' -N
   - Verify chunks arrive incrementally
   - Verify sources and done events sent
   - Verify conversation saved (query POST /api/v1/conversations/{id})
 
-- [ ] T044 Final review and merge
+- [x] T044 Final review and merge
   - Code review checklist (constitution compliance)
   - Documentation complete
   - Tests passing

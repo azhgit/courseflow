@@ -138,7 +138,7 @@ class GeminiLLMClient(LLMPort):
 
         try:
             # Call Gemini streaming API
-            response = await self._stream_with_retry(prompt)
+            response = self._stream_with_retry(prompt)
 
             # Iterate through chunks
             token_count = 0
@@ -300,10 +300,9 @@ Answer (be concise and factual, citing specific information from the documents):
                 loop.run_in_executor(
                     None,
                     functools.partial(
-                        self.client.models.generate_content,
+                        self.client.models.generate_content_stream,
                         model=self.model_name,
                         contents=prompt,
-                        stream=True,  # Enable streaming
                     ),
                 ),
                 timeout=self.timeout_seconds,

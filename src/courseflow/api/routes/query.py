@@ -1,11 +1,12 @@
 """Query endpoint for RAG question answering."""
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from courseflow.api.dependencies import (
@@ -14,6 +15,8 @@ from courseflow.api.dependencies import (
     get_rate_limiter,
     get_token_counter,
 )
+from courseflow.application.streaming_conversation_service import StreamingConversationService
+from courseflow.application.streaming_service import streaming_metrics
 from courseflow.domain.exceptions import (
     ConversationNotFoundError,
     ConversationPersistenceError,
@@ -21,7 +24,10 @@ from courseflow.domain.exceptions import (
     QuotaExceededError,
     ServiceUnavailableError,
 )
-from courseflow.domain.models import ConversationTurn, Query, StreamingQuery, SSEEvent
+from courseflow.domain.exceptions import (
+    TimeoutError as CourseFlowTimeoutError,
+)
+from courseflow.domain.models import ConversationTurn, Query, SSEEvent, StreamingQuery
 
 logger = logging.getLogger(__name__)
 
@@ -388,172 +394,130 @@ async def stream_query_endpoint(
         HTTPException: With appropriate status code for errors (as SSE events)
     """
 
+    query_text = request.query.strip() if request.query is not None else ""
+    if not query_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query must not be empty")
+    if len(query_text) > 1000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="query must be <= 1000 characters",
+        )
+
     async def generate_sse_stream():
         """Generator function that yields SSE-formatted events."""
+        request_started = datetime.now(UTC)
         try:
-            # === REQUEST VALIDATION ===
-            query_text = request.query.strip() if request.query is not None else ""
-            if not query_text:
-                error_event = SSEEvent.failure(
-                    error="validation_error",
-                    message="query must not be empty",
-                )
-                yield error_event.to_sse()
-                return
-
-            if len(query_text) > 1000:
-                error_event = SSEEvent.failure(
-                    error="validation_error",
-                    message="query must be <= 1000 characters",
-                )
-                yield error_event.to_sse()
-                return
-
-            # Create StreamingQuery model
-            streaming_query = StreamingQuery(
-                query=query_text,
-                conversation_id=request.conversation_id,
+            streaming_query = StreamingQuery(query=query_text, conversation_id=request.conversation_id)
+            request_id = str(Query(text=streaming_query.query).id)
+            logger.info(
+                "stream.start request_id=%s conversation_id=%s",
+                request_id,
+                streaming_query.conversation_id,
             )
+            streaming_metrics.query_count += 1
 
-            # === RATE LIMITING ===
             allowed, retry_after = rate_limiter.is_allowed()
             if not allowed:
-                logger.warning(f"Rate limit exceeded; retry_after={retry_after}s")
-                error_event = SSEEvent.failure(
+                yield SSEEvent(
+                    type="error",
                     error="rate_limit_exceeded",
                     message=f"Rate limit exceeded. Retry after {retry_after}s.",
-                )
-                yield error_event.to_sse()
+                    retry_after=retry_after,
+                ).to_sse()
                 return
 
-            logger.info(f"Streaming query: {streaming_query.query[:50]}...")
-
-            # === CONVERSATION MANAGEMENT ===
-            conversation_id: str
+            conversation_id: str | None = streaming_query.conversation_id
             conversation_history: str | None = None
-
-            if streaming_query.conversation_id is None:
-                # Create new conversation
-                new_conversation = await conversation_repo.create_conversation()
-                conversation_id = str(new_conversation.id)
-                logger.info(f"Created new conversation: {conversation_id}")
-            else:
-                # Validate existing conversation
-                conversation_id = streaming_query.conversation_id
+            if conversation_id is not None:
                 exists = await conversation_repo.conversation_exists(conversation_id)
                 if not exists:
-                    logger.warning(f"Conversation not found: {conversation_id}")
-                    error_event = SSEEvent.failure(
+                    yield SSEEvent.failure(
                         error="conversation_not_found",
                         message=f"Conversation {conversation_id} not found",
-                    )
-                    yield error_event.to_sse()
+                    ).to_sse()
                     return
-
-                # Fetch conversation history (for multi-turn context)
-                try:
-                    turns = await conversation_repo.get_conversation_turns(
-                        conversation_id,
-                        limit=5,
-                    )
-                    conversation_history = "\n".join(
-                        [f"Turn {i+1}: {turn.user_query}\nResponse: {turn.ai_response}"
-                         for i, turn in enumerate(turns)]
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to fetch conversation history: {e}")
-
-            # === STREAMING GENERATION ===
-            try:
-                # Track chunks and sources for logging
-                all_chunks = []
-                all_sources = []
-
-                # Stream from RAG service
-                async for chunk_text, source_names in rag_service.stream_query(
-                    query=Query(text=streaming_query.query),
-                    subject=request.subject,
-                    conversation_history=conversation_history,
-                ):
-                    # Yield chunk event
-                    chunk_event = SSEEvent.chunk(chunk_text)
-                    yield chunk_event.to_sse()
-
-                    all_chunks.append(chunk_text)
-                    if source_names:
-                        all_sources = source_names
-
-                # Yield sources event (after generation completes)
-                sources_event = SSEEvent.with_sources(
-                    sources=all_sources,
-                    retrieval_count=len(all_sources),
+                turn_history = await conversation_repo.get_history(
+                    conversation_id=conversation_id,
+                    max_tokens=2000,
+                    max_count=5,
                 )
-                yield sources_event.to_sse()
+                conversation_history = (
+                    turn_history.to_llm_context() if turn_history.turns else None
+                )
 
-                # Yield done event with conversation_id and token count
-                full_response = "".join(all_chunks)
-                token_count = len(full_response.split())
+            all_chunks: list[str] = []
+            all_sources: list[str] = []
+            first_chunk_at: datetime | None = None
 
-                done_event = SSEEvent.done(
+            async for chunk_text, source_names in rag_service.stream_query(
+                query=Query(text=streaming_query.query),
+                subject=request.subject,
+                conversation_history=conversation_history,
+            ):
+                yield SSEEvent.chunk(chunk_text).to_sse()
+                all_chunks.append(chunk_text)
+                if first_chunk_at is None:
+                    first_chunk_at = datetime.now(UTC)
+                    first_ms = int((first_chunk_at - request_started).total_seconds() * 1000)
+                    streaming_metrics.observe_first_token_latency(first_ms)
+                if source_names:
+                    all_sources = source_names
+
+            if conversation_id is None:
+                conversation_id = str((await conversation_repo.create_conversation()).id)
+
+            yield SSEEvent.with_sources(
+                sources=all_sources,
+                retrieval_count=len(all_sources),
+            ).to_sse()
+
+            full_response = "".join(all_chunks)
+            token_count = len(full_response.split())
+            yield SSEEvent.done(conversation_id=conversation_id, token_count=token_count).to_sse()
+            streaming_metrics.success_count += 1
+
+            persistence_service = StreamingConversationService(conversation_repo)
+            asyncio.create_task(
+                persistence_service.save_streaming_turn(
+                    query=streaming_query.query,
+                    chunks=all_chunks,
                     conversation_id=conversation_id,
                     token_count=token_count,
                 )
-                yield done_event.to_sse()
-
-                logger.info(f"Streaming completed for query {conversation_id}")
-
-                # === CONVERSATION PERSISTENCE ===
-                try:
-                    turn = ConversationTurn(
-                        conversation_id=conversation_id,
-                        user_query=streaming_query.query,
-                        ai_response=full_response,
-                        token_count=token_count,
-                    )
-                    await conversation_repo.save_turn(turn)
-                    logger.debug(f"Saved conversation turn: {conversation_id}")
-                except Exception as e:
-                    logger.error(f"Failed to save conversation turn: {e}")
-
-            except NoRelevantDocumentsError as e:
-                logger.warning(f"No relevant documents: {e}")
-                error_event = SSEEvent.failure(
-                    error="no_relevant_documents",
-                    message=e.message,
-                )
-                yield error_event.to_sse()
-
-            except QuotaExceededError as e:
-                logger.error(f"Quota exceeded: {e}")
-                error_event = SSEEvent.failure(
-                    error="rate_limit_exceeded",
-                    message=e.message,
-                )
-                yield error_event.to_sse()
-
-            except ServiceUnavailableError as e:
-                logger.error(f"Service unavailable: {e}")
-                error_event = SSEEvent.failure(
-                    error="service_unavailable",
-                    message=e.message,
-                )
-                yield error_event.to_sse()
-
-            except Exception as e:
-                logger.exception(f"Unexpected streaming error: {e}")
-                error_event = SSEEvent.failure(
-                    error="internal_error",
-                    message="An unexpected error occurred during streaming",
-                )
-                yield error_event.to_sse()
-
-        except Exception as e:
-            logger.exception(f"Critical streaming error: {e}")
-            error_event = SSEEvent.failure(
-                error="internal_error",
-                message="Critical streaming error",
             )
-            yield error_event.to_sse()
+
+        except NoRelevantDocumentsError:
+            streaming_metrics.error_count += 1
+            yield SSEEvent.failure(
+                error="no_relevant_documents",
+                message="No relevant content found for your query. Try rephrasing or ask about a topic in the knowledge base.",
+            ).to_sse()
+        except QuotaExceededError as e:
+            streaming_metrics.error_count += 1
+            yield SSEEvent(
+                type="error",
+                error="rate_limit_exceeded",
+                message=e.message,
+                retry_after=e.retry_after,
+            ).to_sse()
+        except (CourseFlowTimeoutError, TimeoutError):
+            streaming_metrics.timeout_count += 1
+            yield SSEEvent.failure(
+                error="stream_timeout",
+                message="Response generation timeout. Maximum streaming duration is 30 seconds.",
+            ).to_sse()
+        except ServiceUnavailableError as e:
+            streaming_metrics.error_count += 1
+            yield SSEEvent.failure(
+                error="service_unavailable",
+                message=e.message,
+            ).to_sse()
+        except Exception:
+            streaming_metrics.error_count += 1
+            yield SSEEvent.failure(
+                error="internal_error",
+                message="An unexpected error occurred during streaming",
+            ).to_sse()
 
     return StreamingResponse(
         generate_sse_stream(),
@@ -562,4 +526,13 @@ async def stream_query_endpoint(
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@router.get("/metrics")
+async def metrics_endpoint() -> Response:
+    """Expose lightweight streaming metrics."""
+    return Response(
+        content=streaming_metrics.to_prometheus(),
+        media_type="text/plain; version=0.0.4",
     )
