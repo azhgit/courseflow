@@ -72,6 +72,20 @@ curl -X POST "http://localhost:8000/api/v1/query" \
   -d '{"query": "What is photosynthesis?"}'
 ```
 
+### Stream a Question (SSE)
+
+```bash
+curl -N -X POST "http://localhost:8000/api/v1/query/stream" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Explain photosynthesis step by step","conversation_id":null}'
+```
+
+Streaming events follow this order:
+- `chunk` (repeated): incremental answer text
+- `sources` (once): retrieved source files
+- `done` (once): final marker with `conversation_id` and `token_count`
+- `error` (terminal): structured error (`no_relevant_documents`, `rate_limit_exceeded`, etc.)
+
 ### Ingest a Document
 
 ```bash

@@ -4,6 +4,7 @@ import asyncio
 import functools
 import logging
 import time
+from typing import AsyncGenerator
 
 from google import genai
 from google.genai import types
@@ -112,6 +113,62 @@ class GeminiLLMClient(LLMPort):
 
         return answer_text, token_usage
 
+    async def stream(
+        self,
+        query: str,
+        context: list[str],
+    ) -> AsyncGenerator[str, None]:
+        """Stream answer chunks from Gemini LLM.
+
+        Args:
+            query: User's question
+            context: List of relevant document excerpts for RAG
+
+        Yields:
+            Text chunks as they arrive from Gemini API
+
+        Raises:
+            QuotaExceededError: When API quota is exceeded
+            ServiceUnavailableError: When service is unavailable
+        """
+        # Construct prompt
+        prompt = self._build_prompt(query, context)
+
+        logger.info(f"Starting streaming response for query: {query[:50]}...")
+
+        try:
+            # Call Gemini streaming API
+            response = self._stream_with_retry(prompt)
+
+            # Iterate through chunks
+            token_count = 0
+            async for chunk in response:
+                # Extract text from chunk
+                if hasattr(chunk, "text") and chunk.text:
+                    text = chunk.text
+                    token_count += len(text.split())
+                    yield text
+                    logger.debug(f"Streamed chunk: {len(text)} chars")
+
+            logger.info(f"Streaming complete: ~{token_count} tokens")
+
+        except Exception as e:
+            error_msg = str(e)
+            if "429" in error_msg or "quota" in error_msg.lower():
+                logger.error(f"Rate limit exceeded during streaming: {e}")
+                raise QuotaExceededError(
+                    message="Gemini API quota exceeded during streaming",
+                    retry_after=60,
+                ) from e
+            elif "503" in error_msg or "unavailable" in error_msg.lower():
+                logger.error(f"Service unavailable during streaming: {e}")
+                raise ServiceUnavailableError(
+                    message="Gemini API unavailable during streaming"
+                ) from e
+            else:
+                logger.error(f"Streaming error: {e}")
+                raise
+
     def _build_prompt(self, query: str, context: list[str]) -> str:
         """Build RAG prompt from query and context documents.
 
@@ -208,6 +265,83 @@ Answer (be concise and factual, citing specific information from the documents):
             else:
                 logger.error(f"Unexpected Gemini API error: {e}")
                 raise ServiceUnavailableError(message=f"Failed to generate answer: {str(e)}") from e
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((asyncio.TimeoutError, ConnectionError)),
+        reraise=True,
+    )
+    async def _stream_with_retry(
+        self,
+        prompt: str,
+    ) -> AsyncGenerator[types.GenerateContentResponse, None]:
+        """Stream content with exponential backoff retry.
+
+        Args:
+            prompt: Formatted prompt text
+
+        Yields:
+            Gemini API response chunks
+
+        Raises:
+            QuotaExceededError: When rate limit is exceeded
+            ServiceUnavailableError: When service is unavailable
+            asyncio.TimeoutError: When request times out
+        """
+        try:
+            start_time = time.time()
+
+            # Call streaming API
+            loop = asyncio.get_running_loop()
+            
+            # Run synchronous streaming API in executor
+            response_iter = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    functools.partial(
+                        self.client.models.generate_content_stream,
+                        model=self.model_name,
+                        contents=prompt,
+                    ),
+                ),
+                timeout=self.timeout_seconds,
+            )
+
+            logger.debug(f"Started streaming response")
+
+            # Yield chunks from iterator
+            for response_chunk in response_iter:
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                if elapsed_ms > self.timeout_seconds * 1000:
+                    raise asyncio.TimeoutError(f"Streaming exceeded {self.timeout_seconds}s timeout")
+                yield response_chunk
+
+        except TimeoutError:
+            logger.warning(f"LLM streaming timed out after {self.timeout_seconds}s")
+            raise
+
+        except Exception as e:
+            # Categorize errors
+            error_str = str(e).lower()
+
+            if "quota" in error_str or "rate limit" in error_str or "429" in error_str:
+                retry_after = 60
+                logger.warning(f"Gemini API quota exceeded during streaming: {e}")
+                raise QuotaExceededError(
+                    message="Gemini API quota exceeded (15 RPM limit)",
+                    retry_after=retry_after,
+                ) from e
+
+            elif "503" in error_str or "unavailable" in error_str:
+                logger.error(f"Gemini API unavailable during streaming: {e}")
+                raise ServiceUnavailableError(
+                    message="Gemini API is temporarily unavailable"
+                ) from e
+
+            else:
+                logger.error(f"Unexpected Gemini API error during streaming: {e}")
+                raise ServiceUnavailableError(message=f"Failed to stream answer: {str(e)}") from e
 
     def _is_model_not_found_error(self, exc: Exception) -> bool:
         msg = str(exc)

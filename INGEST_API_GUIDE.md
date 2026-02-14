@@ -237,6 +237,24 @@ GET /api/v1/subjects
 POST /api/v1/query
 ```
 
+### 串流查詢（SSE）
+```bash
+POST /api/v1/query/stream
+```
+
+範例（curl）：
+```bash
+curl -N -X POST "http://127.0.0.1:8000/api/v1/query/stream" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Explain photosynthesis","conversation_id":null}'
+```
+
+SSE 事件型別：
+- `chunk`：分段回答
+- `sources`：檢索來源
+- `done`：完成事件（含 conversation_id、token_count）
+- `error`：錯誤事件（例如 `no_relevant_documents`、`rate_limit_exceeded`）
+
 Body:
 ```json
 {

@@ -2,6 +2,7 @@
 
 import logging
 import time
+from typing import AsyncGenerator
 
 from courseflow.domain.exceptions import NoRelevantDocumentsError
 from courseflow.domain.models import Answer, Query, SearchResult
@@ -194,6 +195,152 @@ class RAGService:
         )
 
         return answer
+
+    async def stream_query(
+        self,
+        query: Query,
+        subject: str | None = None,
+        conversation_history: str | None = None,
+    ) -> AsyncGenerator[tuple[str, list[str]], None]:
+        """Execute RAG pipeline streaming answer chunks.
+
+        Follows same retrieval pipeline as answer_query() but yields LLM chunks
+        as they arrive instead of waiting for complete response.
+
+        Pipeline stages:
+        1. Validate query (done by Pydantic model)
+        2. Generate embedding for query text
+        3. Search vector store for top-k similar documents
+        4. Filter results by similarity threshold
+        5. Stream answer chunks using LLM with context
+        6. Yield (chunk_text, source_names) tuples
+        7. Log query after streaming completes
+
+        Args:
+            query: User's question (validated Query model)
+            subject: Optional subject filter for retrieval
+            conversation_history: Optional formatted conversation history for multi-turn context
+
+        Yields:
+            Tuple of (text_chunk, source_names) as streaming progresses
+
+        Raises:
+            NoRelevantDocumentsError: When no documents meet similarity threshold
+            QuotaExceededError: When LLM quota is exceeded
+            ServiceUnavailableError: When services are unavailable
+        """
+        start_time = time.time()
+
+        logger.info(f"Starting streaming for query: {query.id} - '{query.text}'")
+
+        # Stage 1: Generate embedding
+        embedding_start = time.time()
+        query_embedding = await self.embedding_port.generate_embedding(query.text)
+        embedding_time_ms = int((time.time() - embedding_start) * 1000)
+        logger.debug(f"Query embedding generated in {embedding_time_ms}ms")
+
+        # Stage 2: Search vector store
+        search_start = time.time()
+        search_results = await self.vector_store.search(
+            query_embedding=query_embedding,
+            k=self.top_k,
+            subject=subject,
+        )
+        search_time_ms = int((time.time() - search_start) * 1000)
+        logger.debug(
+            f"Vector search completed in {search_time_ms}ms, found {len(search_results)} results"
+        )
+
+        # Stage 3: Filter by threshold
+        filtered_results = self._filter_by_threshold(search_results)
+
+        if not filtered_results:
+            max_similarity = (
+                max([r.similarity_score for r in search_results]) if search_results else 0.0
+            )
+            logger.warning(
+                f"No relevant documents for streaming query {query.id}. "
+                f"Max similarity: {max_similarity:.3f}, threshold: {self.similarity_threshold}"
+            )
+            raise NoRelevantDocumentsError(
+                message=(
+                    "No relevant information found in knowledge base "
+                    f"(threshold={self.similarity_threshold})"
+                ),
+                threshold=self.similarity_threshold,
+                max_similarity=max_similarity,
+            )
+
+        logger.info(
+            f"Found {len(filtered_results)} relevant documents for streaming "
+            f"(threshold: {self.similarity_threshold})"
+        )
+
+        # Extract source names for yielding
+        source_names = [r.document.metadata.source for r in filtered_results]
+
+        # Log similarity scores
+        for i, result in enumerate(filtered_results):
+            logger.debug(
+                f"  [{i + 1}] {result.document.metadata.source}: "
+                f"score={result.similarity_score:.3f}"
+            )
+
+        # Stage 4: Stream answer using LLM
+        llm_start = time.time()
+
+        # Prepare context (same as answer_query)
+        context_snippets = [
+            f"Source: {r.document.metadata.source}\n\n{r.document.content}"
+            for r in filtered_results
+        ]
+
+        # Prepend conversation history if provided
+        if conversation_history:
+            context_snippets.insert(0, f"Conversation History:\n{conversation_history}\n")
+            logger.debug("Included conversation history in streaming context")
+
+        # Stream chunks from LLM
+        full_response = ""
+        chunk_count = 0
+
+        async for chunk in self.llm_port.stream(
+            query=query.text,
+            context=context_snippets,
+        ):
+            full_response += chunk
+            chunk_count += 1
+            yield (chunk, source_names)
+            logger.debug(f"Streamed chunk {chunk_count}: {len(chunk)} chars")
+
+        llm_time_ms = int((time.time() - llm_start) * 1000)
+        logger.debug(f"LLM streaming completed in {llm_time_ms}ms, {chunk_count} chunks")
+
+        # Calculate total latency
+        total_latency_ms = int((time.time() - start_time) * 1000)
+
+        # Log performance breakdown
+        logger.info(
+            f"Streaming query {query.id} completed in {total_latency_ms}ms "
+            f"(embed: {embedding_time_ms}ms, search: {search_time_ms}ms, "
+            f"llm: {llm_time_ms}ms, chunks: {chunk_count})"
+        )
+
+        # Stage 5: Log query to repository (after streaming completes)
+        try:
+            # Estimate token count from response length (rough approximation)
+            estimated_tokens = len(full_response.split())
+
+            await self.query_repo.save_query(
+                query_id=str(query.id),
+                query_text=query.text,
+                answer_text=full_response,
+                latency_ms=total_latency_ms,
+                token_usage=None,  # Would need full token count from LLM
+            )
+        except Exception as e:
+            logger.error(f"Failed to log streaming query: {e}")
+            # Don't fail the stream if logging fails
 
     def _filter_by_threshold(
         self,
