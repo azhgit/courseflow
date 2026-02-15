@@ -40,9 +40,11 @@ class ChromaAdapter(VectorStorePort):
             ServiceUnavailableError: If ChromaDB client cannot be initialized
         """
         try:
-            persist_path = persist_directory or persist_dir
+            self._persist_path = persist_directory or persist_dir
+            self._collection_name = collection_name
+            self._collection_metadata = {"hnsw:space": "cosine"}
             self.client = chromadb.PersistentClient(
-                path=persist_path,
+                path=self._persist_path,
                 settings=ChromaSettings(
                     anonymized_telemetry=False,  # Disable telemetry
                     allow_reset=True,  # Enable reset for testing
@@ -51,8 +53,8 @@ class ChromaAdapter(VectorStorePort):
 
             # Get or create collection with cosine similarity
             self.collection = self.client.get_or_create_collection(
-                name=collection_name,
-                metadata={"hnsw:space": "cosine"},  # Cosine similarity metric
+                name=self._collection_name,
+                metadata=self._collection_metadata,  # Cosine similarity metric
             )
 
         except Exception as e:
@@ -94,7 +96,7 @@ class ChromaAdapter(VectorStorePort):
             }
             if subject:
                 query_kwargs["where"] = {"subject": subject}
-            results = self.collection.query(**query_kwargs)
+            results = self._query_with_recovery(query_kwargs)
 
             # Extract results
             ids = results["ids"][0]
@@ -154,6 +156,27 @@ class ChromaAdapter(VectorStorePort):
 
         except Exception as e:
             raise ServiceUnavailableError(f"ChromaDB search failed: {str(e)}") from e
+
+    def _query_with_recovery(self, query_kwargs: dict[str, object]) -> dict[str, object]:
+        """Run Chroma query with one refresh retry for transient stale-index errors."""
+        try:
+            return self.collection.query(**query_kwargs)
+        except Exception as first_error:
+            if "Error finding id" not in str(first_error):
+                raise
+            self._refresh_collection()
+            return self.collection.query(**query_kwargs)
+
+    def _refresh_collection(self) -> None:
+        """Re-initialize client/collection to recover stale Chroma handles."""
+        self.client = chromadb.PersistentClient(
+            path=self._persist_path,
+            settings=ChromaSettings(anonymized_telemetry=False, allow_reset=True),
+        )
+        self.collection = self.client.get_or_create_collection(
+            name=self._collection_name,
+            metadata=self._collection_metadata,
+        )
 
     async def add_documents(self, documents: list[Document]) -> None:
         """Add documents to the vector store.

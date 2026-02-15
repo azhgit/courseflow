@@ -5,7 +5,6 @@ and task requirements (T001-T002).
 """
 
 import json
-from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -40,8 +39,7 @@ class TestStreamingQueryValidation:
             StreamingQuery(query="", conversation_id=None)
         errors = exc_info.value.errors()
         assert any(
-            "string_too_short" in str(err.get("type", ""))
-            or "at least" in str(err.get("msg", ""))
+            "string_too_short" in str(err.get("type", "")) or "at least" in str(err.get("msg", ""))
             for err in errors
         )
 

@@ -195,7 +195,7 @@ class IngestionService:
             RateLimitExceededError: If retries exhausted
         """
 
-        async def _generate():
+        async def _generate() -> list[float]:
             async with self._rate_limiter.acquire(request_id=f"{request_id}_chunk_{chunk_idx}"):
                 return await self._embedding_port.generate_embedding(chunk.text)
 

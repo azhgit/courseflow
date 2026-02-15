@@ -34,4 +34,3 @@ def test_golden_stream_event_sequence(query: str, source: str) -> None:
     assert types[:2] == ["chunk", "chunk"]
     assert types[-2:] == ["sources", "done"]
     assert source in buffer.sources_list
-

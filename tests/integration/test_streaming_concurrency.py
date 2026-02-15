@@ -65,13 +65,10 @@ async def test_concurrent_stream_requests_complete() -> None:
 
     async def run_one(i: int) -> list[dict]:
         return await asyncio.to_thread(
-            lambda: _parse_events(
-                client.post("/api/v1/query/stream", json={"query": f"q{i}"}).text
-            )
+            lambda: _parse_events(client.post("/api/v1/query/stream", json={"query": f"q{i}"}).text)
         )
 
     results = await asyncio.gather(*[run_one(i) for i in range(10)])
     assert len(results) == 10
     for events in results:
         assert any(e.get("type") == "done" for e in events)
-

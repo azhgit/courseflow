@@ -4,6 +4,8 @@ This module provides async embedding generation using Google's Gemini API.
 Implements retry logic and error categorization for production use.
 """
 
+from typing import cast
+
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -80,8 +82,11 @@ class GeminiEmbeddingClient(EmbeddingPort):
 
             # Check for rate limiting
             if response.status_code == 429:
+                detail = response.text.strip()
+                if len(detail) > 300:
+                    detail = f"{detail[:300]}..."
                 raise QuotaExceededError(
-                    "Gemini API quota exceeded (15 RPM limit)",
+                    f"Gemini embedding quota exceeded: {detail or 'HTTP 429'}",
                     retry_after=60,  # Estimate 60s for RPM reset
                 )
 
@@ -97,8 +102,7 @@ class GeminiEmbeddingClient(EmbeddingPort):
             # Extract embedding from response
             data = response.json()
             embedding = data["embedding"]["values"]
-
-            return embedding
+            return cast(list[float], embedding)
 
         except httpx.TimeoutException as e:
             raise CourseFlowTimeoutError(f"Embedding generation timed out after {timeout}s") from e

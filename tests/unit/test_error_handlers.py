@@ -6,15 +6,14 @@ Tests the SSE error event generation for three error scenarios:
 - T016: Timeout during streaming
 """
 
-import pytest
 import json
 
-from courseflow.domain.models import SSEEvent
 from courseflow.application.error_handlers import (
     handle_no_relevant_documents,
     handle_rate_limit_exceeded,
     handle_timeout,
 )
+from courseflow.domain.models import SSEEvent
 
 
 class TestErrorHandlers:
@@ -76,7 +75,10 @@ class TestErrorHandlers:
 
         # Assert
         assert error_event.retry_after == retry_after_seconds
-        assert str(retry_after_seconds) in error_event.message or "retry" in error_event.message.lower()
+        assert (
+            str(retry_after_seconds) in error_event.message
+            or "retry" in error_event.message.lower()
+        )
 
     def test_rate_limit_exceeded_serializes_to_sse(self) -> None:
         """T015: Rate limit error event serializes to SSE format."""
@@ -195,7 +197,7 @@ class TestErrorHandlers:
             sse_output = event.to_sse()
             assert sse_output.startswith("data: ")
             assert sse_output.endswith("\n\n")
-            
+
             # Verify JSON payload is valid
             json_part = sse_output[6:-2]
             parsed = json.loads(json_part)

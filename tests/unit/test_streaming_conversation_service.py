@@ -3,14 +3,15 @@
 Tests conversation turn saving for streaming responses.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 from courseflow.application.streaming_conversation_service import (
     StreamingConversationService,
 )
-from courseflow.domain.models import Conversation, ConversationTurn
+from courseflow.domain.models import Conversation
 
 
 @pytest.fixture

@@ -55,6 +55,16 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Evaluation System
+    EVAL_DATABASE_PATH: str = "./data/evaluations.db"
+    EVAL_GOLDEN_DATASET_PATH: str = "./tests/fixtures/golden_dataset.json"
+    EVAL_SCHEDULE_ENABLED: bool = True
+    EVAL_SCHEDULE_HOUR: int = Field(default=2, ge=0, le=23)  # 2 AM UTC
+    EVAL_SCHEDULE_MINUTE: int = Field(default=0, ge=0, le=59)
+    EVAL_PRECISION_THRESHOLD: float = Field(default=0.70, ge=0.0, le=1.0)
+    EVAL_KEYWORD_MATCH_THRESHOLD: float = Field(default=0.80, ge=0.0, le=1.0)
+    EVAL_LATENCY_P95_THRESHOLD_MS: int = Field(default=10000, ge=0)
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -117,6 +127,35 @@ class Settings(BaseSettings):
     @property
     def api_v1_prefix(self) -> str:
         return self.API_V1_PREFIX
+
+    @property
+    def eval_database_path(self) -> str:
+        """Resolve evaluation database path (absolute)."""
+        p = Path(self.EVAL_DATABASE_PATH)
+        if not p.is_absolute():
+            p = (_BASE_DIR / p).resolve()
+        return str(p)
+
+    @property
+    def eval_golden_dataset_path(self) -> str:
+        """Resolve golden dataset path (absolute)."""
+        p = Path(self.EVAL_GOLDEN_DATASET_PATH)
+        if not p.is_absolute():
+            p = (_BASE_DIR / p).resolve()
+        return str(p)
+
+    @property
+    def eval_auto_schedule_enabled(self) -> bool:
+        """Backward-compatible alias for evaluation auto scheduler toggle."""
+        return self.EVAL_SCHEDULE_ENABLED
+
+    @property
+    def eval_schedule_hour(self) -> int:
+        return self.EVAL_SCHEDULE_HOUR
+
+    @property
+    def eval_schedule_minute(self) -> int:
+        return self.EVAL_SCHEDULE_MINUTE
 
 
 # Global settings instance (initialized once at import)

@@ -205,7 +205,7 @@ class TestStreamingDeadlineManager:
 
         chunks_processed = 0
         try:
-            for i in range(100):
+            for _ in range(100):
                 manager.check()
                 time.sleep(0.005)
                 chunks_processed += 1
@@ -222,7 +222,6 @@ class TestTimeoutIntegration:
     @pytest.mark.asyncio
     async def test_deadline_manager_with_async_operations(self) -> None:
         """Should track time across async operations."""
-        import time
 
         manager = StreamingDeadlineManager(max_seconds=1)
         manager.start()
@@ -250,7 +249,7 @@ class TestTimeoutIntegration:
 
         count = 0
         try:
-            async for value in slow_generator():
+            async for _ in slow_generator():
                 count += 1
         except StreamingTimeoutError:
             pass

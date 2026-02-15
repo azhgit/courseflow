@@ -118,7 +118,7 @@ class SQLiteChromaChunkRepository(ChunkRepositoryPort):
             self._collection.add(
                 ids=[d.id for d in documents],
                 documents=[d.content for d in documents],
-                embeddings=[d.embedding for d in documents],  # type: ignore[arg-type]
+                embeddings=[d.embedding for d in documents],
                 metadatas=[
                     {
                         "source": d.metadata.source,

@@ -41,4 +41,3 @@ class StreamingMetrics:
 
 
 streaming_metrics = StreamingMetrics()
-

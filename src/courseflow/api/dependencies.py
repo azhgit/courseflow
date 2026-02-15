@@ -6,8 +6,10 @@ Uses singleton pattern for expensive clients to avoid creating new instances per
 
 from collections import deque
 from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
 
 import aiosqlite
+from fastapi import HTTPException, status
 
 from courseflow.application.rag_service import RAGService
 from courseflow.config import settings
@@ -23,6 +25,14 @@ from courseflow.infrastructure.text_processing.nltk_tokenizer import NLTKSentenc
 from courseflow.infrastructure.text_processing.sentence_chunker import SentenceChunker
 from courseflow.infrastructure.token_counting.tiktoken_counter import TiktokenCounter
 from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+
+if TYPE_CHECKING:
+    from courseflow.application.evaluation_service import EvaluationService
+    from courseflow.application.ingestion_service import IngestionService
+    from courseflow.infrastructure.repositories.conversation_repo import (
+        SQLiteConversationRepository,
+    )
+    from courseflow.infrastructure.repositories.evaluation_repo import EvaluationRepository
 
 # Singletons to avoid creating new clients per request (which wastes quota)
 _embedding_client: GeminiEmbeddingClient | None = None
@@ -77,9 +87,21 @@ def get_embedding_client() -> GeminiEmbeddingClient:
     """
     global _embedding_client
     if _embedding_client is None:
-        _embedding_client = GeminiEmbeddingClient(
-            api_key=settings.gemini_api_key,
-        )
+        try:
+            _embedding_client = GeminiEmbeddingClient(
+                api_key=settings.gemini_api_key,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "service_unavailable",
+                    "message": (
+                        "Gemini API client initialization failed. "
+                        "Set GEMINI_API_KEY to a valid key and restart the server."
+                    ),
+                },
+            ) from exc
     return _embedding_client
 
 
@@ -91,11 +113,23 @@ def get_llm_client() -> GeminiLLMClient:
     """
     global _llm_client
     if _llm_client is None:
-        _llm_client = GeminiLLMClient(
-            api_key=settings.gemini_api_key,
-            model_name=settings.GEMINI_MODEL,
-            timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
-        )
+        try:
+            _llm_client = GeminiLLMClient(
+                api_key=settings.gemini_api_key,
+                model_name=settings.GEMINI_MODEL,
+                timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "service_unavailable",
+                    "message": (
+                        "Gemini API client initialization failed. "
+                        "Set GEMINI_API_KEY to a valid key and restart the server."
+                    ),
+                },
+            ) from exc
     return _llm_client
 
 
@@ -192,7 +226,7 @@ def get_chunk_repository() -> SQLiteChromaChunkRepository:
     return _chunk_repo
 
 
-def get_ingestion_service():
+def get_ingestion_service() -> "IngestionService":
     """Dependency placeholder for ingestion service wiring."""
     try:
         from courseflow.application.ingestion_service import IngestionService
@@ -211,7 +245,7 @@ def get_ingestion_service():
     )
 
 
-def get_conversation_repository():
+def get_conversation_repository() -> "SQLiteConversationRepository":
     """Dependency: Conversation repository for multi-turn support.
 
     Returns:
@@ -229,3 +263,50 @@ def get_conversation_repository():
 
     # Use default database path
     return SQLiteConversationRepository(db_path="./data/courseflow.db")
+
+
+# =============================================================================
+# Evaluation System Dependencies
+# =============================================================================
+
+_evaluation_repo = None
+_evaluation_service = None
+
+
+def get_evaluation_repository() -> "EvaluationRepository":
+    """Dependency: Evaluation repository singleton.
+
+    Returns:
+        EvaluationRepository singleton instance
+    """
+    global _evaluation_repo
+    if _evaluation_repo is None:
+        from courseflow.infrastructure.repositories.evaluation_repo import EvaluationRepository
+
+        _evaluation_repo = EvaluationRepository(db_path=settings.eval_database_path)
+    return _evaluation_repo
+
+
+async def get_evaluation_service() -> "EvaluationService":
+    """Dependency: Evaluation service.
+
+    Returns:
+        EvaluationService with RAG service and repository wired
+    """
+    global _evaluation_service
+    if _evaluation_service is None:
+        from courseflow.application.evaluation_service import EvaluationService
+
+        repo = get_evaluation_repository()
+        await repo.initialize()  # Ensure schema exists
+
+        rag_service = get_rag_service()
+
+        _evaluation_service = EvaluationService(
+            repository=repo,
+            rag_service=rag_service,
+            golden_dataset_path=settings.eval_golden_dataset_path,
+            inter_test_delay_seconds=12.0,
+        )
+
+    return _evaluation_service

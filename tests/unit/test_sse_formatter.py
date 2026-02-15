@@ -6,7 +6,14 @@ Tests SSE event formatting, streaming, and event buffering per T004.
 import pytest
 
 from courseflow.domain.models import SSEEvent
-from courseflow.infrastructure.sse import SSEEventBuffer, emit_chunk, emit_completion, emit_error, emit_sources, stream_sse_events
+from courseflow.infrastructure.sse import (
+    SSEEventBuffer,
+    emit_chunk,
+    emit_completion,
+    emit_error,
+    emit_sources,
+    stream_sse_events,
+)
 
 
 class TestSSEEventFactories:
@@ -282,6 +289,7 @@ class TestSSEFormatting:
     @pytest.mark.asyncio
     async def test_unicode_in_sse_streaming(self) -> None:
         """Should handle Unicode characters in streaming."""
+
         async def event_gen():
             yield SSEEvent.chunk("光合作用是 photosynthesis 🌱")
 

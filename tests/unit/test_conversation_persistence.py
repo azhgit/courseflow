@@ -5,12 +5,13 @@ Tests:
 - T025: ConversationTurn model enhancements for streaming
 """
 
-import pytest
+from datetime import UTC, datetime
 from uuid import uuid4
-from datetime import datetime, timezone
+
+import pytest
+from pydantic import ValidationError
 
 from courseflow.domain.models import ConversationTurn
-from courseflow.domain.exceptions import ValidationError
 
 
 class TestConversationTurnReconstruction:
@@ -66,7 +67,7 @@ class TestConversationTurnReconstruction:
         """T025: ConversationTurn has all required fields for streaming."""
         # Arrange
         conversation_id = str(uuid4())
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Act
         turn = ConversationTurn(
@@ -150,7 +151,7 @@ class TestConversationTurnReconstruction:
     def test_conversation_turn_content_required(self) -> None:
         """T025: ConversationTurn requires non-empty content."""
         # Act & Assert
-        with pytest.raises(Exception):  # Pydantic validation error
+        with pytest.raises(ValidationError):
             ConversationTurn(
                 conversation_id=str(uuid4()),
                 role="user",
@@ -161,7 +162,7 @@ class TestConversationTurnReconstruction:
     def test_conversation_turn_role_validation(self) -> None:
         """T025: ConversationTurn validates role is 'user' or 'assistant'."""
         # Act & Assert
-        with pytest.raises(Exception):  # Pydantic validation error
+        with pytest.raises(ValidationError):
             ConversationTurn(
                 conversation_id=str(uuid4()),
                 role="system",  # Invalid role
@@ -172,7 +173,7 @@ class TestConversationTurnReconstruction:
     def test_conversation_turn_token_count_non_negative(self) -> None:
         """T025: ConversationTurn requires non-negative token count."""
         # Act & Assert
-        with pytest.raises(Exception):  # Pydantic validation error
+        with pytest.raises(ValidationError):
             ConversationTurn(
                 conversation_id=str(uuid4()),
                 role="user",

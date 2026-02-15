@@ -66,4 +66,3 @@ def test_streaming_first_token_and_completion_latency() -> None:
     chunk_index = next(i for i, e in enumerate(events) if e.get("type") == "chunk")
     done_index = next(i for i, e in enumerate(events) if e.get("type") == "done")
     assert chunk_index < done_index
-

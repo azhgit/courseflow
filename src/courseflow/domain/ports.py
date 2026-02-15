@@ -5,6 +5,7 @@ Infrastructure adapters implement these ports to connect to actual services (Chr
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING
 
 from courseflow.domain.models import Answer, Document, Query, SearchResult
@@ -84,6 +85,11 @@ class LLMPort(ABC):
             TimeoutError: If request times out
             ServiceUnavailableError: If LLM service is unreachable
         """
+        pass
+
+    @abstractmethod
+    def stream(self, query: str, context: list[str]) -> AsyncGenerator[str, None]:
+        """Stream answer chunks for query and context."""
         pass
 
 

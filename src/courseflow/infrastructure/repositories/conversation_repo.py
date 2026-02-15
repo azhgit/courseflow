@@ -7,6 +7,7 @@ atomic to ensure conversation integrity.
 
 import sqlite3
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import aiosqlite
@@ -40,6 +41,10 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
             db_path: Path to SQLite database file (default: ./data/courseflow.db)
         """
         self.db_path = db_path
+        self._ensure_parent_dir()
+
+    def _ensure_parent_dir(self) -> None:
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
     async def _get_connection(self) -> aiosqlite.Connection:
         """Get async database connection.
@@ -51,7 +56,37 @@ class SQLiteConversationRepository(ConversationRepositoryPort):
             ServiceUnavailableError: If database cannot be opened
         """
         try:
-            return await aiosqlite.connect(self.db_path)
+            self._ensure_parent_dir()
+            db = await aiosqlite.connect(self.db_path)
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS conversation_turns (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    conversation_id TEXT NOT NULL,
+                    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+                    content TEXT NOT NULL,
+                    token_count INTEGER NOT NULL CHECK (token_count >= 0),
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_conversation_turns_conversation_created
+                ON conversation_turns(conversation_id, created_at DESC)
+                """
+            )
+            await db.commit()
+            return db
         except (sqlite3.Error, FileNotFoundError, OSError) as e:
             raise ServiceUnavailableError(
                 f"Failed to connect to database at {self.db_path}: {str(e)}"

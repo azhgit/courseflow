@@ -9,10 +9,12 @@ Note: These tests are designed to work with proper Gemini SDK mocking or live AP
 The unit tests (test_error_handlers.py) provide thorough coverage of error event generation.
 """
 
-import pytest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+import pytest
 from fastapi.testclient import TestClient
+
 from courseflow.api.main import create_app
 
 
@@ -28,7 +30,9 @@ def client(app):
     return TestClient(app)
 
 
-@pytest.mark.skip(reason="T017-T019 require Gemini SDK mocking or live API - covered by unit tests (T014-T016)")
+@pytest.mark.skip(
+    reason="T017-T019 require Gemini SDK mocking or live API - covered by unit tests (T014-T016)"
+)
 class TestStreamingErrorHandling:
     """Integration tests for streaming error scenarios (T017-T019)."""
 
@@ -68,9 +72,7 @@ class TestStreamingErrorHandling:
         assert error_event["error"] == "no_relevant_documents"
         assert len(events) == 1  # Only error event, no chunks
 
-    def test_no_relevant_documents_error_message_helpful(
-        self, client: TestClient
-    ) -> None:
+    def test_no_relevant_documents_error_message_helpful(self, client: TestClient) -> None:
         """T017: Error message should guide user to rephrase or try different topic."""
         # Arrange
         query = "xyz12345xyz"
@@ -101,9 +103,7 @@ class TestStreamingErrorHandling:
 
     # ========== T018: Rate Limit Mid-Stream (MOCK SCENARIO) ==========
 
-    def test_rate_limit_mid_stream_emits_error_event(
-        self, client: TestClient
-    ) -> None:
+    def test_rate_limit_mid_stream_emits_error_event(self, client: TestClient) -> None:
         """T018: Rate limit during streaming emits error event (not HTTP error)."""
         # This test uses mocking since we can't easily trigger real rate limits
         # In production, we'd need rate-limit testing infrastructure
@@ -152,9 +152,7 @@ class TestStreamingErrorHandling:
         assert error_event["error"] == "rate_limit_exceeded"
         assert "retry_after" in error_event
 
-    def test_rate_limit_includes_retry_timing(
-        self, client: TestClient
-    ) -> None:
+    def test_rate_limit_includes_retry_timing(self, client: TestClient) -> None:
         """T018: Rate limit error includes retry_after timing."""
         query = "test for retry timing"
 
@@ -232,9 +230,7 @@ class TestStreamingErrorHandling:
         assert error_event["type"] == "error"
         assert error_event["error"] == "stream_timeout"
 
-    def test_timeout_message_includes_max_duration(
-        self, client: TestClient
-    ) -> None:
+    def test_timeout_message_includes_max_duration(self, client: TestClient) -> None:
         """T019: Timeout message should indicate max duration."""
         query = "test timeout message"
 
@@ -263,7 +259,4 @@ class TestStreamingErrorHandling:
 
         error_event = events[-1]
         # Message should mention timeout or seconds
-        assert (
-            "timeout" in error_event["message"].lower()
-            or "30" in error_event["message"]
-        )
+        assert "timeout" in error_event["message"].lower() or "30" in error_event["message"]

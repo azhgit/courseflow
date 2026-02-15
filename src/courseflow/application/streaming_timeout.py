@@ -6,8 +6,9 @@ section III (AI Engineering Standards).
 """
 
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -24,9 +25,7 @@ class StreamingTimeoutError(Exception):
         """
         self.max_seconds = max_seconds
         self.elapsed_seconds = elapsed_seconds
-        super().__init__(
-            f"Stream exceeded {max_seconds}s timeout after {elapsed_seconds:.1f}s"
-        )
+        super().__init__(f"Stream exceeded {max_seconds}s timeout after {elapsed_seconds:.1f}s")
 
 
 @asynccontextmanager
@@ -68,7 +67,7 @@ async def streaming_timeout(
     handle = None
     try:
         # Create timeout callback
-        def _on_timeout():
+        def _on_timeout() -> None:
             if task and not task.done():
                 task.cancel()
 
