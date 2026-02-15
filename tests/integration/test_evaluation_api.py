@@ -40,7 +40,7 @@ class _FakeRagService:
                 id=chunk_id,
                 content=("context " * 20).strip(),
                 metadata=DocumentMetadata(
-                    source="golden_dataset.md",
+                    source=chunk_id,
                     subject=pair.get("subject", "general"),
                     chunk_index=idx,
                     total_chunks=len(pair["expected_chunks"]),
@@ -84,7 +84,9 @@ def _wait_for_completion(client: TestClient, run_id: str, timeout_seconds: float
     raise AssertionError("Timed out waiting for evaluation completion")
 
 
-def _seed_run(repo: EvaluationRepository, timestamp: datetime, status: EvaluationStatus, passed: bool) -> str:
+def _seed_run(
+    repo: EvaluationRepository, timestamp: datetime, status: EvaluationStatus, passed: bool
+) -> str:
     run = EvaluationRun(
         run_id=uuid4(),
         timestamp=timestamp,

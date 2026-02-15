@@ -28,7 +28,9 @@ async def test_save_run_retries_operational_error(monkeypatch, tmp_path) -> None
         attempts["count"] += 1
         raise sqlite3.OperationalError("database is locked")
 
-    monkeypatch.setattr("courseflow.infrastructure.repositories.evaluation_repo.aiosqlite.connect", _failing_connect)
+    monkeypatch.setattr(
+        "courseflow.infrastructure.repositories.evaluation_repo.aiosqlite.connect", _failing_connect
+    )
 
     with pytest.raises(EvaluationPersistenceError, match="after retries"):
         await repo.save_run(run, [])

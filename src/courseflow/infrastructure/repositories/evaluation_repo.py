@@ -98,9 +98,13 @@ class EvaluationRepository:
             """)
 
             # Indexes for performance
-            await db.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON evaluation_runs(timestamp DESC)")
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_timestamp ON evaluation_runs(timestamp DESC)"
+            )
             await db.execute("CREATE INDEX IF NOT EXISTS idx_status ON evaluation_runs(status)")
-            await db.execute("CREATE INDEX IF NOT EXISTS idx_passed_timestamp ON evaluation_runs(passed DESC, timestamp DESC)")
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_passed_timestamp ON evaluation_runs(passed DESC, timestamp DESC)"
+            )
             await db.execute("CREATE INDEX IF NOT EXISTS idx_run_id ON test_case_results(run_id)")
 
             await db.commit()
@@ -117,61 +121,69 @@ class EvaluationRepository:
             # Serialize metrics to JSON
             metrics_json = None
             if run.metrics:
-                metrics_json = json.dumps({
-                    "retrieval_precision_avg": run.metrics.retrieval_precision_avg,
-                    "retrieval_precision_min": run.metrics.retrieval_precision_min,
-                    "retrieval_precision_max": run.metrics.retrieval_precision_max,
-                    "keyword_match_avg": run.metrics.keyword_match_avg,
-                    "keyword_match_min": run.metrics.keyword_match_min,
-                    "keyword_match_max": run.metrics.keyword_match_max,
-                    "latency_p50_ms": run.metrics.latency_p50_ms,
-                    "latency_p95_ms": run.metrics.latency_p95_ms,
-                    "latency_min_ms": run.metrics.latency_min_ms,
-                    "latency_max_ms": run.metrics.latency_max_ms,
-                    "pass_rate": run.metrics.pass_rate,
-                    "tests_passed": run.metrics.tests_passed,
-                    "tests_failed": run.metrics.tests_failed,
-                })
+                metrics_json = json.dumps(
+                    {
+                        "retrieval_precision_avg": run.metrics.retrieval_precision_avg,
+                        "retrieval_precision_min": run.metrics.retrieval_precision_min,
+                        "retrieval_precision_max": run.metrics.retrieval_precision_max,
+                        "keyword_match_avg": run.metrics.keyword_match_avg,
+                        "keyword_match_min": run.metrics.keyword_match_min,
+                        "keyword_match_max": run.metrics.keyword_match_max,
+                        "latency_p50_ms": run.metrics.latency_p50_ms,
+                        "latency_p95_ms": run.metrics.latency_p95_ms,
+                        "latency_min_ms": run.metrics.latency_min_ms,
+                        "latency_max_ms": run.metrics.latency_max_ms,
+                        "pass_rate": run.metrics.pass_rate,
+                        "tests_passed": run.metrics.tests_passed,
+                        "tests_failed": run.metrics.tests_failed,
+                    }
+                )
 
-            await db.execute("""
+            await db.execute(
+                """
                 INSERT OR REPLACE INTO evaluation_runs
                 (run_id, timestamp, status, duration_ms, passed, error_message,
                  golden_dataset_version, test_case_count, metrics_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                str(run.run_id),
-                run.timestamp.isoformat(),
-                run.status.value,
-                run.duration_ms,
-                1 if run.passed else 0,
-                run.error_message,
-                run.golden_dataset_version,
-                run.test_case_count,
-                metrics_json,
-            ))
+            """,
+                (
+                    str(run.run_id),
+                    run.timestamp.isoformat(),
+                    run.status.value,
+                    run.duration_ms,
+                    1 if run.passed else 0,
+                    run.error_message,
+                    run.golden_dataset_version,
+                    run.test_case_count,
+                    metrics_json,
+                ),
+            )
 
             await db.execute("DELETE FROM test_case_results WHERE run_id = ?", (str(run.run_id),))
 
             for result in results:
-                await db.execute("""
+                await db.execute(
+                    """
                     INSERT INTO test_case_results
                     (run_id, question, expected_answer, expected_chunks_json, keywords_json,
                      actual_answer, retrieved_chunks_json, retrieval_precision,
                      keyword_match_rate, latency_ms, passed)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    str(run.run_id),
-                    result.question,
-                    result.expected_answer,
-                    json.dumps(result.expected_chunks),
-                    json.dumps(result.keywords),
-                    result.actual_answer,
-                    json.dumps(result.retrieved_chunks),
-                    result.retrieval_precision,
-                    result.keyword_match_rate,
-                    result.latency_ms,
-                    1 if result.passed else 0,
-                ))
+                """,
+                    (
+                        str(run.run_id),
+                        result.question,
+                        result.expected_answer,
+                        json.dumps(result.expected_chunks),
+                        json.dumps(result.keywords),
+                        result.actual_answer,
+                        json.dumps(result.retrieved_chunks),
+                        result.retrieval_precision,
+                        result.keyword_match_rate,
+                        result.latency_ms,
+                        1 if result.passed else 0,
+                    ),
+                )
 
             await db.commit()
 
@@ -189,9 +201,13 @@ class EvaluationRepository:
         try:
             await self._save_run_with_retry(run, results)
         except sqlite3.OperationalError as e:
-            raise EvaluationPersistenceError(f"Failed to save evaluation run after retries: {e}") from e
+            raise EvaluationPersistenceError(
+                f"Failed to save evaluation run after retries: {e}"
+            ) from e
 
-    async def get_run_by_id(self, run_id: UUID, include_results: bool = False) -> EvaluationRun | None:
+    async def get_run_by_id(
+        self, run_id: UUID, include_results: bool = False
+    ) -> EvaluationRun | None:
         """
         Retrieve evaluation run by ID.
 
@@ -205,8 +221,7 @@ class EvaluationRepository:
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
-                "SELECT * FROM evaluation_runs WHERE run_id = ?",
-                (str(run_id),)
+                "SELECT * FROM evaluation_runs WHERE run_id = ?", (str(run_id),)
             )
             row = await cursor.fetchone()
 
@@ -223,7 +238,7 @@ class EvaluationRepository:
         until: datetime | None = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> tuple[list[EvaluationRun], dict]:
+    ) -> tuple[list[EvaluationRun], dict[str, int | bool]]:
         """
         List evaluation runs with filtering and pagination.
 
@@ -262,8 +277,7 @@ class EvaluationRepository:
 
             # Count total
             count_cursor = await db.execute(
-                f"SELECT COUNT(*) FROM evaluation_runs {where_clause}",
-                params
+                f"SELECT COUNT(*) FROM evaluation_runs {where_clause}", params
             )
             total = (await count_cursor.fetchone())[0]
 
@@ -271,7 +285,7 @@ class EvaluationRepository:
             offset = (page - 1) * page_size
             cursor = await db.execute(
                 f"SELECT * FROM evaluation_runs {where_clause} ORDER BY timestamp DESC LIMIT ? OFFSET ?",
-                params + [page_size, offset]
+                params + [page_size, offset],
             )
             rows = await cursor.fetchall()
 

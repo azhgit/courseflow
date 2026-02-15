@@ -136,7 +136,7 @@ async def ingest_document(
     file: UploadFile = File(...),
     metadata: str = Form(...),
     ingestion_service: IngestionService = Depends(get_ingestion_service),
-):
+) -> IngestSuccessResponse | JSONResponse:
     request_id = f"req_{uuid4().hex[:12]}"
     try:
         meta = IngestMetadata.model_validate_json(metadata)

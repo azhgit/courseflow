@@ -38,7 +38,7 @@ class EvaluationServicePort(ABC):
         pass
 
     @abstractmethod
-    async def compare_to_baseline(self, run_id: UUID) -> dict:
+    async def compare_to_baseline(self, run_id: UUID) -> dict[str, object]:
         """
         Compare evaluation run to baseline metrics.
 
@@ -102,7 +102,7 @@ class EvaluationRepositoryPort(ABC):
         until: datetime | None = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> tuple[list[EvaluationRun], dict]:
+    ) -> tuple[list[EvaluationRun], dict[str, int | bool]]:
         """
         List evaluation runs with filtering and pagination.
 

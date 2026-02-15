@@ -6,6 +6,7 @@ Uses singleton pattern for expensive clients to avoid creating new instances per
 
 from collections import deque
 from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
 
 import aiosqlite
 from fastapi import HTTPException, status
@@ -24,6 +25,14 @@ from courseflow.infrastructure.text_processing.nltk_tokenizer import NLTKSentenc
 from courseflow.infrastructure.text_processing.sentence_chunker import SentenceChunker
 from courseflow.infrastructure.token_counting.tiktoken_counter import TiktokenCounter
 from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+
+if TYPE_CHECKING:
+    from courseflow.application.evaluation_service import EvaluationService
+    from courseflow.application.ingestion_service import IngestionService
+    from courseflow.infrastructure.repositories.conversation_repo import (
+        SQLiteConversationRepository,
+    )
+    from courseflow.infrastructure.repositories.evaluation_repo import EvaluationRepository
 
 # Singletons to avoid creating new clients per request (which wastes quota)
 _embedding_client: GeminiEmbeddingClient | None = None
@@ -217,7 +226,7 @@ def get_chunk_repository() -> SQLiteChromaChunkRepository:
     return _chunk_repo
 
 
-def get_ingestion_service():
+def get_ingestion_service() -> "IngestionService":
     """Dependency placeholder for ingestion service wiring."""
     try:
         from courseflow.application.ingestion_service import IngestionService
@@ -236,7 +245,7 @@ def get_ingestion_service():
     )
 
 
-def get_conversation_repository():
+def get_conversation_repository() -> "SQLiteConversationRepository":
     """Dependency: Conversation repository for multi-turn support.
 
     Returns:
@@ -264,7 +273,7 @@ _evaluation_repo = None
 _evaluation_service = None
 
 
-def get_evaluation_repository():
+def get_evaluation_repository() -> "EvaluationRepository":
     """Dependency: Evaluation repository singleton.
 
     Returns:
@@ -273,11 +282,12 @@ def get_evaluation_repository():
     global _evaluation_repo
     if _evaluation_repo is None:
         from courseflow.infrastructure.repositories.evaluation_repo import EvaluationRepository
+
         _evaluation_repo = EvaluationRepository(db_path=settings.eval_database_path)
     return _evaluation_repo
 
 
-async def get_evaluation_service():
+async def get_evaluation_service() -> "EvaluationService":
     """Dependency: Evaluation service.
 
     Returns:
@@ -296,6 +306,7 @@ async def get_evaluation_service():
             repository=repo,
             rag_service=rag_service,
             golden_dataset_path=settings.eval_golden_dataset_path,
+            inter_test_delay_seconds=12.0,
         )
 
     return _evaluation_service

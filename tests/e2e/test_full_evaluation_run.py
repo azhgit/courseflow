@@ -27,7 +27,7 @@ class _DeterministicRagService:
                 id=chunk_id,
                 content=("context " * 20).strip(),
                 metadata=DocumentMetadata(
-                    source="golden.md",
+                    source=chunk_id,
                     subject=pair.get("subject", "general"),
                     chunk_index=idx,
                     total_chunks=len(pair["expected_chunks"]),

@@ -9,9 +9,13 @@ Constitution compliance:
 import asyncio
 import time
 from collections import deque
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import TypeVar
 
 from courseflow.domain.exceptions import QueueFullError, RateLimitExceededError
+
+T = TypeVar("T")
 
 
 class RateLimiter:
@@ -32,7 +36,7 @@ class RateLimiter:
         self,
         requests_per_minute: int = 15,
         max_queue_depth: int = 100,
-    ):
+    ) -> None:
         """Initialize rate limiter.
 
         Args:
@@ -49,7 +53,7 @@ class RateLimiter:
         self.last_refill = time.time()
 
         # Queue management
-        self.queue: deque = deque()
+        self.queue: deque[str] = deque()
         self.lock = asyncio.Lock()
 
     async def _refill_tokens(self) -> None:
@@ -63,7 +67,7 @@ class RateLimiter:
         self.last_refill = now
 
     @asynccontextmanager
-    async def acquire(self, request_id: str | None = None):
+    async def acquire(self, request_id: str | None = None) -> AsyncGenerator[None, None]:
         """Acquire rate limit token with automatic release.
 
         Args:
@@ -113,7 +117,7 @@ class RateLimiter:
                 except ValueError:
                     pass  # Already removed
 
-    async def get_stats(self) -> dict:
+    async def get_stats(self) -> dict[str, float | int]:
         """Get current rate limiter statistics.
 
         Returns:
@@ -132,12 +136,12 @@ class RateLimiter:
 
 
 async def retry_with_backoff(
-    func,
+    func: Callable[[], Awaitable[T]],
     max_retries: int = 5,
     initial_delay: float = 1.0,
     backoff_multiplier: float = 2.0,
     request_id: str | None = None,
-):
+) -> T:
     """Retry function with exponential backoff.
 
     Args:
@@ -161,7 +165,7 @@ async def retry_with_backoff(
         )
     """
     delay = initial_delay
-    last_exception = None
+    last_exception: Exception | None = None
 
     for attempt in range(max_retries + 1):
         try:
@@ -183,3 +187,6 @@ async def retry_with_backoff(
     # Should never reach here, but satisfies type checker
     if last_exception:
         raise last_exception
+    raise RateLimitExceededError(
+        f"Request {request_id or 'unknown'} failed with unknown error after retries."
+    )

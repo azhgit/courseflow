@@ -16,9 +16,7 @@ class TestStreamingQueryContract:
     """Contract tests for POST /api/v1/query/stream (T007)."""
 
     @pytest.mark.asyncio
-    async def test_endpoint_exists_and_responds(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_endpoint_exists_and_responds(self, client: AsyncClient) -> None:
         """Endpoint should exist and respond to valid requests."""
         response = await client.post(
             "/api/v1/query/stream",
@@ -31,9 +29,7 @@ class TestStreamingQueryContract:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_response_content_type_is_sse(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_response_content_type_is_sse(self, client: AsyncClient) -> None:
         """Response should advertise Server-Sent Events format."""
         response = await client.post(
             "/api/v1/query/stream",
@@ -46,9 +42,7 @@ class TestStreamingQueryContract:
         assert "text/event-stream" in response.headers.get("content-type", "")
 
     @pytest.mark.asyncio
-    async def test_response_has_sse_cache_headers(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_response_has_sse_cache_headers(self, client: AsyncClient) -> None:
         """Response should include SSE-specific cache control headers."""
         response = await client.post(
             "/api/v1/query/stream",
@@ -64,9 +58,7 @@ class TestStreamingQueryContract:
         assert response.headers.get("x-accel-buffering", "no") == "no"
 
     @pytest.mark.asyncio
-    async def test_streaming_response_is_iterable(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_streaming_response_is_iterable(self, client: AsyncClient) -> None:
         """Response should be iterable (streaming)."""
         response = await client.post(
             "/api/v1/query/stream",
@@ -85,9 +77,7 @@ class TestStreamingQueryContract:
         assert len(lines) > 0
 
     @pytest.mark.asyncio
-    async def test_streaming_events_are_sse_formatted(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_streaming_events_are_sse_formatted(self, client: AsyncClient) -> None:
         """Each event in stream should be SSE formatted (data: {...}\\n\\n)."""
         response = await client.post(
             "/api/v1/query/stream",
@@ -112,15 +102,14 @@ class TestStreamingQueryContract:
             json_str = event[6:]  # Remove "data: " prefix
             try:
                 import json
+
                 parsed = json.loads(json_str)
                 assert "type" in parsed
             except json.JSONDecodeError:
                 pytest.fail(f"Invalid JSON in event: {event}")
 
     @pytest.mark.asyncio
-    async def test_empty_query_rejected_before_streaming(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_empty_query_rejected_before_streaming(self, client: AsyncClient) -> None:
         """Empty query should be rejected via HTTP 400 before streaming starts."""
         response = await client.post(
             "/api/v1/query/stream",
@@ -133,9 +122,7 @@ class TestStreamingQueryContract:
         assert response.status_code in [400, 422]
 
     @pytest.mark.asyncio
-    async def test_missing_query_field_rejected(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_missing_query_field_rejected(self, client: AsyncClient) -> None:
         """Missing required 'query' field should be rejected."""
         response = await client.post(
             "/api/v1/query/stream",
@@ -147,9 +134,7 @@ class TestStreamingQueryContract:
         assert response.status_code in [400, 422]
 
     @pytest.mark.asyncio
-    async def test_conversation_id_is_optional(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_conversation_id_is_optional(self, client: AsyncClient) -> None:
         """conversation_id should be optional (null = new conversation)."""
         response = await client.post(
             "/api/v1/query/stream",
@@ -161,9 +146,7 @@ class TestStreamingQueryContract:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_event_sequence_order(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_event_sequence_order(self, client: AsyncClient) -> None:
         """Events should arrive in correct order: chunks → sources → done|error."""
         import json
 
@@ -191,9 +174,7 @@ class TestStreamingQueryContract:
         assert "done" in event_types or "error" in event_types
 
     @pytest.mark.asyncio
-    async def test_chunk_events_have_content(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_chunk_events_have_content(self, client: AsyncClient) -> None:
         """Each chunk event should have 'content' field with text."""
         import json
 
@@ -223,9 +204,7 @@ class TestStreamingQueryContract:
         # (unless retrieval returned no documents)
 
     @pytest.mark.asyncio
-    async def test_sources_event_includes_documents(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_sources_event_includes_documents(self, client: AsyncClient) -> None:
         """Sources event should list retrieved documents."""
         import json
 
@@ -238,14 +217,12 @@ class TestStreamingQueryContract:
         )
         assert response.status_code == 200
 
-        found_sources = False
         async for line in response.aiter_lines():
             if line.startswith("data: "):
                 json_str = line[6:]
                 try:
                     event = json.loads(json_str)
                     if event["type"] == "sources":
-                        found_sources = True
                         # Should have sources list and retrieval_count
                         if "sources" in event:
                             assert isinstance(event["sources"], list)
@@ -258,9 +235,7 @@ class TestStreamingQueryContract:
         # (might not if no documents retrieved)
 
     @pytest.mark.asyncio
-    async def test_done_event_marks_completion(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_done_event_marks_completion(self, client: AsyncClient) -> None:
         """Done event should mark stream completion with metadata."""
         import json
 
@@ -273,14 +248,12 @@ class TestStreamingQueryContract:
         )
         assert response.status_code == 200
 
-        found_done = False
         async for line in response.aiter_lines():
             if line.startswith("data: "):
                 json_str = line[6:]
                 try:
                     event = json.loads(json_str)
                     if event["type"] == "done":
-                        found_done = True
                         # Should have conversation_id and token_count
                         assert "conversation_id" in event
                         assert "token_count" in event
@@ -292,11 +265,9 @@ class TestStreamingQueryContract:
         # At least one should be present
 
     @pytest.mark.asyncio
-    async def test_error_event_on_no_documents(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_error_event_on_no_documents(self, client: AsyncClient) -> None:
         """Stream should emit error event when no relevant documents found.
-        
+
         Per clarification Q1: Should emit SSE error, not call LLM, not save.
         """
         import json
@@ -312,7 +283,6 @@ class TestStreamingQueryContract:
         assert response.status_code == 200
 
         event_types = []
-        error_found = False
         async for line in response.aiter_lines():
             if line.startswith("data: "):
                 json_str = line[6:]
@@ -320,7 +290,6 @@ class TestStreamingQueryContract:
                     event = json.loads(json_str)
                     event_types.append(event["type"])
                     if event["type"] == "error":
-                        error_found = True
                         assert event.get("error") == "no_relevant_documents"
                 except json.JSONDecodeError:
                     pass
@@ -328,9 +297,7 @@ class TestStreamingQueryContract:
         # Should end with error event (or potentially still have chunks if partial match)
 
     @pytest.mark.asyncio
-    async def test_stream_terminates_cleanly(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_stream_terminates_cleanly(self, client: AsyncClient) -> None:
         """Stream should terminate cleanly after done/error event."""
         import json
 

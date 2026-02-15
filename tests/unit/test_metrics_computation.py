@@ -15,7 +15,7 @@ from courseflow.application.evaluation_service import (
     calculate_retrieval_precision,
     compute_percentiles,
 )
-from courseflow.domain.eval_models import Metrics, TestCaseResult, compute_metrics
+from courseflow.domain.eval_models import TestCaseResult, compute_metrics
 
 
 class TestRetrievalPrecision:
@@ -157,7 +157,23 @@ class TestPercentileComputation:
 
     def test_p95_greater_or_equal_p50(self):
         """p95 should always be >= p50."""
-        latencies = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500]
+        latencies = [
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+            1000,
+            1100,
+            1200,
+            1300,
+            1400,
+            1500,
+        ]
 
         p50, p95 = compute_percentiles(latencies)
 
@@ -186,9 +202,7 @@ class TestMetricsAggregation:
 
     def test_compute_metrics_with_all_passed(self):
         """Test metrics computation when all tests pass."""
-        results = [
-            self._create_test_result(1.0, 1.0, 100, True) for _ in range(15)
-        ]
+        results = [self._create_test_result(1.0, 1.0, 100, True) for _ in range(15)]
 
         metrics = compute_metrics(results)
 
@@ -200,9 +214,7 @@ class TestMetricsAggregation:
 
     def test_compute_metrics_with_mixed_results(self):
         """Test metrics computation with mix of passed/failed tests."""
-        results = [
-            self._create_test_result(0.8, 0.9, 200, True) for _ in range(10)
-        ] + [
+        results = [self._create_test_result(0.8, 0.9, 200, True) for _ in range(10)] + [
             self._create_test_result(0.5, 0.6, 300, False) for _ in range(5)
         ]
 
@@ -219,11 +231,13 @@ class TestMetricsAggregation:
     def test_metrics_min_max_values(self):
         """Test that min/max metrics are computed correctly."""
         results = [
-            self._create_test_result(0.5, 0.6, 100, True),  # Min precision, min keyword, min latency
-            self._create_test_result(1.0, 1.0, 1000, True),  # Max precision, max keyword, max latency
-        ] + [
-            self._create_test_result(0.75, 0.8, 500, True) for _ in range(13)
-        ]
+            self._create_test_result(
+                0.5, 0.6, 100, True
+            ),  # Min precision, min keyword, min latency
+            self._create_test_result(
+                1.0, 1.0, 1000, True
+            ),  # Max precision, max keyword, max latency
+        ] + [self._create_test_result(0.75, 0.8, 500, True) for _ in range(13)]
 
         metrics = compute_metrics(results)
 
@@ -236,9 +250,7 @@ class TestMetricsAggregation:
 
     def test_total_tests_equals_15(self):
         """Tests passed + tests failed must equal 15."""
-        results = [
-            self._create_test_result(0.8, 0.9, 200, True) for _ in range(12)
-        ] + [
+        results = [self._create_test_result(0.8, 0.9, 200, True) for _ in range(12)] + [
             self._create_test_result(0.5, 0.6, 300, False) for _ in range(3)
         ]
 
@@ -248,9 +260,7 @@ class TestMetricsAggregation:
 
     def test_wrong_number_of_results_raises_error(self):
         """compute_metrics should require exactly 15 results."""
-        results = [
-            self._create_test_result(1.0, 1.0, 100, True) for _ in range(10)
-        ]
+        results = [self._create_test_result(1.0, 1.0, 100, True) for _ in range(10)]
 
         with pytest.raises(ValueError, match="Expected 15 test results"):
             compute_metrics(results)

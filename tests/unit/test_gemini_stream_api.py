@@ -28,4 +28,3 @@ async def test_stream_uses_generate_content_stream_api() -> None:
     assert output == ["Hello ", "world"]
     assert len(calls) == 1
     assert calls[0]["model"] == client.model_name
-

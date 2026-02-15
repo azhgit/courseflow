@@ -6,6 +6,7 @@ Stores query history, performance metrics, and error tracking.
 
 import sqlite3
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import aiosqlite
 
@@ -82,7 +83,7 @@ class SQLiteQueryRepository(QueryRepositoryPort):
         answer: Answer | None = None,
         latency_ms: int | None = None,
         error_type: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Save query metadata to persistent storage.
 

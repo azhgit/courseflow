@@ -4,6 +4,8 @@ This module provides async embedding generation using Google's Gemini API.
 Implements retry logic and error categorization for production use.
 """
 
+from typing import cast
+
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -100,8 +102,7 @@ class GeminiEmbeddingClient(EmbeddingPort):
             # Extract embedding from response
             data = response.json()
             embedding = data["embedding"]["values"]
-
-            return embedding
+            return cast(list[float], embedding)
 
         except httpx.TimeoutException as e:
             raise CourseFlowTimeoutError(f"Embedding generation timed out after {timeout}s") from e

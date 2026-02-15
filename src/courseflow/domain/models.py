@@ -624,7 +624,7 @@ class SSEEvent(BaseModel):
             Example: 'data: {"type": "chunk", "content": "text"}\\n\\n'
         """
         # Build JSON payload with only non-None fields
-        payload = {"type": self.type}
+        payload: dict[str, Any] = {"type": self.type}
 
         if self.content is not None:
             payload["content"] = self.content

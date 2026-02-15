@@ -80,5 +80,7 @@ async def health_check(
             "uptime_seconds": int(perf_counter() - _START_TIME),
         },
     }
-    status_code = status.HTTP_200_OK if status_name == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE
+    status_code = (
+        status.HTTP_200_OK if status_name == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
     return JSONResponse(status_code=status_code, content=payload)

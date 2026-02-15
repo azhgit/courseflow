@@ -8,6 +8,7 @@ Per constitution Section III: Ensures Gemini free tier compliance
 """
 
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from courseflow.domain.exceptions import RateLimitExceededError
@@ -31,7 +32,7 @@ class StreamingRateLimiter:
         base_limiter: RateLimiter | None = None,
         max_retries: int = 3,
         initial_delay: float = 1.0,
-    ):
+    ) -> None:
         """Initialize streaming rate limiter.
 
         Args:
@@ -45,7 +46,7 @@ class StreamingRateLimiter:
         self._streaming_requests: dict[str, bool] = {}
 
     @asynccontextmanager
-    async def acquire_for_stream(self, request_id: str):
+    async def acquire_for_stream(self, request_id: str) -> AsyncGenerator[None, None]:
         """Acquire rate limit token for a streaming request.
 
         Applies exponential backoff retry logic per specification clarification Q3.
@@ -95,7 +96,7 @@ class StreamingRateLimiter:
         if last_exception:
             raise last_exception
 
-    async def get_streaming_stats(self) -> dict:
+    async def get_streaming_stats(self) -> dict[str, int | dict[str, float | int]]:
         """Get streaming-specific rate limit statistics.
 
         Returns:

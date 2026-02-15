@@ -57,7 +57,7 @@ class TestCaseResult:
     # Derived
     passed: bool  # True if individual thresholds met
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate field constraints."""
         assert 0.0 <= self.retrieval_precision <= 1.0, "Precision must be 0-1"
         assert 0.0 <= self.keyword_match_rate <= 1.0, "Match rate must be 0-1"
@@ -97,7 +97,7 @@ class Metrics:
     tests_passed: int  # Count of passed tests
     tests_failed: int  # Count of failed tests
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate metric ranges."""
         assert 0.0 <= self.retrieval_precision_avg <= 1.0
         assert 0.0 <= self.keyword_match_avg <= 1.0
@@ -178,11 +178,9 @@ class EvaluationRun:
     def _check_quality_thresholds(self, metrics: Metrics) -> bool:
         """Check if metrics meet minimum quality thresholds."""
         return (
-            metrics.retrieval_precision_avg >= 0.70
-            and  # ≥70% precision
-            metrics.keyword_match_avg >= 0.80
-            and  # ≥80% keyword match
-            metrics.latency_p95_ms < 10000  # <10s p95 latency
+            metrics.retrieval_precision_avg >= 0.70  # ≥70% precision
+            and metrics.keyword_match_avg >= 0.80  # ≥80% keyword match
+            and metrics.latency_p95_ms < 10000  # <10s p95 latency
         )
 
 

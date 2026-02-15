@@ -17,7 +17,9 @@ from courseflow.infrastructure.repositories.evaluation_repo import EvaluationRep
 logger = logging.getLogger(__name__)
 
 
-def calculate_retrieval_precision(expected_chunk_ids: list[str], retrieved_chunk_ids: list[str]) -> float:
+def calculate_retrieval_precision(
+    expected_chunk_ids: list[str], retrieved_chunk_ids: list[str]
+) -> float:
     """Calculate precision with exact chunk ID matching."""
     if not retrieved_chunk_ids:
         return 0.0
@@ -55,11 +57,16 @@ class EvaluationService:
     """Application service orchestrating golden-dataset evaluations."""
 
     def __init__(
-        self, repository: EvaluationRepository, rag_service: Any, golden_dataset_path: str | Path
+        self,
+        repository: EvaluationRepository,
+        rag_service: Any,
+        golden_dataset_path: str | Path,
+        inter_test_delay_seconds: float = 0.0,
     ) -> None:
         self.repository = repository
         self.rag_service = rag_service
         self.golden_dataset_path = Path(golden_dataset_path)
+        self.inter_test_delay_seconds = inter_test_delay_seconds
         self._eval_lock = asyncio.Lock()
         self._active_tasks: dict[str, asyncio.Task[None]] = {}
 
@@ -116,11 +123,8 @@ class EvaluationService:
             golden_pairs = self._load_golden_dataset()
 
             for index, pair in enumerate(golden_pairs, start=1):
-                # Throttle between tests to stay under Gemini free-tier RPM limit.
-                # Each test ≈ 2 API calls (embedding + LLM). With 15 RPM shared
-                # across embedding and generation, 12s gap keeps us safe.
-                if index > 1:
-                    await asyncio.sleep(12)
+                if index > 1 and self.inter_test_delay_seconds > 0:
+                    await asyncio.sleep(self.inter_test_delay_seconds)
 
                 logger.info("Executing evaluation test %s/%s", index, len(golden_pairs))
                 result = await self._execute_test_case_with_retry(pair, index)
@@ -300,7 +304,9 @@ class EvaluationService:
 
                 actual_answer = "\n\n".join(concatenated_answer)[:2000]
                 latency_ms = 0
-                retrieval_precision = calculate_retrieval_precision(pair.expected_chunks, retrieved_chunks)
+                retrieval_precision = calculate_retrieval_precision(
+                    pair.expected_chunks, retrieved_chunks
+                )
                 keyword_match_rate = calculate_keyword_match_rate(pair.keywords, actual_answer)
 
                 passed = (
@@ -350,7 +356,9 @@ class EvaluationService:
         keyword_diff = self._percent_change(
             run.metrics.keyword_match_avg, baseline.metrics.keyword_match_avg
         )
-        latency_diff = self._percent_change(run.metrics.latency_p95_ms, baseline.metrics.latency_p95_ms)
+        latency_diff = self._percent_change(
+            run.metrics.latency_p95_ms, baseline.metrics.latency_p95_ms
+        )
 
         return {
             "baseline_exists": True,
@@ -376,5 +384,7 @@ class EvaluationService:
                     "regressed": latency_diff > 10.0,
                 },
             },
-            "overall_regression": precision_diff < -10.0 or keyword_diff < -10.0 or latency_diff > 10.0,
+            "overall_regression": precision_diff < -10.0
+            or keyword_diff < -10.0
+            or latency_diff > 10.0,
         }

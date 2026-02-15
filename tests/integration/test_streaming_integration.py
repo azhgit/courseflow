@@ -12,10 +12,10 @@ Focus: Real-world streaming scenarios with core components.
 
 import asyncio
 import json
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 
-from courseflow.domain.models import StreamingQuery, SSEEvent
+import pytest
+
+from courseflow.domain.models import SSEEvent, StreamingQuery
 from courseflow.infrastructure.sse import SSEEventBuffer
 
 
@@ -171,7 +171,7 @@ class TestStreamingIntegration:
 
         # Act
         buffer.collect(SSEEvent.with_sources(["a.md"], 1))
-        
+
         # Try to add sources twice - should raise ValueError
         with pytest.raises(ValueError, match="Multiple sources events"):
             buffer.collect(SSEEvent.with_sources(["b.md"], 1))
@@ -280,8 +280,8 @@ class TestStreamingIntegration:
     async def test_timeout_enforcement_basic(self) -> None:
         """Streaming timeout should be enforced (30 seconds default)."""
         from courseflow.application.streaming_timeout import (
-            streaming_timeout,
             StreamingTimeoutError,
+            streaming_timeout,
         )
 
         # Arrange: Very short timeout for testing

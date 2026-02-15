@@ -72,7 +72,9 @@ async def test_compare_to_baseline_detects_precision_regression(tmp_path) -> Non
         passed=False,
     )
 
-    service = EvaluationService(_FakeRepo(current, baseline), _UnusedRag(), tmp_path / "dataset.json")
+    service = EvaluationService(
+        _FakeRepo(current, baseline), _UnusedRag(), tmp_path / "dataset.json"
+    )
     result = await service.compare_to_baseline(current.run_id)
 
     assert result["baseline_exists"] is True
@@ -97,7 +99,9 @@ async def test_compare_to_baseline_detects_latency_regression(tmp_path) -> None:
         passed=False,
     )
 
-    service = EvaluationService(_FakeRepo(current, baseline), _UnusedRag(), tmp_path / "dataset.json")
+    service = EvaluationService(
+        _FakeRepo(current, baseline), _UnusedRag(), tmp_path / "dataset.json"
+    )
     result = await service.compare_to_baseline(current.run_id)
 
     assert result["comparisons"]["latency_p95"]["regressed"] is True

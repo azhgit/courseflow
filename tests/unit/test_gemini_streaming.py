@@ -8,8 +8,9 @@ Focuses on:
 - Error handling mid-stream
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 @pytest.mark.skip(reason="T008 tests require genai SDK mocking - covered by integration tests")
@@ -54,9 +55,7 @@ class TestGeminiStreamingAdapter:
             ]
 
             mock_client = MagicMock()
-            mock_client.models.generate_content_stream = AsyncMock(
-                return_value=mock_stream
-            )
+            mock_client.models.generate_content_stream = AsyncMock(return_value=mock_stream)
             mock_client_class.return_value = mock_client
 
             llm = GeminiLLMClient(api_key="test_key")
@@ -86,9 +85,7 @@ class TestGeminiStreamingAdapter:
             ]
 
             mock_client = MagicMock()
-            mock_client.models.generate_content_stream = AsyncMock(
-                return_value=mock_stream
-            )
+            mock_client.models.generate_content_stream = AsyncMock(return_value=mock_stream)
             mock_client_class.return_value = mock_client
 
             llm = GeminiLLMClient(api_key="test_key")
@@ -111,9 +108,7 @@ class TestGeminiStreamingAdapter:
         with patch("genai.Client") as mock_client_class:
             mock_stream = [MagicMock(text="Answer")]
             mock_client = MagicMock()
-            mock_client.models.generate_content_stream = AsyncMock(
-                return_value=mock_stream
-            )
+            mock_client.models.generate_content_stream = AsyncMock(return_value=mock_stream)
             mock_client_class.return_value = mock_client
 
             llm = GeminiLLMClient(api_key="test_key")
@@ -134,9 +129,7 @@ class TestGeminiStreamingAdapter:
         with patch("genai.Client") as mock_client_class:
             mock_stream = [MagicMock(text="Answer")]
             mock_client = MagicMock()
-            mock_client.models.generate_content_stream = AsyncMock(
-                return_value=mock_stream
-            )
+            mock_client.models.generate_content_stream = AsyncMock(return_value=mock_stream)
             mock_client_class.return_value = mock_client
 
             llm = GeminiLLMClient(api_key="test_key")
@@ -185,20 +178,19 @@ class TestGeminiStreamingAdapter:
     async def test_streaming_error_on_rate_limit(self) -> None:
         """Streaming should propagate rate limit errors."""
         from courseflow.infrastructure.llm.gemini import GeminiLLMClient
-        from courseflow.domain.exceptions import RateLimitExceededError
 
         with patch("genai.Client") as mock_client_class:
             mock_client = MagicMock()
             # Gemini raises specific error for rate limit
             mock_client.models.generate_content_stream = AsyncMock(
-                side_effect=Exception("429 Too Many Requests")
+                side_effect=RuntimeError("429 Too Many Requests")
             )
             mock_client_class.return_value = mock_client
 
             llm = GeminiLLMClient(api_key="test_key")
 
             # Should propagate error
-            with pytest.raises(Exception):
+            with pytest.raises(RuntimeError):
                 async for _ in llm.stream(query="Test", context=["doc"]):
                     pass
 
@@ -212,9 +204,7 @@ class TestGeminiStreamingAdapter:
             mock_stream = [MagicMock(text=chunk) for chunk in expected_chunks]
 
             mock_client = MagicMock()
-            mock_client.models.generate_content_stream = AsyncMock(
-                return_value=mock_stream
-            )
+            mock_client.models.generate_content_stream = AsyncMock(return_value=mock_stream)
             mock_client_class.return_value = mock_client
 
             llm = GeminiLLMClient(api_key="test_key")

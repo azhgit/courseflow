@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import statistics
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
@@ -399,18 +400,22 @@ async def stream_query_endpoint(
 
     query_text = request.query.strip() if request.query is not None else ""
     if not query_text:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query must not be empty")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="query must not be empty"
+        )
     if len(query_text) > 1000:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="query must be <= 1000 characters",
         )
 
-    async def generate_sse_stream():
+    async def generate_sse_stream() -> AsyncGenerator[str, None]:
         """Generator function that yields SSE-formatted events."""
         request_started = datetime.now(UTC)
         try:
-            streaming_query = StreamingQuery(query=query_text, conversation_id=request.conversation_id)
+            streaming_query = StreamingQuery(
+                query=query_text, conversation_id=request.conversation_id
+            )
             request_id = str(Query(text=streaming_query.query).id)
             logger.info(
                 "stream.start request_id=%s conversation_id=%s",
@@ -444,9 +449,7 @@ async def stream_query_endpoint(
                     max_tokens=2000,
                     max_count=5,
                 )
-                conversation_history = (
-                    turn_history.to_llm_context() if turn_history.turns else None
-                )
+                conversation_history = turn_history.to_llm_context() if turn_history.turns else None
 
             all_chunks: list[str] = []
             all_sources: list[str] = []
