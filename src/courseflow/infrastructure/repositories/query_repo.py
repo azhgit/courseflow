@@ -6,6 +6,7 @@ Stores query history, performance metrics, and error tracking.
 
 import sqlite3
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import aiosqlite
@@ -43,13 +44,19 @@ class SQLiteQueryRepository(QueryRepositoryPort):
         """
         if db_path:
             self.database_path = db_path
+            self._ensure_parent_dir()
             return
         # Extract file path from URL (remove "sqlite+aiosqlite:///" prefix)
         self.database_path = database_url.replace("sqlite+aiosqlite:///", "")
+        self._ensure_parent_dir()
+
+    def _ensure_parent_dir(self) -> None:
+        Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
 
     async def initialize(self) -> None:
         """Ensure database schema exists (test-friendly)."""
         try:
+            self._ensure_parent_dir()
             async with aiosqlite.connect(self.database_path) as db:
                 await db.execute(
                     """
@@ -97,6 +104,7 @@ class SQLiteQueryRepository(QueryRepositoryPort):
             ServiceUnavailableError: If database is unreachable
         """
         try:
+            self._ensure_parent_dir()
             async with aiosqlite.connect(self.database_path) as db:
                 # Support both domain-style calls (query, answer, latency_ms)
                 # and legacy keyword-style calls used by tests and RAGService.
