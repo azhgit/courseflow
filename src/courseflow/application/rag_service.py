@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from courseflow.domain.exceptions import NoRelevantDocumentsError
 from courseflow.domain.models import Answer, Query, SearchResult
@@ -329,7 +329,7 @@ class RAGService:
         # Stage 5: Log query to repository (after streaming completes)
         try:
             # Estimate token count from response length (rough approximation)
-            estimated_tokens = len(full_response.split())
+            len(full_response.split())
 
             await self.query_repo.save_query(
                 query_id=str(query.id),

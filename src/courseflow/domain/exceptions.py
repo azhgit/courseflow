@@ -271,3 +271,33 @@ class ConversationPersistenceError(CourseFlowError):
         if conversation_id:
             msg += f" (ID: {conversation_id})"
         super().__init__(msg)
+
+
+# =============================================================================
+# Evaluation System Exceptions
+# =============================================================================
+
+
+class EvaluationInProgressException(CourseFlowError):
+    """Raised when attempting to start evaluation while one is already running.
+
+    Indicates concurrent evaluation requests are not allowed.
+    Client should retry after current evaluation completes.
+
+    Attributes:
+        retry_after: Suggested seconds to wait before retrying (default: 300s = 5min)
+    """
+
+    def __init__(self, message: str = "Evaluation already in progress", retry_after: int = 300):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+class EvaluationPersistenceError(CourseFlowError):
+    """Raised when evaluation results cannot be saved to storage.
+
+    Indicates database error when persisting evaluation run or results
+    after exhausting retry attempts. This is a fatal error for the run.
+    """
+
+    pass

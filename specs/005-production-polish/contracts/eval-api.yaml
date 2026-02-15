@@ -1,0 +1,607 @@
+openapi: 3.0.3
+info:
+  title: CourseFlow Evaluation API
+  description: |
+    Automated evaluation system for RAG quality assurance.
+    
+    Provides endpoints to trigger evaluations, retrieve results, and monitor 
+    quality trends over time. Evaluations run against a golden dataset of 15 
+    Q&A test pairs measuring retrieval precision, keyword match rate, and latency.
+    
+    **Key Features**:
+    - Automated quality validation with objective metrics
+    - Historical result tracking for trend analysis
+    - Regression detection against baseline runs
+    - Concurrency control (single evaluation at a time)
+  version: 1.0.0
+  contact:
+    name: CourseFlow API Support
+    url: https://github.com/courseflow/api-docs
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.courseflow.dev
+    description: Production server (future)
+
+tags:
+  - name: evaluation
+    description: Evaluation execution and results retrieval
+
+paths:
+  /api/v1/eval/run:
+    post:
+      tags:
+        - evaluation
+      summary: Trigger evaluation run
+      description: |
+        Starts a new evaluation run against the golden dataset (15 Q&A pairs).
+        
+        **Behavior**:
+        - Executes asynchronously (returns immediately with run_id)
+        - Rejects concurrent requests with HTTP 429
+        - Results available via GET /api/v1/eval/run/{run_id} after completion
+        
+        **Metrics Computed**:
+        - Retrieval precision (exact chunk ID matching)
+        - Keyword match rate (case-insensitive)
+        - Latency percentiles (p50, p95)
+        
+        **Quality Thresholds**:
+        - Precision ≥ 70%
+        - Keyword match ≥ 80%
+        - Latency p95 < 10s
+      operationId: triggerEvaluationRun
+      requestBody:
+        description: Optional configuration for evaluation run
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dataset_version:
+                  type: string
+                  description: Version of golden dataset to use
+                  default: "1.0"
+                  example: "1.0"
+                notify_on_completion:
+                  type: boolean
+                  description: Send notification when evaluation completes
+                  default: false
+      responses:
+        '202':
+          description: Evaluation accepted and started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationAcceptedResponse'
+              example:
+                success: true
+                data:
+                  run_id: "550e8400-e29b-41d4-a716-446655440000"
+                  status: "running"
+                  started_at: "2025-02-14T10:30:00Z"
+                  estimated_duration_ms: 180000
+                metadata:
+                  request_id: "req_abc123"
+                  timestamp: "2025-02-14T10:30:00Z"
+                error: null
+        '429':
+          description: Evaluation already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                data: null
+                metadata:
+                  request_id: "req_abc124"
+                  timestamp: "2025-02-14T10:30:05Z"
+                error:
+                  code: "evaluation_in_progress"
+                  message: "Evaluation already in progress. Retry after completion."
+                  details:
+                    current_run_id: "550e8400-e29b-41d4-a716-446655440000"
+                    retry_after: 300
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+                example: 300
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - evaluation
+      summary: List evaluation runs
+      description: |
+        Retrieves historical evaluation runs with optional filtering and pagination.
+        
+        **Default Behavior**:
+        - Returns most recent 20 runs (ordered by timestamp DESC)
+        - Includes summary metrics only (full results via /{run_id})
+        
+        **Filtering**:
+        - By status (running, completed, failed)
+        - By date range
+        - By pass/fail status
+      operationId: listEvaluationRuns
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: page_size
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+        - name: status
+          in: query
+          description: Filter by evaluation status
+          required: false
+          schema:
+            type: string
+            enum: [running, completed, failed]
+            example: completed
+        - name: passed
+          in: query
+          description: Filter by pass/fail status
+          required: false
+          schema:
+            type: boolean
+            example: true
+        - name: since
+          in: query
+          description: Return runs after this timestamp (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+            example: "2025-02-01T00:00:00Z"
+        - name: until
+          in: query
+          description: Return runs before this timestamp (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+            example: "2025-02-14T23:59:59Z"
+      responses:
+        '200':
+          description: Successful retrieval of evaluation runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEvaluationRunsResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/eval/run/{run_id}:
+    get:
+      tags:
+        - evaluation
+      summary: Get evaluation run details
+      description: |
+        Retrieves complete details for a specific evaluation run including:
+        - Full metrics breakdown (avg, min, max for all metrics)
+        - Individual test case results (all 15 Q&A pairs)
+        - Latency percentiles and distributions
+        
+        **Use Cases**:
+        - Detailed debugging of failed tests
+        - Analysis of specific test case performance
+        - Comparing individual metrics across runs
+      operationId: getEvaluationRun
+      parameters:
+        - name: run_id
+          in: path
+          description: UUID of the evaluation run
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: include_results
+          in: query
+          description: Include individual test case results (default true)
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Successful retrieval of evaluation run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationRunDetailResponse'
+        '404':
+          description: Evaluation run not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/eval/baseline:
+    get:
+      tags:
+        - evaluation
+      summary: Get baseline evaluation run
+      description: |
+        Retrieves the most recent evaluation run where `passed=true`.
+        
+        **Purpose**:
+        - Used for regression detection
+        - Baseline = last known-good quality state
+        - Compare current run metrics against this baseline
+        
+        **Returns**:
+        - Full evaluation run details (same as GET /eval/run/{run_id})
+        - null if no passed runs exist (first run or all runs failed)
+      operationId: getBaselineRun
+      responses:
+        '200':
+          description: Baseline run retrieved (may be null)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EvaluationRunDetailResponse'
+                  - $ref: '#/components/schemas/NoBaselineResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    EvaluationAcceptedResponse:
+      type: object
+      required: [success, data, metadata, error]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [run_id, status, started_at]
+          properties:
+            run_id:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [running]
+            started_at:
+              type: string
+              format: date-time
+            estimated_duration_ms:
+              type: integer
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+        error:
+          type: "null"
+
+    PaginatedEvaluationRunsResponse:
+      type: object
+      required: [success, data, metadata, error]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [items, pagination]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/EvaluationRunSummary'
+            pagination:
+              $ref: '#/components/schemas/PaginationInfo'
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+        error:
+          type: "null"
+
+    EvaluationRunDetailResponse:
+      type: object
+      required: [success, data, metadata, error]
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/EvaluationRun'
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+        error:
+          type: "null"
+
+    NoBaselineResponse:
+      type: object
+      required: [success, data, metadata, error]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: "null"
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/ResponseMetadata'
+            - type: object
+              properties:
+                message:
+                  type: string
+        error:
+          type: "null"
+
+    EvaluationRun:
+      type: object
+      required:
+        - run_id
+        - timestamp
+        - status
+        - passed
+        - golden_dataset_version
+        - test_case_count
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [running, completed, failed]
+        duration_ms:
+          type: integer
+          nullable: true
+        passed:
+          type: boolean
+        error_message:
+          type: string
+          nullable: true
+        golden_dataset_version:
+          type: string
+        test_case_count:
+          type: integer
+        metrics:
+          $ref: '#/components/schemas/Metrics'
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestCaseResult'
+          nullable: true
+
+    EvaluationRunSummary:
+      type: object
+      required: [run_id, timestamp, status, passed]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [running, completed, failed]
+        duration_ms:
+          type: integer
+          nullable: true
+        passed:
+          type: boolean
+        metrics:
+          type: object
+          nullable: true
+          properties:
+            retrieval_precision_avg:
+              type: number
+              format: float
+            keyword_match_avg:
+              type: number
+              format: float
+            latency_p50_ms:
+              type: number
+              format: float
+            latency_p95_ms:
+              type: number
+              format: float
+            pass_rate:
+              type: number
+              format: float
+            tests_passed:
+              type: integer
+            tests_failed:
+              type: integer
+
+    Metrics:
+      type: object
+      required:
+        - retrieval_precision_avg
+        - retrieval_precision_min
+        - retrieval_precision_max
+        - keyword_match_avg
+        - keyword_match_min
+        - keyword_match_max
+        - latency_p50_ms
+        - latency_p95_ms
+        - latency_min_ms
+        - latency_max_ms
+        - pass_rate
+        - tests_passed
+        - tests_failed
+      properties:
+        retrieval_precision_avg:
+          type: number
+          format: float
+        retrieval_precision_min:
+          type: number
+          format: float
+        retrieval_precision_max:
+          type: number
+          format: float
+        keyword_match_avg:
+          type: number
+          format: float
+        keyword_match_min:
+          type: number
+          format: float
+        keyword_match_max:
+          type: number
+          format: float
+        latency_p50_ms:
+          type: number
+          format: float
+        latency_p95_ms:
+          type: number
+          format: float
+        latency_min_ms:
+          type: integer
+        latency_max_ms:
+          type: integer
+        pass_rate:
+          type: number
+          format: float
+        tests_passed:
+          type: integer
+        tests_failed:
+          type: integer
+
+    TestCaseResult:
+      type: object
+      required:
+        - question
+        - expected_answer
+        - actual_answer
+        - expected_chunks
+        - retrieved_chunks
+        - keywords
+        - retrieval_precision
+        - keyword_match_rate
+        - latency_ms
+        - passed
+      properties:
+        question:
+          type: string
+        expected_answer:
+          type: string
+        actual_answer:
+          type: string
+        expected_chunks:
+          type: array
+          items:
+            type: string
+        retrieved_chunks:
+          type: array
+          items:
+            type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        retrieval_precision:
+          type: number
+          format: float
+        keyword_match_rate:
+          type: number
+          format: float
+        latency_ms:
+          type: integer
+        passed:
+          type: boolean
+
+    PaginationInfo:
+      type: object
+      required: [total, page, page_size, pages, has_next, has_prev]
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        pages:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+
+    ResponseMetadata:
+      type: object
+      required: [request_id, timestamp]
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        latency_ms:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required: [success, data, metadata, error]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: "null"
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - evaluation_in_progress
+                - not_found
+                - validation_error
+                - internal_error
+                - database_error
+            message:
+              type: string
+            details:
+              type: object
+              nullable: true
+              additionalProperties: true

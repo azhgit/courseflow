@@ -9,7 +9,6 @@ Per constitution Section III: Ensures Gemini free tier compliance
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
 
 from courseflow.domain.exceptions import RateLimitExceededError
 from courseflow.infrastructure.rate_limiting.rate_limiter import RateLimiter
@@ -29,7 +28,7 @@ class StreamingRateLimiter:
 
     def __init__(
         self,
-        base_limiter: Optional[RateLimiter] = None,
+        base_limiter: RateLimiter | None = None,
         max_retries: int = 3,
         initial_delay: float = 1.0,
     ):
@@ -122,7 +121,7 @@ class StreamingRateLimiter:
 
 
 # Global instance
-_GLOBAL_STREAMING_LIMITER: Optional[StreamingRateLimiter] = None
+_GLOBAL_STREAMING_LIMITER: StreamingRateLimiter | None = None
 
 
 def _get_global_rate_limiter() -> RateLimiter:

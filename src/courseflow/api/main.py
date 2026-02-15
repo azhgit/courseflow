@@ -32,6 +32,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Yields:
         None (context manager)
     """
+    eval_scheduler = None
+
     # Startup: Initialize resources
     print("Starting up CourseFlow RAG system...")
     print(f"ChromaDB persist dir: {settings.chroma_persist_dir}")
@@ -42,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         from courseflow.infrastructure.repositories.chunk_repo import SQLiteChromaChunkRepository
         from courseflow.infrastructure.repositories.document_repo import SQLiteDocumentRepository
+        from courseflow.infrastructure.repositories.evaluation_repo import EvaluationRepository
         from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
         from courseflow.infrastructure.repositories.subject_repo import SQLiteSubjectRepository
 
@@ -60,6 +63,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         chunk_repo = SQLiteChromaChunkRepository()
         await chunk_repo.initialize()
         logger.info("SQLite chunks table initialized")
+
+        # Initialize evaluation database
+        eval_repo = EvaluationRepository(db_path=settings.eval_database_path)
+        await eval_repo.initialize()
+        logger.info("Evaluation database initialized")
+
     except Exception as e:
         logger.error(f"Failed to initialize database tables: {e}")
 
@@ -77,10 +86,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"Failed to initialize NLTK data: {e}")
 
+    # Initialize evaluation scheduler
+    if settings.EVAL_SCHEDULE_ENABLED:
+        try:
+            from courseflow.api.dependencies import get_evaluation_service
+            from courseflow.infrastructure.scheduler.eval_scheduler import EvaluationScheduler
+
+            eval_service = await get_evaluation_service()
+            eval_scheduler = EvaluationScheduler(
+                eval_service=eval_service,
+                enabled=settings.EVAL_SCHEDULE_ENABLED,
+                hour=settings.EVAL_SCHEDULE_HOUR,
+                minute=settings.EVAL_SCHEDULE_MINUTE,
+            )
+            eval_scheduler.start()
+            app.state.eval_scheduler = eval_scheduler
+        except Exception as e:
+            logger.warning(f"Failed to initialize evaluation scheduler: {e}")
+
     yield
 
     # Shutdown: Cleanup resources
     print("Shutting down CourseFlow RAG system...")
+    if eval_scheduler is not None:
+        eval_scheduler.shutdown()
     # NOTE: Cleanup is handled by individual components (e.g., httpx client close)
 
 
@@ -126,7 +155,7 @@ def create_app() -> FastAPI:
     )
 
     # Register API routes
-    from courseflow.api.routes import documents, health, ingest, query, subjects
+    from courseflow.api.routes import documents, evaluation, health, ingest, query, subjects
 
     app.include_router(health.router, prefix=settings.api_v1_prefix, tags=["health"])
 
@@ -134,6 +163,7 @@ def create_app() -> FastAPI:
     app.include_router(ingest.router, tags=["ingestion"])
     app.include_router(documents.router, tags=["documents"])
     app.include_router(subjects.router, tags=["subjects"])
+    app.include_router(evaluation.router, prefix=settings.api_v1_prefix, tags=["evaluation"])
 
     return app
 

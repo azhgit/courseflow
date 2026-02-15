@@ -5,7 +5,7 @@ Per constitution section III (AI Engineering Standards): supports immediate
 chunk emission with proper event sequence (chunk* → sources → done | error).
 """
 
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from courseflow.domain.models import SSEEvent
 

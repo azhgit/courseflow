@@ -5,6 +5,7 @@ import tempfile
 
 import pytest
 
+from courseflow.domain.exceptions import ServiceUnavailableError
 from courseflow.domain.models import Document, DocumentMetadata, SearchResult
 from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
 
@@ -307,3 +308,56 @@ class TestChromaDBIntegration:
         # If any results, they must meet threshold
         for result in results:
             assert result.similarity_score >= 0.9
+
+    @pytest.mark.asyncio
+    async def test_search_recovers_after_error_finding_id(
+        self,
+        chroma_adapter,
+        mock_embedding_client,
+        sample_documents,
+        monkeypatch,
+    ):
+        """Retry once with refreshed collection when Chroma raises stale-id error."""
+        for doc in sample_documents:
+            doc.embedding = await mock_embedding_client.generate_embedding(doc.content)
+        await chroma_adapter.add_documents(sample_documents)
+
+        query_embedding = await mock_embedding_client.generate_embedding("biology query")
+        original_query = chroma_adapter.collection.query
+        call_count = {"value": 0}
+
+        def fail_once(**kwargs):
+            call_count["value"] += 1
+            if call_count["value"] == 1:
+                raise RuntimeError("Error executing plan: Internal error: Error finding id")
+            return original_query(**kwargs)
+
+        monkeypatch.setattr(chroma_adapter.collection, "query", fail_once)
+
+        results = await chroma_adapter.search(query_embedding=query_embedding, k=3)
+        assert results
+        assert call_count["value"] == 1  # second call uses refreshed collection object
+
+    @pytest.mark.asyncio
+    async def test_search_raises_when_error_finding_id_persists(
+        self,
+        chroma_adapter,
+        mock_embedding_client,
+        sample_documents,
+        monkeypatch,
+    ):
+        """Raise ServiceUnavailableError if stale-id error remains after retry."""
+        for doc in sample_documents:
+            doc.embedding = await mock_embedding_client.generate_embedding(doc.content)
+        await chroma_adapter.add_documents(sample_documents)
+
+        query_embedding = await mock_embedding_client.generate_embedding("biology query")
+
+        def always_fail(**kwargs):
+            raise RuntimeError("Error executing plan: Internal error: Error finding id")
+
+        monkeypatch.setattr(chroma_adapter.collection, "query", always_fail)
+        monkeypatch.setattr(chroma_adapter, "_refresh_collection", lambda: None)
+
+        with pytest.raises(ServiceUnavailableError, match="Error finding id"):
+            await chroma_adapter.search(query_embedding=query_embedding, k=3)

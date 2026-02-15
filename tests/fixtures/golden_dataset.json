@@ -1,0 +1,126 @@
+{
+  "version": "1.0",
+  "description": "Golden Q&A dataset for RAG system evaluation (15 test pairs) - Updated with actual document IDs",
+  "pairs": [
+    {
+      "question": "What is photosynthesis?",
+      "expected_answer": "Photosynthesis is the process by which plants convert light energy into chemical energy",
+      "expected_chunks": ["photosynthesis.md"],
+      "keywords": ["photosynthesis", "light energy", "glucose", "oxygen"],
+      "subject": "biology",
+      "difficulty": "beginner"
+    },
+    {
+      "question": "Explain photosynthesis in detail",
+      "expected_answer": "Photosynthesis has two main stages: light-dependent reactions and the Calvin Cycle",
+      "expected_chunks": ["photosynthesis.md"],
+      "keywords": ["light-dependent", "Calvin Cycle", "chlorophyll", "ATP"],
+      "subject": "biology",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "What is mitosis?",
+      "expected_answer": "Mitosis is the process of cell division that produces two identical daughter cells",
+      "expected_chunks": ["mitosis.md"],
+      "keywords": ["mitosis", "cell division", "chromosomes", "daughter cells"],
+      "subject": "biology",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "What are the stages of mitosis?",
+      "expected_answer": "The stages of mitosis are prophase, metaphase, anaphase, and telophase",
+      "expected_chunks": ["mitosis.md"],
+      "keywords": ["prophase", "metaphase", "anaphase", "telophase"],
+      "subject": "biology",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "What caused World War II?",
+      "expected_answer": "World War II was caused by Nazi Germany's aggression, militarism, and expansionist ideology",
+      "expected_chunks": ["wwii.md"],
+      "keywords": ["World War II", "Nazi", "Germany", "Treaty of Versailles", "appeasement"],
+      "subject": "history",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "Tell me about the Cold War",
+      "expected_answer": "The Cold War was a geopolitical tension between the United States and Soviet Union",
+      "expected_chunks": ["cold-war.md"],
+      "keywords": ["Cold War", "United States", "Soviet Union", "tension", "capitalism"],
+      "subject": "history",
+      "difficulty": "beginner"
+    },
+    {
+      "question": "What was the French Revolution?",
+      "expected_answer": "The French Revolution was a period of social and political upheaval in France",
+      "expected_chunks": ["french-revolution.md"],
+      "keywords": ["French Revolution", "radical social and political upheaval", "monarchy", "liberty"],
+      "subject": "history",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "What are Python async and await?",
+      "expected_answer": "async and await are Python keywords for asynchronous programming that allow non-blocking execution",
+      "expected_chunks": ["python-async.md"],
+      "keywords": ["async", "await", "asynchronous", "non-blocking", "coroutine"],
+      "subject": "programming",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "Explain Python functions",
+      "expected_answer": "Python functions are reusable blocks of code that perform specific tasks",
+      "expected_chunks": ["python-functions.md"],
+      "keywords": ["function", "def", "return", "parameter", "argument"],
+      "subject": "programming",
+      "difficulty": "beginner"
+    },
+    {
+      "question": "What is object-oriented programming in Python?",
+      "expected_answer": "Object-oriented programming is a programming paradigm based on classes and objects",
+      "expected_chunks": ["python-oop.md"],
+      "keywords": ["object-oriented", "class", "object", "methods", "attributes"],
+      "subject": "programming",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "What are derivatives in calculus?",
+      "expected_answer": "Derivatives measure the rate of change of a function at a given point",
+      "expected_chunks": ["derivatives.md"],
+      "keywords": ["derivative", "calculus", "rate of change", "slope", "function"],
+      "subject": "math",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "Explain matrices",
+      "expected_answer": "Matrices are rectangular arrays of numbers arranged in rows and columns",
+      "expected_chunks": ["matrices.md"],
+      "keywords": ["matrix", "rows", "columns", "linear algebra", "array"],
+      "subject": "math",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "How does photosynthesis help the environment?",
+      "expected_answer": "Photosynthesis produces oxygen and removes carbon dioxide from the atmosphere",
+      "expected_chunks": ["photosynthesis.md"],
+      "keywords": ["oxygen","carbon dioxide","oxygen production","atmosphere"],
+      "subject": "biology",
+      "difficulty": "beginner"
+    },
+    {
+      "question": "What is the difference between mitosis and meiosis?",
+      "expected_answer": "Mitosis produces identical cells for growth, while meiosis produces sex cells with half the chromosomes",
+      "expected_chunks": ["mitosis.md"],
+      "keywords": ["mitosis", "cell division", "chromosomes", "daughter cells"],
+      "subject": "biology",
+      "difficulty": "intermediate"
+    },
+    {
+      "question": "Explain what an async function does",
+      "expected_answer": "An async function is a coroutine that can be paused and resumed, allowing other code to run while it waits",
+      "expected_chunks": ["python-async.md"],
+      "keywords": ["async", "coroutine", "await", "concurrently", "I/O operations"],
+      "subject": "programming",
+      "difficulty": "intermediate"
+    }
+  ]
+}

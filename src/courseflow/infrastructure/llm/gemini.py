@@ -4,7 +4,7 @@ import asyncio
 import functools
 import logging
 import time
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from google import genai
 from google.genai import types
@@ -157,7 +157,7 @@ class GeminiLLMClient(LLMPort):
             if "429" in error_msg or "quota" in error_msg.lower():
                 logger.error(f"Rate limit exceeded during streaming: {e}")
                 raise QuotaExceededError(
-                    message="Gemini API quota exceeded during streaming",
+                    message=f"Gemini API quota exceeded during streaming: {e}",
                     retry_after=60,
                 ) from e
             elif "503" in error_msg or "unavailable" in error_msg.lower():
@@ -252,7 +252,7 @@ Answer (be concise and factual, citing specific information from the documents):
                 retry_after = 60  # Default to 1 minute
                 logger.warning(f"Gemini API quota exceeded: {e}")
                 raise QuotaExceededError(
-                    message="Gemini API quota exceeded (15 RPM limit)",
+                    message=f"Gemini API quota exceeded: {e}",
                     retry_after=retry_after,
                 ) from e
 
@@ -294,7 +294,7 @@ Answer (be concise and factual, citing specific information from the documents):
 
             # Call streaming API
             loop = asyncio.get_running_loop()
-            
+
             # Run synchronous streaming API in executor
             response_iter = await asyncio.wait_for(
                 loop.run_in_executor(
@@ -308,13 +308,13 @@ Answer (be concise and factual, citing specific information from the documents):
                 timeout=self.timeout_seconds,
             )
 
-            logger.debug(f"Started streaming response")
+            logger.debug("Started streaming response")
 
             # Yield chunks from iterator
             for response_chunk in response_iter:
                 elapsed_ms = int((time.time() - start_time) * 1000)
                 if elapsed_ms > self.timeout_seconds * 1000:
-                    raise asyncio.TimeoutError(f"Streaming exceeded {self.timeout_seconds}s timeout")
+                    raise TimeoutError(f"Streaming exceeded {self.timeout_seconds}s timeout")
                 yield response_chunk
 
         except TimeoutError:
@@ -329,7 +329,7 @@ Answer (be concise and factual, citing specific information from the documents):
                 retry_after = 60
                 logger.warning(f"Gemini API quota exceeded during streaming: {e}")
                 raise QuotaExceededError(
-                    message="Gemini API quota exceeded (15 RPM limit)",
+                    message=f"Gemini API quota exceeded during streaming: {e}",
                     retry_after=retry_after,
                 ) from e
 

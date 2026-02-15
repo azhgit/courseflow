@@ -80,8 +80,11 @@ class GeminiEmbeddingClient(EmbeddingPort):
 
             # Check for rate limiting
             if response.status_code == 429:
+                detail = response.text.strip()
+                if len(detail) > 300:
+                    detail = f"{detail[:300]}..."
                 raise QuotaExceededError(
-                    "Gemini API quota exceeded (15 RPM limit)",
+                    f"Gemini embedding quota exceeded: {detail or 'HTTP 429'}",
                     retry_after=60,  # Estimate 60s for RPM reset
                 )
 

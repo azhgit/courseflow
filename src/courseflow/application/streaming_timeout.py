@@ -6,8 +6,9 @@ section III (AI Engineering Standards).
 """
 
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 

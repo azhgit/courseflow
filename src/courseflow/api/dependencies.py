@@ -8,6 +8,7 @@ from collections import deque
 from collections.abc import AsyncGenerator
 
 import aiosqlite
+from fastapi import HTTPException, status
 
 from courseflow.application.rag_service import RAGService
 from courseflow.config import settings
@@ -77,9 +78,21 @@ def get_embedding_client() -> GeminiEmbeddingClient:
     """
     global _embedding_client
     if _embedding_client is None:
-        _embedding_client = GeminiEmbeddingClient(
-            api_key=settings.gemini_api_key,
-        )
+        try:
+            _embedding_client = GeminiEmbeddingClient(
+                api_key=settings.gemini_api_key,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "service_unavailable",
+                    "message": (
+                        "Gemini API client initialization failed. "
+                        "Set GEMINI_API_KEY to a valid key and restart the server."
+                    ),
+                },
+            ) from exc
     return _embedding_client
 
 
@@ -91,11 +104,23 @@ def get_llm_client() -> GeminiLLMClient:
     """
     global _llm_client
     if _llm_client is None:
-        _llm_client = GeminiLLMClient(
-            api_key=settings.gemini_api_key,
-            model_name=settings.GEMINI_MODEL,
-            timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
-        )
+        try:
+            _llm_client = GeminiLLMClient(
+                api_key=settings.gemini_api_key,
+                model_name=settings.GEMINI_MODEL,
+                timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "service_unavailable",
+                    "message": (
+                        "Gemini API client initialization failed. "
+                        "Set GEMINI_API_KEY to a valid key and restart the server."
+                    ),
+                },
+            ) from exc
     return _llm_client
 
 
@@ -229,3 +254,48 @@ def get_conversation_repository():
 
     # Use default database path
     return SQLiteConversationRepository(db_path="./data/courseflow.db")
+
+
+# =============================================================================
+# Evaluation System Dependencies
+# =============================================================================
+
+_evaluation_repo = None
+_evaluation_service = None
+
+
+def get_evaluation_repository():
+    """Dependency: Evaluation repository singleton.
+
+    Returns:
+        EvaluationRepository singleton instance
+    """
+    global _evaluation_repo
+    if _evaluation_repo is None:
+        from courseflow.infrastructure.repositories.evaluation_repo import EvaluationRepository
+        _evaluation_repo = EvaluationRepository(db_path=settings.eval_database_path)
+    return _evaluation_repo
+
+
+async def get_evaluation_service():
+    """Dependency: Evaluation service.
+
+    Returns:
+        EvaluationService with RAG service and repository wired
+    """
+    global _evaluation_service
+    if _evaluation_service is None:
+        from courseflow.application.evaluation_service import EvaluationService
+
+        repo = get_evaluation_repository()
+        await repo.initialize()  # Ensure schema exists
+
+        rag_service = get_rag_service()
+
+        _evaluation_service = EvaluationService(
+            repository=repo,
+            rag_service=rag_service,
+            golden_dataset_path=settings.eval_golden_dataset_path,
+        )
+
+    return _evaluation_service

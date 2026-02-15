@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "Add production-ready evaluation system with automated testing, performance metrics, and monitoring endpoints"
 
+## Clarifications
+
+### Session 2026-02-14
+
+- Q: How should expected_chunks be matched against retrieved chunks? → A: exact chunk ID matching
+- Q: How should system handle concurrent /api/v1/eval/run calls? → A: return HTTP 429 (ask caller to retry)
+- Q: Which evaluation run should be used as regression baseline? → A: most recent evaluation run where passed=true
+- Q: What retry policy for SQLite persistence failures? → A: exponential backoff 1s, 2s, 4s (max 3 attempts)
+- Q: What is the default schedule for automated golden dataset evaluations? → A: once daily
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Automated Quality Validation (Priority: P1)
@@ -19,7 +29,7 @@ QA engineers need to validate system quality before each production deployment b
 
 1. **Given** a set of 15 golden Q&A pairs exists, **When** QA engineer triggers evaluation via API, **Then** system runs all 15 test cases and returns aggregated metrics (retrieval precision, keyword match rate, latency p50/p95)
 2. **Given** evaluation completes successfully, **When** QA engineer requests results, **Then** system returns structured results showing pass/fail status for each golden pair with detailed metrics
-3. **Given** golden Q&A pair specifies expected chunks, **When** system retrieves chunks for that question, **Then** precision is calculated as (relevant chunks retrieved / total chunks retrieved)
+3. **Given** golden Q&A pair specifies expected chunks, **When** system retrieves chunks for that question, **Then** precision is calculated as (relevant chunks retrieved / total chunks retrieved) using exact chunk ID matching
 4. **Given** golden Q&A pair contains specific keywords, **When** system generates answer, **Then** keyword match rate is calculated as (keywords found in answer / total keywords expected)
 
 ---
@@ -53,7 +63,7 @@ Developers need to detect quality regressions immediately after code changes by 
 
 1. **Given** baseline evaluation results exist, **When** new evaluation completes, **Then** system compares current metrics to baseline and flags significant deviations (>10% degradation)
 2. **Given** developer introduces change that reduces keyword match rate, **When** evaluation runs, **Then** results clearly indicate which metrics regressed and by how much
-3. **Given** multiple baseline runs exist, **When** comparing to current run, **Then** system uses most recent stable baseline for comparison
+3. **Given** multiple baseline runs exist, **When** comparing to current run, **Then** system uses most recent evaluation run where passed=true as baseline for comparison
 
 ---
 
@@ -66,9 +76,9 @@ Developers need to detect quality regressions immediately after code changes by 
 - What happens when a query exceeds reasonable latency bounds (>30 seconds)?
   - Times out the specific query, records as failure, continues with remaining tests
 - How does system handle concurrent evaluation requests?
-  - Queues requests if evaluation in progress, or rejects with HTTP 429 (Too Many Requests)
+  - Returns HTTP 429 (Too Many Requests) asking caller to retry; does not queue requests
 - What happens when SQLite database is locked or unavailable?
-  - Retries with exponential backoff (3 attempts), fails evaluation run if persistence fails
+  - Retries with exponential backoff (1s, 2s, 4s - max 3 attempts), fails evaluation run if persistence fails
 - How does system handle malformed golden pairs (missing fields)?
   - Validates JSON schema on load, skips invalid pairs with warning logged, continues with valid pairs
 
@@ -77,7 +87,7 @@ Developers need to detect quality regressions immediately after code changes by 
 ### Functional Requirements
 
 - **FR-001**: System MUST execute automated evaluations against exactly 15 golden Q&A pairs per run
-- **FR-002**: System MUST calculate retrieval precision for each Q&A pair as (relevant chunks retrieved / total chunks retrieved)
+- **FR-002**: System MUST calculate retrieval precision for each Q&A pair as (relevant chunks retrieved / total chunks retrieved) using exact chunk ID matching
 - **FR-003**: System MUST calculate keyword match rate for each Q&A pair as (keywords found in generated answer / total keywords in expected answer)
 - **FR-004**: System MUST measure and record query latency for each Q&A pair in milliseconds
 - **FR-005**: System MUST compute p50 (median) and p95 (95th percentile) latency across all 15 test cases
@@ -88,9 +98,12 @@ Developers need to detect quality regressions immediately after code changes by 
 - **FR-010**: System MUST handle evaluation failures gracefully without corrupting database or losing partial results
 - **FR-011**: System MUST log all evaluation runs with INFO level including start time, duration, success/failure status
 - **FR-012**: System MUST make evaluations idempotent - running same golden pairs multiple times produces consistent metrics
-- **FR-013**: System MUST support both on-demand (API-triggered) and scheduled evaluation runs
+- **FR-013**: System MUST support both on-demand (API-triggered) and scheduled evaluation runs with default daily schedule
 - **FR-014**: API MUST return latest evaluation result by default, with option to retrieve historical results
 - **FR-015**: System MUST include health check endpoint (GET /api/v1/health) indicating evaluation system status
+- **FR-016**: System MUST reject concurrent evaluation requests with HTTP 429 (Too Many Requests) status code
+- **FR-017**: System MUST retry SQLite persistence failures using exponential backoff (1s, 2s, 4s) for maximum 3 attempts
+- **FR-018**: System MUST use most recent evaluation run where passed=true as regression baseline for comparisons
 
 ### Key Entities
 
@@ -128,14 +141,14 @@ Developers need to detect quality regressions immediately after code changes by 
 ## Assumptions
 
 1. **Golden pairs format**: Assumes golden Q&A pairs are provided as JSON file with schema: `{"pairs": [{"question": str, "expected_answer": str, "expected_chunks": [str], "keywords": [str]}]}`
-2. **Retrieval system**: Assumes existing RAG/retrieval pipeline is available and returns chunk IDs or content that can be compared to expected_chunks
+2. **Retrieval system**: Assumes existing RAG/retrieval pipeline is available and returns chunk IDs that can be compared to expected_chunks using exact ID matching
 3. **Database location**: Assumes SQLite database stored in configurable location (default: `data/evaluations.db`)
-4. **Concurrency**: Assumes evaluation runs are low-frequency (hourly or less), single-threaded execution acceptable
+4. **Concurrency**: Assumes evaluation runs are low-frequency (daily by default), single-threaded execution; concurrent requests rejected with HTTP 429
 5. **Keyword matching**: Assumes case-insensitive exact matching for keywords (no stemming/lemmatization required)
 6. **Latency measurement**: Assumes latency measured as wall-clock time from query submission to answer generation completion
 7. **Pass/fail thresholds**: Assumes default thresholds of ≥70% retrieval precision, ≥80% keyword match, <10s latency p95 (configurable)
 8. **API authentication**: Assumes API secured by existing authentication layer (out of scope for this feature)
-9. **Storage capacity**: Assumes SQLite sufficient for expected data volume (estimated <100MB per 10,000 runs)
+9. **Storage capacity**: Assumes SQLite sufficient for expected data volume (estimated <100MB per 10,000 runs); persistence retries use exponential backoff (1s, 2s, 4s) for max 3 attempts
 10. **Result format**: Assumes JSON response format for API with standard HTTP status codes (200 OK, 429 Too Many Requests, 500 Internal Server Error)
 
 ## Dependencies

@@ -2,15 +2,18 @@
 
 import asyncio
 import logging
+import statistics
 from datetime import UTC, datetime
 from typing import Any
 
+import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from courseflow.api.dependencies import (
     get_conversation_repository,
+    get_query_repository,
     get_rag_service,
     get_rate_limiter,
     get_token_counter,
@@ -530,9 +533,107 @@ async def stream_query_endpoint(
 
 
 @router.get("/metrics")
-async def metrics_endpoint() -> Response:
-    """Expose lightweight streaming metrics."""
-    return Response(
-        content=streaming_metrics.to_prometheus(),
-        media_type="text/plain; version=0.0.4",
+async def metrics_endpoint(
+    query_repo: Any = Depends(get_query_repository),
+    rate_limiter: Any = Depends(get_rate_limiter),
+) -> dict[str, Any]:
+    """Expose aggregate query metrics in JSON format."""
+    async with aiosqlite.connect(query_repo.db_path) as db:
+        cursor = await db.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN error_type IS NULL THEN 1 ELSE 0 END) AS success,
+                SUM(CASE WHEN error_type IS NOT NULL THEN 1 ELSE 0 END) AS errors,
+                SUM(CASE WHEN error_type IN ('quota_exceeded', 'rate_limit_exceeded') THEN 1 ELSE 0 END) AS rate_limited
+            FROM queries
+            """
+        )
+        totals = await cursor.fetchone()
+
+        latency_cursor = await db.execute(
+            "SELECT latency_ms FROM queries WHERE latency_ms IS NOT NULL ORDER BY created_at DESC LIMIT 2000"
+        )
+        latencies = [row[0] for row in await latency_cursor.fetchall()]
+
+        token_cursor = await db.execute(
+            """
+            SELECT
+                COALESCE(SUM(CASE WHEN date(created_at) = date('now') THEN total_tokens ELSE 0 END), 0) AS consumed_today,
+                COALESCE(SUM(total_tokens), 0) AS consumed_total
+            FROM queries
+            """
+        )
+        token_totals = await token_cursor.fetchone()
+
+        today_cursor = await db.execute(
+            "SELECT COUNT(*) FROM queries WHERE date(created_at) = date('now')"
+        )
+        requests_today = (await today_cursor.fetchone())[0]
+
+    query_total = int(totals[0] or 0)
+    success_total = int(totals[1] or 0)
+    error_total = int(totals[2] or 0)
+    rate_limited_total = int(totals[3] or 0)
+
+    if latencies:
+        avg_latency = statistics.mean(latencies)
+        if len(latencies) == 1:
+            p50 = p95 = p99 = float(latencies[0])
+        else:
+            quantiles = statistics.quantiles(latencies, n=100, method="inclusive")
+            p50 = quantiles[49]
+            p95 = quantiles[94]
+            p99 = quantiles[98]
+    else:
+        avg_latency = p50 = p95 = p99 = 0.0
+
+    consumed_today = int(token_totals[0] or 0)
+    consumed_total = int(token_totals[1] or 0)
+    avg_per_query = (consumed_total / query_total) if query_total else 0.0
+
+    now = datetime.now(UTC)
+    cutoff = now.timestamp() - rate_limiter.window_seconds
+    requests_last_minute = sum(
+        1 for ts in rate_limiter.request_timestamps if ts.timestamp() >= cutoff
     )
+    daily_limit = int(rate_limiter.max_requests_per_day)
+    requests_remaining_today = max(daily_limit - requests_today, 0)
+
+    return {
+        "success": True,
+        "data": {
+            "queries": {
+                "total": query_total,
+                "success": success_total,
+                "errors": error_total,
+                "rate_limited": rate_limited_total,
+            },
+            "latency": {
+                "avg_ms": round(avg_latency, 2),
+                "p50_ms": round(p50, 2),
+                "p95_ms": round(p95, 2),
+                "p99_ms": round(p99, 2),
+            },
+            "tokens": {
+                "consumed_today": consumed_today,
+                "consumed_total": consumed_total,
+                "avg_per_query": round(avg_per_query, 2),
+            },
+            "quota": {
+                "requests_last_minute": requests_last_minute,
+                "requests_remaining_today": requests_remaining_today,
+                "daily_limit": daily_limit,
+                "warning_threshold_reached": requests_today >= int(daily_limit * 0.9),
+            },
+            "retrieval": {
+                "avg_top1_score": 0.0,
+                "avg_chunks_retrieved": 0.0,
+            },
+            "streaming": {
+                "queries_total": streaming_metrics.query_count,
+                "errors_total": streaming_metrics.error_count,
+                "first_token_avg_ms": round(streaming_metrics.first_token_avg_ms(), 2),
+            },
+        },
+    }
