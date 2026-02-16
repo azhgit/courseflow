@@ -1,0 +1,115 @@
+openapi: 3.0.3
+info:
+  title: CourseFlow Quota Protection API
+  description: |
+    Demo quota protection middleware for CourseFlow RAG system.
+    
+    **Features:**
+    - Per-IP hourly rate limiting (20 queries/hour)
+    - Global daily quota tracking (configurable budget)
+    - Cache-hit bypass for 10 demo questions
+    - Quota status visibility and warnings
+    
+    **Error Handling:**
+    - HTTP 429: Rate limit or quota exceeded
+    - HTTP 400: Unable to determine client IP
+    - HTTP 503: Quota storage unavailable
+    
+    **Base URL:** `http://localhost:8000/api/v1`
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+
+tags:
+  - name: quota
+    description: Quota status and monitoring endpoints
+  - name: health
+    description: Health check and system status
+
+paths:
+  /quota/status:
+    get:
+      operationId: getQuotaStatus
+      summary: Get current quota status
+      description: |
+        Returns current quota usage statistics for monitoring and capacity planning.
+      tags:
+        - quota
+      responses:
+        '200':
+          description: Quota status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotaStatusResponse'
+        '503':
+          $ref: '#/components/responses/StorageUnavailable'
+
+  /health:
+    get:
+      operationId: getHealth
+      summary: Check system health
+      description: |
+        Returns system health status, including quota warning state.
+      tags:
+        - health
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    QuotaStatusResponse:
+      type: object
+      required: [daily, cache, quota_warning, timestamp]
+      properties:
+        daily:
+          type: object
+          required: [used, limit, remaining, percentage_used, reset_at]
+          properties:
+            used: {type: integer, minimum: 0}
+            limit: {type: integer, minimum: 1}
+            remaining: {type: integer, minimum: 0}
+            percentage_used: {type: number, format: float}
+            reset_at: {type: string, format: date-time}
+        cache:
+          type: object
+          required: [questions_count, hit_rate]
+          properties:
+            questions_count: {type: integer, minimum: 0}
+            hit_rate: {type: number, format: float, minimum: 0, maximum: 100}
+        quota_warning: {type: boolean}
+        timestamp: {type: string, format: date-time}
+    
+    HealthResponse:
+      type: object
+      required: [status, version, timestamp, quota_warning]
+      properties:
+        status: {type: string, enum: [healthy, unhealthy]}
+        version: {type: string}
+        timestamp: {type: string, format: date-time}
+        quota_warning: {type: boolean}
+    
+    ErrorResponse:
+      type: object
+      required: [error, message, timestamp, path]
+      properties:
+        error: {type: string}
+        message: {type: string}
+        details: {type: object}
+        timestamp: {type: string, format: date-time}
+        path: {type: string}
+  
+  responses:
+    StorageUnavailable:
+      description: Quota storage temporarily unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
