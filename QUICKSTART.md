@@ -158,6 +158,156 @@ curl -X POST http://localhost:8000/api/v1/query \
 |------|------|------|
 | `/api/v1/health` | GET | 健康檢查 |
 | `/api/v1/query` | POST | RAG 問答 |
+| `/api/v1/quota/status` | GET | 配額狀態 |
+| `/docs` | GET | Swagger UI |
+| `/redoc` | GET | ReDoc 文檔 |
+
+## 配額保護（Demo 模式）
+
+CourseFlow 包含演示配額保護機制，防止在直播演示中用盡 API 配額。
+
+### 基本限制
+
+| 項目 | 限制 | 說明 |
+|------|------|------|
+| 每IP限制 | 20 請求/小時 | 使用滑動窗口追蹤 |
+| 每日預算 | 300 請求/天 | 全局限制，在午夜 UTC 重置 |
+| 快取問題 | 10 個預加載問題 | 繞過速率限制與配額 |
+
+### 快取命中
+
+預加載的問題會自動檢測並返回快取答案，**不計入配額**：
+
+```bash
+# 這會返回快取答案（如果匹配）
+curl -X POST http://localhost:8000/api/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is async/await in Python?"}'
+
+# 觀察響應頭：
+# X-Cache-Hit: true （表示使用了快取）
+# X-RateLimit-Remaining: 20 （配額未減少）
+```
+
+### 檢查配額狀態
+
+```bash
+# 獲取當前配額使用情況
+curl http://localhost:8000/api/v1/quota/status
+```
+
+**預期響應**：
+```json
+{
+  "daily": {
+    "used": 5,
+    "limit": 300,
+    "remaining": 295,
+    "percentage_used": 1.67,
+    "reset_at": "2026-02-17T00:00:00+00:00"
+  },
+  "cache": {
+    "questions_count": 10,
+    "hit_rate": 20.0
+  },
+  "quota_warning": false,
+  "timestamp": "2026-02-16T19:53:00.000000+00:00"
+}
+```
+
+### 達到 IP 限制
+
+```bash
+# 在同一 IP 快速發送 20+ 請求
+for i in {1..25}; do
+  curl -X POST http://localhost:8000/api/v1/query \
+    -H "Content-Type: application/json" \
+    -d "{\"query\": \"Question $i\"}"
+done
+
+# 第 21 個請求返回：
+# HTTP/1.1 429 Too Many Requests
+# Retry-After: 3456 （秒數）
+# {
+#   "error": "Per-IP hourly limit exceeded",
+#   "current": 20,
+#   "limit": 20,
+#   "retry_after_seconds": 3456
+# }
+```
+
+### 配額警告（80%+ 使用）
+
+當日使用率達到 80% 時，健康檢查返回警告：
+
+```bash
+curl http://localhost:8000/health
+
+# 當配額 >= 80% 使用時：
+{
+  "success": true,
+  "data": {
+    "status": "healthy",
+    "quota_warning": true,
+    "components": { ... }
+  }
+}
+```
+
+### 配置配額設置
+
+編輯 `.env` 文件：
+
+```env
+# 演示模式（默認）
+QUOTA_HOURLY_LIMIT=20
+QUOTA_DAILY_BUDGET=300
+QUOTA_CACHE_ENABLED=true
+QUOTA_STREAM_DELAY_MS=30
+
+# 開發測試
+QUOTA_HOURLY_LIMIT=5         # 容易達到限制
+QUOTA_DAILY_BUDGET=20        # 容易耗盡
+QUOTA_CACHE_ENABLED=true
+QUOTA_STREAM_DELAY_MS=5      # 快速測試
+
+# 壓力測試
+QUOTA_HOURLY_LIMIT=100
+QUOTA_DAILY_BUDGET=1000
+QUOTA_CACHE_ENABLED=false    # 禁用快取
+QUOTA_STREAM_DELAY_MS=0      # 即時交付
+```
+
+### 測試配額流程
+
+```bash
+# 1. 檢查初始配額
+curl http://localhost:8000/api/v1/quota/status | jq '.daily.used'
+# 輸出: 0
+
+# 2. 發送一個查詢
+curl -X POST http://localhost:8000/api/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is Python?"}'
+
+# 3. 檢查更新後的配額
+curl http://localhost:8000/api/v1/quota/status | jq '.daily.used'
+# 輸出: 1 (或 0 如果命中快取)
+
+# 4. 檢查快取命中率
+curl http://localhost:8000/api/v1/quota/status | jq '.cache.hit_rate'
+# 輸出: 50.0 (取決於快取匹配)
+```
+
+---
+
+## API 端點總覽
+
+| 端點 | 方法 | 描述 |
+|------|------|------|
+| `/api/v1/health` | GET | 健康檢查 |
+| `/api/v1/query` | POST | RAG 問答 |
+| `/api/v1/quota/status` | GET | 配額狀態 |
 | `/docs` | GET | Swagger UI |
 | `/redoc` | GET | ReDoc 文檔 |
 
