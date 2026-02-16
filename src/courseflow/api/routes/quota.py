@@ -5,8 +5,8 @@ Provides visibility into quota usage and health status.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from courseflow.application.quota_service import QuotaService
-from courseflow.domain.exceptions import QuotaStorageError
+from src.courseflow.application.quota_service import QuotaService
+from src.courseflow.domain.exceptions import QuotaStorageError
 
 router = APIRouter(prefix="/api/v1/quota", tags=["quota"])
 
