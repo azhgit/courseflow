@@ -54,10 +54,16 @@ As a developer preparing for or running a demo, I want clear quota status and wa
 
 - What happens when multiple users share the same public IP (for example, office NAT) and collectively hit the hourly cap?
 - How does the system behave exactly at daily reset time (midnight UTC) when requests arrive at the boundary?
-- How does matching behave for cached questions with different casing, punctuation, or extra spaces?
-- What happens when the client IP cannot be reliably determined from request metadata?
-- How does the system respond when quota storage is temporarily unavailable while evaluating a request?
-- What happens if a client disconnects mid-stream during a cached streaming response?
+
+## Clarifications
+
+### Session 2026-02-16
+
+- Q: What should happen when quota storage is temporarily unavailable while evaluating a request? → A: Fail closed with HTTP 503 when quota storage unavailable.
+- Q: What should happen when the client IP cannot be reliably determined from request metadata? → A: Reject with HTTP 400 when client IP cannot be determined.
+- Q: Should the per-IP hourly limit use a true rolling 60-minute window or fixed hourly buckets? → A: True rolling 60-minute window.
+- Q: How should cache matching normalize question text for comparison? → A: Lowercase + strip punctuation + collapse whitespace.
+- Q: What should happen if a client disconnects mid-stream during a cached streaming response? → A: Abort immediately without error logging.
 
 ## Scope Boundaries
 
@@ -85,7 +91,7 @@ As a developer preparing for or running a demo, I want clear quota status and wa
 - **FR-003**: System MUST enforce a configurable global daily query budget shared across all IPs.
 - **FR-004**: System MUST reject additional query requests after the daily budget is exhausted with a clear daily-quota-exhausted response that includes the next reset time.
 - **FR-005**: System MUST maintain a predefined set of ten demo questions with pre-cached answers.
-- **FR-006**: System MUST match cacheable questions using normalized text comparison that tolerates case, punctuation, and surrounding whitespace differences.
+- **FR-006**: System MUST match cacheable questions using normalized text comparison: convert to lowercase, strip all punctuation characters, and collapse consecutive whitespace into single spaces before comparison.
 - **FR-007**: System MUST bypass both per-IP and daily quota consumption for cache-hit requests.
 - **FR-008**: System MUST stream cache-hit responses incrementally word-by-word with a default delay of 30 milliseconds per word to preserve interactive UX expectations.
 - **FR-009**: System MUST provide a quota status endpoint that returns daily used, limit, remaining, percentage used, warning state, reset timestamp, total cached question count, and daily cache hit rate.
@@ -93,6 +99,9 @@ As a developer preparing for or running a demo, I want clear quota status and wa
 - **FR-011**: System MUST support environment-based configuration for hourly limit, daily budget, and cache enable/disable behavior.
 - **FR-012**: System MUST preserve current-day global daily usage across service restarts and reset daily usage at midnight UTC.
 - **FR-013**: System MUST continue existing non-cached query behavior unchanged for requests that do not match cache entries and do not violate limits.
+- **FR-014**: System MUST respond with HTTP 503 (Service Unavailable) when quota storage is temporarily unavailable during request evaluation.
+- **FR-015**: System MUST reject requests with HTTP 400 (Bad Request) when the client IP address cannot be reliably determined from request metadata.
+- **FR-016**: System MUST abort cached streaming responses immediately upon client disconnect without logging the disconnection as an error condition.
 
 ### Assumptions & Dependencies
 
