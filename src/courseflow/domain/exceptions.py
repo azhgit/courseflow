@@ -301,3 +301,67 @@ class EvaluationPersistenceError(CourseFlowError):
     """
 
     pass
+
+
+# ============================================================================
+# Quota Protection Exceptions (006-demo-protection feature)
+# ============================================================================
+
+
+class QuotaError(CourseFlowError):
+    """Base exception for quota-related errors."""
+
+    pass
+
+
+class IPLimitExceededError(QuotaError):
+    """Raised when per-IP hourly limit is exceeded.
+    
+    Attributes:
+        ip: The IP address that exceeded limit
+        limit: The hourly request limit
+        retry_after_seconds: Seconds until IP quota resets
+    """
+
+    def __init__(self, ip: str, limit: int, retry_after_seconds: int):
+        self.ip = ip
+        self.limit = limit
+        self.retry_after_seconds = retry_after_seconds
+        message = (
+            f"IP {ip} exceeded hourly limit ({limit} requests/hour). "
+            f"Retry after {retry_after_seconds} seconds."
+        )
+        super().__init__(message)
+
+
+class DailyQuotaExceededError(QuotaError):
+    """Raised when global daily budget is exhausted.
+    
+    Attributes:
+        used: Queries consumed today
+        limit: Configured daily budget
+        reset_at: ISO 8601 timestamp when daily quota resets
+    """
+
+    def __init__(self, used: int, limit: int, reset_at: str):
+        self.used = used
+        self.limit = limit
+        self.reset_at = reset_at
+        message = (
+            f"Daily quota exhausted ({used}/{limit}). "
+            f"Resets at {reset_at}."
+        )
+        super().__init__(message)
+
+
+class QuotaStorageError(QuotaError):
+    """Raised when quota storage is unavailable (triggers HTTP 503).
+    
+    Attributes:
+        original_error: The underlying exception that caused storage failure
+    """
+
+    def __init__(self, original_error: Exception):
+        self.original_error = original_error
+        message = f"Quota storage unavailable: {original_error}"
+        super().__init__(message)

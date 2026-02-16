@@ -523,3 +523,70 @@ class ConversationRepositoryPort(ABC):
             ServiceUnavailableError: If database is unreachable
         """
         pass
+
+
+# ============================================================================
+# Quota Store Port (006-demo-protection feature)
+# ============================================================================
+
+
+class QuotaStorePort(ABC):
+    """Port for quota storage (implemented by infrastructure adapters).
+    
+    Abstract interface for quota persistence. Domain does not know about
+    SQLite, Redis, or other storage implementations.
+    """
+
+    @abstractmethod
+    async def get_daily_ledger(self) -> "DailyQuotaLedger":
+        """Fetch current day's quota ledger (creates if not exists).
+        
+        Returns:
+            DailyQuotaLedger for today (creates new entry if needed)
+            
+        Raises:
+            QuotaStorageError: If storage is unavailable
+        """
+        pass
+
+    @abstractmethod
+    async def increment_daily_usage(self) -> None:
+        """Atomically increment daily usage counter by 1.
+        
+        Raises:
+            QuotaStorageError: If storage is unavailable or transaction fails
+        """
+        pass
+
+    @abstractmethod
+    async def reset_daily_usage(self, new_date: str) -> None:
+        """Reset daily usage to 0 for a new day.
+        
+        Args:
+            new_date: ISO 8601 date string (YYYY-MM-DD) for new day
+            
+        Raises:
+            QuotaStorageError: If storage is unavailable
+        """
+        pass
+
+    @abstractmethod
+    async def get_cache_hit_count(self) -> int:
+        """Get number of cache hits today (for metrics).
+        
+        Returns:
+            Cache hits count for current day
+            
+        Raises:
+            QuotaStorageError: If storage is unavailable
+        """
+        pass
+
+    @abstractmethod
+    async def increment_cache_hit(self) -> None:
+        """Record a cache hit (for hit rate calculation).
+        
+        Raises:
+            QuotaStorageError: If storage is unavailable
+        """
+        pass

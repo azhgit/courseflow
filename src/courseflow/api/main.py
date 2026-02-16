@@ -104,6 +104,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             logger.warning(f"Failed to initialize evaluation scheduler: {e}")
 
+    # Initialize quota protection (006-demo-protection)
+    try:
+        from courseflow.application.quota_service import QuotaService
+        from courseflow.infrastructure.quota.sqlite_quota import SQLiteQuotaStore
+
+        quota_store = SQLiteQuotaStore(settings.database_path)
+        quota_service = QuotaService(
+            quota_store=quota_store,
+            hourly_limit=settings.QUOTA_HOURLY_LIMIT,
+            daily_budget=settings.QUOTA_DAILY_BUDGET,
+        )
+        app.state.quota_service = quota_service
+        logger.info(
+            f"Quota protection initialized: {settings.QUOTA_HOURLY_LIMIT} req/hr, "
+            f"{settings.QUOTA_DAILY_BUDGET} req/day"
+        )
+    except Exception as e:
+        logger.warning(f"Failed to initialize quota protection: {e}")
+
     yield
 
     # Shutdown: Cleanup resources
@@ -145,6 +164,13 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Quota middleware (must be added BEFORE CORS for proper ordering)
+    if hasattr(app.state, "quota_service"):
+        from courseflow.api.middleware.quota_middleware import QuotaMiddleware
+
+        app.add_middleware(QuotaMiddleware, quota_service=app.state.quota_service)
+        logger.info("Quota middleware registered")
+
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -155,7 +181,7 @@ def create_app() -> FastAPI:
     )
 
     # Register API routes
-    from courseflow.api.routes import documents, evaluation, health, ingest, query, subjects
+    from courseflow.api.routes import documents, evaluation, health, ingest, query, quota, subjects
 
     app.include_router(health.router, prefix=settings.api_v1_prefix, tags=["health"])
 
@@ -163,6 +189,7 @@ def create_app() -> FastAPI:
     app.include_router(ingest.router, tags=["ingestion"])
     app.include_router(documents.router, tags=["documents"])
     app.include_router(subjects.router, tags=["subjects"])
+    app.include_router(quota.router, tags=["quota"])
     app.include_router(evaluation.router, prefix=settings.api_v1_prefix, tags=["evaluation"])
 
     return app

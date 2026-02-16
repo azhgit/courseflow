@@ -710,3 +710,224 @@ class SSEEvent(BaseModel):
             error=error,
             message=message,
         )
+
+
+# ============================================================================
+# Quota Protection Models (006-demo-protection feature)
+# ============================================================================
+
+
+class QuotaWindow:
+    """Tracks request timestamps for a single IP address over a rolling time window.
+    
+    Maintains a rolling window of request timestamps for quota enforcement.
+    Automatically prunes old timestamps outside the window.
+    """
+
+    def __init__(
+        self,
+        ip_address: str,
+        request_timestamps: list[datetime] | None = None,
+        window_duration_seconds: int = 3600,
+    ):
+        """Initialize quota window for an IP.
+        
+        Args:
+            ip_address: The IP address to track
+            request_timestamps: Ordered list of past request times (oldest first)
+            window_duration_seconds: Rolling window size in seconds (default 1 hour)
+        """
+        self.ip_address = ip_address
+        self.request_timestamps = request_timestamps or []
+        self.window_duration_seconds = window_duration_seconds
+
+    def is_within_limit(self, limit: int, current_time: datetime | None = None) -> bool:
+        """Check if another request is allowed given the limit.
+        
+        Args:
+            limit: Maximum requests allowed in window
+            current_time: Current time (defaults to now)
+            
+        Returns:
+            True if request count < limit, False if limit reached
+        """
+        if current_time is None:
+            current_time = datetime.now(UTC)
+        
+        # Prune old requests first
+        self.prune_old_requests(current_time)
+        
+        # Check if we're within limit
+        return len(self.request_timestamps) < limit
+
+    def record_request(self, timestamp: datetime | None = None) -> None:
+        """Add a new request timestamp to the window.
+        
+        Args:
+            timestamp: Request timestamp (defaults to now)
+        """
+        if timestamp is None:
+            timestamp = datetime.now(UTC)
+        self.request_timestamps.append(timestamp)
+
+    def prune_old_requests(self, current_time: datetime | None = None) -> None:
+        """Remove timestamps outside the rolling window.
+        
+        Args:
+            current_time: Current time for cutoff calculation
+        """
+        if current_time is None:
+            current_time = datetime.now(UTC)
+        
+        cutoff = current_time - timedelta(seconds=self.window_duration_seconds)
+        self.request_timestamps = [
+            ts for ts in self.request_timestamps if ts >= cutoff
+        ]
+
+    @property
+    def current_count(self) -> int:
+        """Number of requests currently in the window."""
+        return len(self.request_timestamps)
+
+
+class DailyQuotaLedger(BaseModel):
+    """Represents global daily usage across all IPs for current calendar day (UTC).
+    
+    Tracks daily quota consumption and determines if budget is exhausted.
+    """
+
+    date: str  # ISO 8601 date (YYYY-MM-DD)
+    used: int = 0  # Queries consumed today
+    limit: int = 300  # Configured daily budget
+
+    @property
+    def remaining(self) -> int:
+        """Queries remaining in daily budget."""
+        return max(0, self.limit - self.used)
+
+    @property
+    def percentage_used(self) -> float:
+        """Percentage of daily budget consumed (0-100)."""
+        if self.limit == 0:
+            return 0.0
+        return (self.used / self.limit) * 100
+
+    @property
+    def is_warning(self) -> bool:
+        """True if usage >= 80% of limit."""
+        return self.percentage_used >= 80.0
+
+    @property
+    def is_exhausted(self) -> bool:
+        """True if usage >= limit."""
+        return self.used >= self.limit
+
+    def increment(self) -> None:
+        """Increment usage by 1."""
+        self.used += 1
+
+    def reset(self, new_date: str) -> None:
+        """Reset usage for a new day."""
+        self.date = new_date
+        self.used = 0
+
+
+class DemoCacheEntry(BaseModel):
+    """Represents a pre-cached demo question with normalized form and answer.
+    
+    Enables exact matching of user questions to cached responses.
+    """
+
+    original_question: str  # Human-readable form
+    normalized_question: str  # Lowercase, no punctuation, collapsed whitespace
+    answer: str  # Pre-computed answer text
+    subject: str | None = None  # Optional subject tag
+
+    @staticmethod
+    def normalize(text: str) -> str:
+        """Normalize question per FR-006: lowercase, strip punctuation, collapse whitespace.
+        
+        Args:
+            text: Raw question text
+            
+        Returns:
+            Normalized question (lowercase, no punctuation, single spaces)
+        """
+        import re
+        
+        normalized = text.lower()
+        normalized = re.sub(r"[^\w\s]", "", normalized)  # Remove punctuation
+        normalized = " ".join(normalized.split())  # Collapse whitespace
+        return normalized
+
+    @classmethod
+    def create(
+        cls,
+        question: str,
+        answer: str,
+        subject: str | None = None,
+    ) -> "DemoCacheEntry":
+        """Factory method to create entry with automatic normalization.
+        
+        Args:
+            question: Original question text
+            answer: Pre-computed answer
+            subject: Optional subject category
+            
+        Returns:
+            DemoCacheEntry with normalized question
+        """
+        return cls(
+            original_question=question,
+            normalized_question=cls.normalize(question),
+            answer=answer,
+            subject=subject,
+        )
+
+    def matches(self, user_question: str) -> bool:
+        """Check if user question matches this cached entry.
+        
+        Args:
+            user_question: User's input question
+            
+        Returns:
+            True if normalized user question matches cached question
+        """
+        return self.normalized_question == self.normalize(user_question)
+
+
+class QuotaStatus(BaseModel):
+    """Value object: Snapshot of current quota state for status endpoint responses."""
+
+    # Daily quota info
+    daily_used: int
+    daily_limit: int
+    daily_remaining: int
+    daily_percentage_used: float
+    daily_reset_at: str  # ISO 8601 timestamp (next midnight UTC)
+    quota_warning: bool  # True if >= 80% used
+
+    # Cache info
+    cached_questions_count: int
+    cache_hit_rate: float  # 0-100 percentage (today's cache hits / total queries)
+
+    # Metadata
+    current_time: str  # ISO 8601 timestamp
+
+    def to_dict(self) -> dict:
+        """Serialize to JSON-compatible dict."""
+        return {
+            "daily": {
+                "used": self.daily_used,
+                "limit": self.daily_limit,
+                "remaining": self.daily_remaining,
+                "percentage_used": round(self.daily_percentage_used, 2),
+                "reset_at": self.daily_reset_at,
+            },
+            "cache": {
+                "questions_count": self.cached_questions_count,
+                "hit_rate": round(self.cache_hit_rate, 2),
+            },
+            "quota_warning": self.quota_warning,
+            "timestamp": self.current_time,
+        }
