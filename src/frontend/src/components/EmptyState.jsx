@@ -16,9 +16,9 @@ export function EmptyState({ examples = [], onExampleClick, onSubmit, isDisabled
     : defaultExamples;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* ── Hero section (centered, no scroll) ── */}
-      <div className="flex-1 flex items-center justify-center px-[24px]">
+    <div className="flex h-full flex-col">
+      {/* ── Hero section (scrollable) ── */}
+      <div className="flex flex-1 items-center justify-center overflow-y-auto px-[24px] py-[64px]">
         <div className="w-full max-w-[700px]">
           {/* ── Logo: 64×64 gradient square ── */}
           <div className="mx-auto mb-[24px] flex h-[64px] w-[64px] items-center justify-center rounded-[16px] bg-gradient-to-br from-[#0F172A] to-[#0D9488] shadow-lg">
@@ -26,12 +26,12 @@ export function EmptyState({ examples = [], onExampleClick, onSubmit, isDisabled
           </div>
 
           {/* ── Title ── */}
-          <h1 className="mx-auto text-center font-sans text-[48px] font-bold text-[#0F172A]">
+          <h1 className="font-sans text-[48px] font-bold text-[#0F172A]">
             CourseFlow
           </h1>
 
           {/* ── Tagline ── */}
-          <p className="mx-auto mt-[12px] max-w-[500px] text-center text-[18px] font-normal text-[#475569]">
+          <p className="mx-auto mt-[12px] max-w-[500px] text-[18px] font-normal text-[#475569]">
             AI-powered learning assistant for any subject
           </p>
 
@@ -55,9 +55,9 @@ export function EmptyState({ examples = [], onExampleClick, onSubmit, isDisabled
         </div>
       </div>
 
-      {/* ── Input footer (fixed to bottom, responsive) ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[#E2E8F0] bg-[#FFFFFF] shadow-[0_-1px_8px_rgba(0,0,0,0.06)]">
-        <div className="mx-auto max-w-[768px] px-[16px] py-[12px]">
+      {/* ── Input footer (sticky bottom) ── */}
+      <div className="flex-none border-t border-[#E2E8F0] bg-[#FFFFFF] shadow-sm">
+        <div className="mx-auto max-w-[900px] px-[24px] py-[24px]">
           <LandingPageInput onSubmit={onSubmit} isDisabled={isDisabled} />
         </div>
       </div>
