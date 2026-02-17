@@ -1,0 +1,23 @@
+{
+  "name": "courseflow-backend",
+  "build": {
+    "command": "pip install -e .",
+    "output": "."
+  },
+  "start": {
+    "command": "uvicorn src.courseflow.api.main:app --host 0.0.0.0 --port $PORT"
+  },
+  "env": {
+    "GEMINI_API_KEY": "$GEMINI_API_KEY",
+    "CORS_ORIGINS": "https://courseflow.zeabur.app,http://localhost:5173",
+    "RATE_LIMIT_RPM": "15",
+    "DATABASE_URL": "sqlite+aiosqlite:///./data/courseflow.db",
+    "CHROMA_PERSIST_DIR": "./data/chroma",
+    "QUOTA_HOURLY_LIMIT": "20",
+    "QUOTA_DAILY_BUDGET": "300"
+  },
+  "health_check": {
+    "path": "/api/v1/health",
+    "interval": 30
+  }
+}

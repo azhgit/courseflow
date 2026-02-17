@@ -164,6 +164,20 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Rate limit middleware (Feature 008: Zeabur deployment)
+    # Must be added BEFORE quota middleware for proper ordering
+    try:
+        from courseflow.api.middleware.rate_limit import RateLimitMiddleware
+
+        app.add_middleware(
+            RateLimitMiddleware,
+            db_path=settings.database_path,
+            hourly_limit=settings.QUOTA_HOURLY_LIMIT,
+        )
+        logger.info(f"Rate limit middleware registered: {settings.QUOTA_HOURLY_LIMIT} req/hour")
+    except Exception as e:
+        logger.warning(f"Failed to initialize rate limit middleware: {e}")
+
     # Quota middleware (must be added BEFORE CORS for proper ordering)
     if hasattr(app.state, "quota_service"):
         from courseflow.api.middleware.quota_middleware import QuotaMiddleware
