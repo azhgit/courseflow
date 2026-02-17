@@ -121,17 +121,17 @@ export function ErrorAlert({ error = {}, onDismiss, onRetry }) {
           </pre>
         )}
 
-        {/* Retry 主按鈕（下方，樣式為品牌色，disabled 為灰） */}
         {onRetry && (
           <div className="mt-[12px]">
             <button
               onClick={onRetry}
               disabled={remaining > 0}
-              className={`rounded-[10px] px-[14px] py-[7px] text-[13px] font-medium text-white ${
+              className={`rounded-[10px] px-[14px] py-[7px] text-[13px] font-medium ${
                 remaining > 0
-                  ? 'bg-[#94A3B8] opacity-90 cursor-not-allowed'
+                  ? 'bg-[#94A3B8] cursor-not-allowed'
                   : 'bg-[#0D9488] hover:bg-[#0B7A6F]'
               }`}
+              style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
             >
               {remaining > 0 ? `Retry in ${remaining}s` : 'Retry'}
             </button>
