@@ -7,8 +7,8 @@ warning transitions, and accurate cache hit rate reporting.
 import pytest
 import pytest_asyncio
 
-from src.courseflow.application.quota_service import QuotaService
-from src.courseflow.infrastructure.quota.in_memory_quota import InMemoryQuotaStore
+from courseflow.application.quota_service import QuotaService
+from courseflow.infrastructure.quota.in_memory_quota import InMemoryQuotaStore
 
 
 @pytest_asyncio.fixture
@@ -120,12 +120,12 @@ async def test_quota_warning_state_transitions(fresh_quota_service: QuotaService
         warning_states.append((status.daily_percentage_used, status.quota_warning))
 
     # Verify state transitions
-    assert warning_states[0] == (0.0, False)       # 0%
-    assert warning_states[1] == (20.0, False)      # 20%
-    assert warning_states[2] == (40.0, False)      # 40%
-    assert warning_states[3] == (60.0, False)      # 60%
-    assert warning_states[4] == (80.0, True)       # 80% - warning ON
-    assert warning_states[5] == (100.0, True)      # 100% - warning stays ON
+    assert warning_states[0] == (0.0, False)  # 0%
+    assert warning_states[1] == (20.0, False)  # 20%
+    assert warning_states[2] == (40.0, False)  # 40%
+    assert warning_states[3] == (60.0, False)  # 60%
+    assert warning_states[4] == (80.0, True)  # 80% - warning ON
+    assert warning_states[5] == (100.0, True)  # 100% - warning stays ON
 
 
 @pytest.mark.asyncio

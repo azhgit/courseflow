@@ -5,8 +5,8 @@ Provides visibility into quota usage and health status.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.courseflow.application.quota_service import QuotaService
-from src.courseflow.domain.exceptions import QuotaStorageError
+from courseflow.application.quota_service import QuotaService
+from courseflow.domain.exceptions import QuotaStorageError
 
 router = APIRouter(prefix="/api/v1/quota", tags=["quota"])
 
@@ -76,8 +76,8 @@ async def get_quota_status(quota_service: QuotaService = Depends(get_quota_servi
     try:
         status_obj = await quota_service.get_quota_status(cached_questions_count=10)
         return status_obj.to_dict()
-    except QuotaStorageError:
+    except QuotaStorageError as err:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Quota storage is temporarily unavailable",
-        )
+        ) from err

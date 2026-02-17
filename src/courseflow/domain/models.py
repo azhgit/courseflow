@@ -719,7 +719,7 @@ class SSEEvent(BaseModel):
 
 class QuotaWindow:
     """Tracks request timestamps for a single IP address over a rolling time window.
-    
+
     Maintains a rolling window of request timestamps for quota enforcement.
     Automatically prunes old timestamps outside the window.
     """
@@ -731,7 +731,7 @@ class QuotaWindow:
         window_duration_seconds: int = 3600,
     ):
         """Initialize quota window for an IP.
-        
+
         Args:
             ip_address: The IP address to track
             request_timestamps: Ordered list of past request times (oldest first)
@@ -743,26 +743,26 @@ class QuotaWindow:
 
     def is_within_limit(self, limit: int, current_time: datetime | None = None) -> bool:
         """Check if another request is allowed given the limit.
-        
+
         Args:
             limit: Maximum requests allowed in window
             current_time: Current time (defaults to now)
-            
+
         Returns:
             True if request count < limit, False if limit reached
         """
         if current_time is None:
             current_time = datetime.now(UTC)
-        
+
         # Prune old requests first
         self.prune_old_requests(current_time)
-        
+
         # Check if we're within limit
         return len(self.request_timestamps) < limit
 
     def record_request(self, timestamp: datetime | None = None) -> None:
         """Add a new request timestamp to the window.
-        
+
         Args:
             timestamp: Request timestamp (defaults to now)
         """
@@ -772,17 +772,15 @@ class QuotaWindow:
 
     def prune_old_requests(self, current_time: datetime | None = None) -> None:
         """Remove timestamps outside the rolling window.
-        
+
         Args:
             current_time: Current time for cutoff calculation
         """
         if current_time is None:
             current_time = datetime.now(UTC)
-        
+
         cutoff = current_time - timedelta(seconds=self.window_duration_seconds)
-        self.request_timestamps = [
-            ts for ts in self.request_timestamps if ts >= cutoff
-        ]
+        self.request_timestamps = [ts for ts in self.request_timestamps if ts >= cutoff]
 
     @property
     def current_count(self) -> int:
@@ -792,7 +790,7 @@ class QuotaWindow:
 
 class DailyQuotaLedger(BaseModel):
     """Represents global daily usage across all IPs for current calendar day (UTC).
-    
+
     Tracks daily quota consumption and determines if budget is exhausted.
     """
 
@@ -834,7 +832,7 @@ class DailyQuotaLedger(BaseModel):
 
 class DemoCacheEntry(BaseModel):
     """Represents a pre-cached demo question with normalized form and answer.
-    
+
     Enables exact matching of user questions to cached responses.
     """
 
@@ -846,15 +844,15 @@ class DemoCacheEntry(BaseModel):
     @staticmethod
     def normalize(text: str) -> str:
         """Normalize question per FR-006: lowercase, strip punctuation, collapse whitespace.
-        
+
         Args:
             text: Raw question text
-            
+
         Returns:
             Normalized question (lowercase, no punctuation, single spaces)
         """
         import re
-        
+
         normalized = text.lower()
         normalized = re.sub(r"[^\w\s]", "", normalized)  # Remove punctuation
         normalized = " ".join(normalized.split())  # Collapse whitespace
@@ -868,12 +866,12 @@ class DemoCacheEntry(BaseModel):
         subject: str | None = None,
     ) -> "DemoCacheEntry":
         """Factory method to create entry with automatic normalization.
-        
+
         Args:
             question: Original question text
             answer: Pre-computed answer
             subject: Optional subject category
-            
+
         Returns:
             DemoCacheEntry with normalized question
         """
@@ -886,10 +884,10 @@ class DemoCacheEntry(BaseModel):
 
     def matches(self, user_question: str) -> bool:
         """Check if user question matches this cached entry.
-        
+
         Args:
             user_question: User's input question
-            
+
         Returns:
             True if normalized user question matches cached question
         """

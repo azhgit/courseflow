@@ -8,10 +8,10 @@ import aiosqlite
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 
-from src.courseflow.api.dependencies import get_query_repository, get_rate_limiter, get_vector_store
-from src.courseflow.domain.models import RateLimitTracker
-from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-from src.courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+from courseflow.api.dependencies import get_query_repository, get_rate_limiter, get_vector_store
+from courseflow.domain.models import RateLimitTracker
+from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
 
 router = APIRouter()
 _START_TIME = perf_counter()

@@ -83,6 +83,30 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
+class DemoExamplesResponse(BaseModel):
+    """Response schema for frontend demo example questions."""
+
+    examples: list[str]
+
+
+DEMO_EXAMPLE_QUESTIONS = [
+    "What is photosynthesis?",
+    "How does machine learning work?",
+    "What are the benefits of exercise?",
+    "Explain the theory of relativity",
+]
+
+
+@router.get(
+    "/demo/examples",
+    response_model=DemoExamplesResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def demo_examples_endpoint() -> DemoExamplesResponse:
+    """Return curated example questions for the frontend empty state."""
+    return DemoExamplesResponse(examples=DEMO_EXAMPLE_QUESTIONS)
+
+
 @router.post(
     "/query",
     response_model=QueryResponse,

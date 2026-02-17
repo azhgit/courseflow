@@ -4,7 +4,7 @@ Provides 10 demo questions with pre-computed answers for demonstration purposes.
 Cached responses bypass both per-IP hourly limits and daily budget quotas.
 """
 
-from src.courseflow.domain.models import DemoCacheEntry
+from courseflow.domain.models import DemoCacheEntry
 
 # 10 pre-cached demo questions across diverse topics
 DEMO_CACHE: list[DemoCacheEntry] = [

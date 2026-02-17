@@ -4,8 +4,8 @@ Provides methods to find cached answers for user questions,
 bypassing the RAG pipeline and saving quota.
 """
 
-from src.courseflow.domain.models import DemoCacheEntry
-from src.courseflow.infrastructure.cache.demo_cache import get_cached_question_by_text
+from courseflow.domain.models import DemoCacheEntry
+from courseflow.infrastructure.cache.demo_cache import get_cached_question_by_text
 
 
 class CacheService:
@@ -49,7 +49,7 @@ class CacheService:
         Returns:
             Count of demo questions in cache
         """
-        from src.courseflow.infrastructure.cache.demo_cache import DEMO_CACHE
+        from courseflow.infrastructure.cache.demo_cache import DEMO_CACHE
 
         return len(DEMO_CACHE)
 
@@ -59,6 +59,6 @@ class CacheService:
         Returns:
             List of DemoCacheEntry objects
         """
-        from src.courseflow.infrastructure.cache.demo_cache import get_all_cached_questions
+        from courseflow.infrastructure.cache.demo_cache import get_all_cached_questions
 
         return get_all_cached_questions()

@@ -7,7 +7,7 @@ word-by-word with configurable delay.
 import asyncio
 from collections.abc import AsyncGenerator
 
-from src.courseflow.domain.models import SSEEvent
+from courseflow.domain.models import SSEEvent
 
 
 async def stream_cached_answer(
@@ -57,10 +57,6 @@ async def stream_cached_answer_with_sources(
     Yields:
         SSE-formatted string events (metadata, chunks, done)
     """
-    # Initial start event
-    yield f"data: {SSEEvent.start().model_dump_json()}\n\n"
-    await asyncio.sleep(0.01)
-
     # Stream answer chunks word-by-word
     async for chunk in stream_cached_answer(answer, delay_ms):
         yield chunk

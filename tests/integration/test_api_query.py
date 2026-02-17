@@ -45,6 +45,17 @@ def client(app):
 class TestQueryEndpointContract:
     """Contract tests for POST /api/v1/query endpoint."""
 
+    def test_demo_examples_endpoint(self, client):
+        """Test frontend demo examples endpoint returns stable examples."""
+        response = client.get("/api/v1/demo/examples")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "examples" in data
+        assert isinstance(data["examples"], list)
+        assert len(data["examples"]) == 4
+        assert all(isinstance(example, str) for example in data["examples"])
+
     def test_valid_query_request(self, client, mock_rag_service):
         """Test valid query request matches OpenAPI schema."""
         # Setup mock response
