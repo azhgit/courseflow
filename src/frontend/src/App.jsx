@@ -69,24 +69,44 @@ function App() {
 
   const handleExampleClick = (question) => handleSubmitQuestion(question);
 
-  const handleSubmitQuestion = async (question) => {
+  const handleSubmitQuestion = async (question, options = {}) => {
     if (!question.trim()) return;
+
+    const { skipUserMessage = false, reuseAssistantId = null } = options;
 
     setIsLoading(true);
     setError(null);
-    addUserMessage(question);
 
-    const assistantMessageId = generateUUIDv4();
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: assistantMessageId,
-        role: 'assistant',
-        content: '',
-        status: 'in-progress',
-        timestamp: new Date().toISOString(),
-      },
-    ]);
+    // Only add user message if not skipping (i.e., not a retry)
+    if (!skipUserMessage) {
+      addUserMessage(question);
+    }
+
+    // Reuse existing assistant message ID or create a new one
+    const assistantMessageId = reuseAssistantId || generateUUIDv4();
+
+    if (reuseAssistantId) {
+      // Reset the existing assistant message for retry
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === reuseAssistantId
+            ? { ...m, content: '', status: 'in-progress', timestamp: new Date().toISOString() }
+            : m
+        )
+      );
+    } else {
+      // Add new assistant message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: '',
+          status: 'in-progress',
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    }
 
     let assistantContent = '';
     let assistantSources = [];
@@ -169,15 +189,25 @@ function App() {
             onDismiss={() => setError(null)}
             onRetry={() => {
               setError(null);
-              // find the most recent user message to retry
+              // Find the last in-progress assistant message and the user question before it
+              let userQuestion = null;
+              let assistantId = null;
               for (let i = messages.length - 1; i >= 0; i--) {
                 const m = messages[i];
+                if (!assistantId && m?.role === 'assistant' && m?.status === 'in-progress') {
+                  assistantId = m.id;
+                }
                 if (m?.role === 'user' && m?.content && m.content.trim()) {
-                  handleSubmitQuestion(m.content);
-                  return;
+                  userQuestion = m.content;
+                  break;
                 }
               }
-              // fallback: do nothing if no user message found
+              if (userQuestion) {
+                handleSubmitQuestion(userQuestion, {
+                  skipUserMessage: true,
+                  reuseAssistantId: assistantId,
+                });
+              }
             }}
           />
         )}
