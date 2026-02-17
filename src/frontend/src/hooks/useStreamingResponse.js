@@ -39,21 +39,20 @@ export function useStreamingResponse() {
             try {
               const event = JSON.parse(dataStr);
               
-              if (event.type === 'start' && event.conversation_id) {
-                // Extract conversation ID from start event
-                setConversationId(event.conversation_id);
-                onConversationId?.(event.conversation_id);
-              } else if (event.type === 'chunk' && event.content) {
+              if (event.type === 'chunk' && event.content) {
                 setStreamedContent((prev) => prev + event.content);
                 onChunk?.(event.content);
               } else if (event.type === 'sources' && event.sources) {
                 setSources(event.sources);
                 onSources?.(event.sources);
+              } else if (event.type === 'done' && event.conversation_id) {
+                // Extract conversation ID from done event (sent at end of stream)
+                setConversationId(event.conversation_id);
+                onConversationId?.(event.conversation_id);
+                onDone?.();
               } else if (event.type === 'error') {
                 setStreamError(event);
                 onError?.(event);
-              } else if (event.type === 'done') {
-                onDone?.();
               }
             } catch (e) {
               console.error('Failed to parse SSE event:', e);
