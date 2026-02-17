@@ -1,0 +1,180 @@
+openapi: 3.0.3
+info:
+  title: CourseFlow Health Check API
+  version: 1.0.0
+  description: |
+    Health check endpoint for CourseFlow deployment verification.
+    
+    This endpoint provides system health status without authentication,
+    enabling:
+    - Zeabur deployment verification
+    - External monitoring (e.g., UptimeRobot)
+    - Component-level health debugging
+    
+    **Response Status Codes**:
+    - `200 OK`: All components healthy
+    - `503 Service Unavailable`: At least one component degraded
+  contact:
+    name: CourseFlow Team
+    url: https://github.com/yourusername/CourseFlow
+
+servers:
+  - url: https://courseflow-backend.zeabur.app/api/v1
+    description: Production (Zeabur deployment)
+  - url: http://localhost:8000/api/v1
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Get system health status
+      description: |
+        Returns overall health status and individual component statuses.
+        
+        **Component Checks**:
+        - `database`: SQLite connection check
+        - `vector_store`: ChromaDB client heartbeat
+        - `llm_api`: Gemini API key configuration check (no API call)
+        
+        **No authentication required** - This endpoint is public to enable
+        external monitoring and deployment verification.
+      operationId: getHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy (all components operational)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                all_healthy:
+                  summary: All components healthy
+                  value:
+                    status: "healthy"
+                    timestamp: "2025-02-17T12:34:56Z"
+                    components:
+                      database: "ok"
+                      vector_store: "ok"
+                      llm_api: "ok"
+        '503':
+          description: Service is degraded or unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                llm_unavailable:
+                  summary: LLM API unavailable (missing API key)
+                  value:
+                    status: "degraded"
+                    timestamp: "2025-02-17T12:34:56Z"
+                    components:
+                      database: "ok"
+                      vector_store: "ok"
+                      llm_api: "unavailable"
+                database_unavailable:
+                  summary: Database connection failed
+                  value:
+                    status: "unavailable"
+                    timestamp: "2025-02-17T12:34:56Z"
+                    components:
+                      database: "unavailable"
+                      vector_store: "ok"
+                      llm_api: "ok"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - unavailable
+          description: |
+            Overall system health status:
+            - `healthy`: All components operational
+            - `degraded`: At least one non-critical component unavailable (e.g., LLM API config issue)
+            - `unavailable`: Critical component unavailable (e.g., database)
+          example: "healthy"
+        
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of health check execution (UTC)
+          example: "2025-02-17T12:34:56Z"
+        
+        components:
+          type: object
+          description: Individual component health statuses
+          properties:
+            database:
+              type: string
+              enum:
+                - ok
+                - unavailable
+              description: SQLite database connection status
+              example: "ok"
+            
+            vector_store:
+              type: string
+              enum:
+                - ok
+                - unavailable
+              description: ChromaDB vector store connection status
+              example: "ok"
+            
+            llm_api:
+              type: string
+              enum:
+                - ok
+                - unavailable
+              description: |
+                Gemini API configuration status (shallow check - verifies API key exists, no test call)
+              example: "ok"
+          required:
+            - database
+            - vector_store
+            - llm_api
+
+  examples:
+    HealthyExample:
+      summary: All systems operational
+      value:
+        status: "healthy"
+        timestamp: "2025-02-17T12:34:56Z"
+        components:
+          database: "ok"
+          vector_store: "ok"
+          llm_api: "ok"
+    
+    DegradedExample:
+      summary: LLM API key missing (non-critical)
+      value:
+        status: "degraded"
+        timestamp: "2025-02-17T12:34:56Z"
+        components:
+          database: "ok"
+          vector_store: "ok"
+          llm_api: "unavailable"
+    
+    UnavailableExample:
+      summary: Database connection failed (critical)
+      value:
+        status: "unavailable"
+        timestamp: "2025-02-17T12:34:56Z"
+        components:
+          database: "unavailable"
+          vector_store: "unavailable"
+          llm_api: "ok"
+
+tags:
+  - name: Health
+    description: System health and status endpoints
