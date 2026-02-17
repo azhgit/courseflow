@@ -268,35 +268,35 @@ description: "Implementation tasks for Zeabur deployment feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T027 [P] [US3] Unit test for RateLimitRepository.get_by_ip() in `backend/tests/unit/test_rate_limit_repo.py`
+- [X] T027 [P] [US3] Unit test for RateLimitRepository.get_by_ip() in `backend/tests/unit/test_rate_limit_repo.py`
   - **Acceptance**: Test creates entry, retrieves by IP, verifies all fields match; test for non-existent IP returns None
   - **Dependencies**: T005
   - **Effort**: Medium
   - **Component**: Testing
   - **File**: `backend/tests/unit/test_rate_limit_repo.py`
 
-- [ ] T028 [P] [US3] Unit test for RateLimitRepository.increment_counter() in `backend/tests/unit/test_rate_limit_repo.py`
+- [X] T028 [P] [US3] Unit test for RateLimitRepository.increment_counter() in `backend/tests/unit/test_rate_limit_repo.py`
   - **Acceptance**: Test increments counter from 1 to 2, verifies last_request timestamp updated
   - **Dependencies**: T005
   - **Effort**: Small
   - **Component**: Testing
   - **File**: `backend/tests/unit/test_rate_limit_repo.py`
 
-- [ ] T029 [P] [US3] Unit test for RateLimitRepository.reset_window() in `backend/tests/unit/test_rate_limit_repo.py`
+- [X] T029 [P] [US3] Unit test for RateLimitRepository.reset_window() in `backend/tests/unit/test_rate_limit_repo.py`
   - **Acceptance**: Test resets expired window, verifies count=1 and new window_start
   - **Dependencies**: T005
   - **Effort**: Small
   - **Component**: Testing
   - **File**: `backend/tests/unit/test_rate_limit_repo.py`
 
-- [ ] T030 [P] [US3] Unit test for rate limit state transitions in `backend/tests/unit/test_rate_limit_states.py`
+- [X] T030 [P] [US3] Unit test for rate limit state transitions in `backend/tests/unit/test_rate_limit_states.py`
   - **Acceptance**: Tests cover NoEntry→Active, Active→Active (increment), Active→RateLimited, RateLimited→Reset transitions
   - **Dependencies**: T005
   - **Effort**: Medium
   - **Component**: Testing
   - **File**: `backend/tests/unit/test_rate_limit_states.py`
 
-- [ ] T031 [US3] Run unit tests to verify they FAIL (no implementation yet)
+- [X] T031 [US3] Run unit tests to verify they FAIL (no implementation yet)
   - **Acceptance**: All T027-T030 tests fail with expected errors (methods not implemented)
   - **Dependencies**: T027, T028, T029, T030
   - **Effort**: Small
@@ -304,49 +304,49 @@ description: "Implementation tasks for Zeabur deployment feature"
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Implement RateLimitRepository.get_by_ip() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
+- [X] T032 [US3] Implement RateLimitRepository.get_by_ip() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
   - **Acceptance**: Method queries SQLite by ip_address, returns dict or None, T027 passes
   - **Dependencies**: T031
   - **Effort**: Medium
   - **Component**: Backend
   - **File**: `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
 
-- [ ] T033 [US3] Implement RateLimitRepository.create_entry() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
+- [X] T033 [US3] Implement RateLimitRepository.create_entry() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
   - **Acceptance**: Method inserts new entry with count=1, window_start=now, returns created entry dict
   - **Dependencies**: T031
   - **Effort**: Medium
   - **Component**: Backend
   - **File**: `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
 
-- [ ] T034 [US3] Implement RateLimitRepository.increment_counter() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
+- [X] T034 [US3] Implement RateLimitRepository.increment_counter() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
   - **Acceptance**: Method increments count and updates last_request, T028 passes
   - **Dependencies**: T031
   - **Effort**: Small
   - **Component**: Backend
   - **File**: `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
 
-- [ ] T035 [US3] Implement RateLimitRepository.reset_window() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
+- [X] T035 [US3] Implement RateLimitRepository.reset_window() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
   - **Acceptance**: Method resets count=1 and window_start=now, T029 passes
   - **Dependencies**: T031
   - **Effort**: Small
   - **Component**: Backend
   - **File**: `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
 
-- [ ] T036 [US3] Implement RateLimitRepository.cleanup_old_entries() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
+- [X] T036 [US3] Implement RateLimitRepository.cleanup_old_entries() method in `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
   - **Acceptance**: Method deletes entries where last_request < cutoff, returns count of deleted rows
   - **Dependencies**: T031
   - **Effort**: Small
   - **Component**: Backend
   - **File**: `backend/src/courseflow/infrastructure/repositories/rate_limit_repo.py`
 
-- [ ] T037 [US3] Create rate limiter middleware in `backend/src/courseflow/api/middleware/rate_limit.py`
+- [X] T037 [US3] Create rate limiter middleware in `backend/src/courseflow/api/middleware/rate_limit.py`
   - **Acceptance**: Middleware extracts IP from request.client.host, checks rate limit, returns HTTP 429 if exceeded (count >= 20), includes retry_after header
   - **Dependencies**: T032, T033, T034, T035
   - **Effort**: Large
   - **Component**: Backend
   - **File**: `backend/src/courseflow/api/middleware/rate_limit.py`
 
-- [ ] T038 [US3] Register rate limiter middleware in FastAPI app main.py
+- [X] T038 [US3] Register rate limiter middleware in FastAPI app main.py
   - **Acceptance**: Middleware registered before all routes, rate limiting active on all endpoints except /health
   - **Dependencies**: T037
   - **Effort**: Small
@@ -355,28 +355,28 @@ description: "Implementation tasks for Zeabur deployment feature"
 
 ### Integration Tests for User Story 3
 
-- [ ] T039 [P] [US3] Integration test: 20 requests succeed in `backend/tests/integration/test_rate_limit_middleware.py`
+- [X] T039 [P] [US3] Integration test: 20 requests succeed in `backend/tests/integration/test_rate_limit_middleware.py`
   - **Acceptance**: Test sends 20 consecutive requests from same IP, all return HTTP 200 (SC-004)
   - **Dependencies**: T038
   - **Effort**: Medium
   - **Component**: Testing
   - **File**: `backend/tests/integration/test_rate_limit_middleware.py`
 
-- [ ] T040 [P] [US3] Integration test: 21st request returns HTTP 429 in `backend/tests/integration/test_rate_limit_middleware.py`
+- [X] T040 [P] [US3] Integration test: 21st request returns HTTP 429 in `backend/tests/integration/test_rate_limit_middleware.py`
   - **Acceptance**: Test sends 21st request, returns HTTP 429 with retry_after header (SC-004)
   - **Dependencies**: T038
   - **Effort**: Medium
   - **Component**: Testing
   - **File**: `backend/tests/integration/test_rate_limit_middleware.py`
 
-- [ ] T041 [P] [US3] Integration test: Different IPs have independent counters in `backend/tests/integration/test_rate_limit_middleware.py`
+- [X] T041 [P] [US3] Integration test: Different IPs have independent counters in `backend/tests/integration/test_rate_limit_middleware.py`
   - **Acceptance**: Test sends 20 requests from IP1, 20 from IP2, all succeed (no shared counter)
   - **Dependencies**: T038
   - **Effort**: Small
   - **Component**: Testing
   - **File**: `backend/tests/integration/test_rate_limit_middleware.py`
 
-- [ ] T042 [US3] Integration test: Rate limit persists across container restarts in `backend/tests/integration/test_rate_limit_persistence.py`
+- [X] T042 [US3] Integration test: Rate limit persists across container restarts in `backend/tests/integration/test_rate_limit_persistence.py`
   - **Acceptance**: Test sends 10 requests, restarts app, sends 11 more, 21st returns 429 (SC-009)
   - **Dependencies**: T038
   - **Effort**: Large
