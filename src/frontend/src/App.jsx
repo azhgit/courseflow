@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { ChatHistory } from './components/ChatHistory.jsx';
 import { ChatInput } from './components/ChatInput.jsx';
 import { NewChatButton } from './components/NewChatButton.jsx';
+import { EmptyState } from './components/EmptyState.jsx';
+import { ErrorAlert } from './components/ErrorAlert.jsx';
 import { useChat } from './hooks/useChat.js';
 import { useStreamingResponse } from './hooks/useStreamingResponse.js';
 import { useLocalStorage } from './hooks/useLocalStorage.js';
-import { postQuery } from './api/query.js';
+import { postQuery, getExampleQuestions } from './api/query.js';
 import { loadSession, saveSession, clearSession } from './utils/storage.js';
 import { generateUUIDv4 } from './utils/uuid.js';
 import { mapHttpErrorToErrorState, mapSSEErrorToErrorState } from './utils/errorMapping.js';
@@ -28,6 +30,7 @@ function App() {
 
   const { parseSSEStream } = useStreamingResponse();
   const abortControllerRef = useRef(null);
+  const [examples, setExamples] = useState([]);
 
   // Restore session from localStorage on mount
   useEffect(() => {
@@ -36,6 +39,15 @@ function App() {
       setConversationId(session.conversation_id);
       setMessages(session.messages);
     }
+
+    // Load example questions on mount
+    const loadExamples = async () => {
+      const loaded = await getExampleQuestions();
+      if (loaded) {
+        setExamples(loaded);
+      }
+    };
+    loadExamples();
   }, []);
 
   // Save session to localStorage whenever it changes
@@ -54,6 +66,10 @@ function App() {
   const handleNewChat = () => {
     resetChatState();
     clearSession();
+  };
+
+  const handleExampleClick = (question) => {
+    handleSubmitQuestion(question);
   };
 
   const handleSubmitQuestion = async (question) => {
@@ -170,6 +186,9 @@ function App() {
     }
   }, [isLoading]);
 
+  // Show empty state if no messages
+  const showEmptyState = messages.length === 0 && !isLoading;
+
   return (
     <div className="flex flex-col h-screen bg-white">
       {/* Header */}
@@ -182,19 +201,27 @@ function App() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">
-          <p className="font-semibold">{error.message}</p>
-          <button
-            onClick={() => setError(null)}
-            className="text-xs mt-2 underline hover:no-underline"
-          >
-            Dismiss
-          </button>
-        </div>
+        <ErrorAlert
+          error={error}
+          onDismiss={() => setError(null)}
+          onRetry={() => {
+            setError(null);
+            if (messages.length > 0) {
+              const lastMessage = messages[messages.length - 1];
+              if (lastMessage.role === 'user') {
+                handleSubmitQuestion(lastMessage.content);
+              }
+            }
+          }}
+        />
       )}
 
-      {/* Chat History */}
-      <ChatHistory messages={messages} isLoading={isLoading} />
+      {/* Empty State or Chat History */}
+      {showEmptyState ? (
+        <EmptyState examples={examples} onExampleClick={handleExampleClick} />
+      ) : (
+        <ChatHistory messages={messages} isLoading={isLoading} />
+      )}
 
       {/* Chat Input */}
       <ChatInput
