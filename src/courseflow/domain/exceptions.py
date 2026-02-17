@@ -316,7 +316,7 @@ class QuotaError(CourseFlowError):
 
 class IPLimitExceededError(QuotaError):
     """Raised when per-IP hourly limit is exceeded.
-    
+
     Attributes:
         ip: The IP address that exceeded limit
         limit: The hourly request limit
@@ -336,7 +336,7 @@ class IPLimitExceededError(QuotaError):
 
 class DailyQuotaExceededError(QuotaError):
     """Raised when global daily budget is exhausted.
-    
+
     Attributes:
         used: Queries consumed today
         limit: Configured daily budget
@@ -347,16 +347,13 @@ class DailyQuotaExceededError(QuotaError):
         self.used = used
         self.limit = limit
         self.reset_at = reset_at
-        message = (
-            f"Daily quota exhausted ({used}/{limit}). "
-            f"Resets at {reset_at}."
-        )
+        message = f"Daily quota exhausted ({used}/{limit}). Resets at {reset_at}."
         super().__init__(message)
 
 
 class QuotaStorageError(QuotaError):
     """Raised when quota storage is unavailable (triggers HTTP 503).
-    
+
     Attributes:
         original_error: The underlying exception that caused storage failure
     """

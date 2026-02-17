@@ -3,9 +3,9 @@
 import pytest
 import pytest_asyncio
 
-from src.courseflow.application.quota_service import QuotaService
-from src.courseflow.domain.models import DailyQuotaLedger, QuotaStatus
-from src.courseflow.infrastructure.quota.in_memory_quota import InMemoryQuotaStore
+from courseflow.application.quota_service import QuotaService
+from courseflow.domain.models import QuotaStatus
+from courseflow.infrastructure.quota.in_memory_quota import InMemoryQuotaStore
 
 
 @pytest_asyncio.fixture

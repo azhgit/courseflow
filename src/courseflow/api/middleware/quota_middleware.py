@@ -4,14 +4,14 @@ Intercepts requests to query endpoints and enforces quota limits.
 Provides rate limit and cache hit headers in responses.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from src.courseflow.application.quota_service import QuotaService
-from src.courseflow.domain.exceptions import (
+from courseflow.application.quota_service import QuotaService
+from courseflow.domain.exceptions import (
     DailyQuotaExceededError,
     IPLimitExceededError,
     QuotaStorageError,
@@ -76,7 +76,6 @@ class QuotaMiddleware(BaseHTTPMiddleware):
 
         # Check quota (except for cache hits which will bypass)
         try:
-            ip_count_before = self.quota_service.get_ip_request_count(ip)
             await self.quota_service.check_and_enforce_quota(ip)
         except IPLimitExceededError as e:
             return JSONResponse(
@@ -116,7 +115,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
                     "path": request.url.path,
                 },
             )
-        except QuotaStorageError as e:
+        except QuotaStorageError:
             return JSONResponse(
                 status_code=503,
                 content={

@@ -10,9 +10,9 @@ from datetime import UTC, datetime, timedelta
 
 import aiosqlite
 
-from src.courseflow.domain.exceptions import QuotaStorageError
-from src.courseflow.domain.models import DailyQuotaLedger
-from src.courseflow.domain.ports import QuotaStorePort
+from courseflow.domain.exceptions import QuotaStorageError
+from courseflow.domain.models import DailyQuotaLedger
+from courseflow.domain.ports import QuotaStorePort
 
 
 class SQLiteQuotaStore(QuotaStorePort):
@@ -32,7 +32,7 @@ class SQLiteQuotaStore(QuotaStorePort):
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
-    
+
     CREATE INDEX IF NOT EXISTS idx_daily_quota_date ON daily_quota(date);
     """
 
@@ -56,7 +56,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                 await db.commit()
             self._initialized = True
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def get_daily_ledger(self) -> DailyQuotaLedger:
         """Get or create today's quota ledger.
@@ -109,12 +109,13 @@ class SQLiteQuotaStore(QuotaStorePort):
                     except sqlite3.OperationalError as oe:
                         if "database is locked" in str(oe) and attempt < max_retries - 1:
                             # Retry on locked database
-                            await asyncio.sleep(0.1 * (2 ** attempt))
+                            await asyncio.sleep(0.1 * (2**attempt))
                             continue
                         raise
+                raise QuotaStorageError(RuntimeError("Failed to fetch daily ledger after retries"))
 
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def increment_daily_usage(self) -> None:
         """Atomically increment daily usage by 1.
@@ -143,7 +144,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                 )
                 await db.commit()
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def reset_daily_usage(self, new_date: str) -> None:
         """Reset daily usage for a new day.
@@ -174,7 +175,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                 )
                 await db.commit()
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def get_cache_hit_count(self) -> int:
         """Get cache hits for today.
@@ -198,7 +199,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                 row = await cursor.fetchone()
                 return row[0] if row else 0
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def increment_cache_hit(self) -> None:
         """Record a cache hit.
@@ -226,7 +227,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                 )
                 await db.commit()
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
 
 # APScheduler task for daily reset (registered in main.py)

@@ -10,9 +10,9 @@ Daily usage persistence is handled by SQLiteQuotaStore.
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 
-from src.courseflow.domain.exceptions import QuotaStorageError
-from src.courseflow.domain.models import DailyQuotaLedger
-from src.courseflow.domain.ports import QuotaStorePort
+from courseflow.domain.exceptions import QuotaStorageError
+from courseflow.domain.models import DailyQuotaLedger
+from courseflow.domain.ports import QuotaStorePort
 
 
 class InMemoryQuotaStore(QuotaStorePort):
@@ -49,7 +49,7 @@ class InMemoryQuotaStore(QuotaStorePort):
                 )
             return self.daily_ledger
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def increment_daily_usage(self) -> None:
         """Increment daily usage by 1.
@@ -63,7 +63,7 @@ class InMemoryQuotaStore(QuotaStorePort):
         except QuotaStorageError:
             raise
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def reset_daily_usage(self, new_date: str) -> None:
         """Reset daily usage for a new day.
@@ -82,7 +82,7 @@ class InMemoryQuotaStore(QuotaStorePort):
             )
             self.cache_hits_today = 0
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def get_cache_hit_count(self) -> int:
         """Get cache hits for today.
@@ -93,7 +93,7 @@ class InMemoryQuotaStore(QuotaStorePort):
         try:
             return self.cache_hits_today
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def increment_cache_hit(self) -> None:
         """Record a cache hit.
@@ -104,7 +104,7 @@ class InMemoryQuotaStore(QuotaStorePort):
         try:
             self.cache_hits_today += 1
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     # Additional methods for per-IP tracking
     def is_ip_within_limit(

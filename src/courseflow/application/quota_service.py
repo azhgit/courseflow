@@ -6,13 +6,13 @@ and quota status aggregation.
 
 from datetime import UTC, datetime, timedelta
 
-from src.courseflow.domain.exceptions import (
+from courseflow.domain.exceptions import (
     DailyQuotaExceededError,
     IPLimitExceededError,
     QuotaStorageError,
 )
-from src.courseflow.domain.models import DailyQuotaLedger, QuotaStatus, QuotaWindow
-from src.courseflow.domain.ports import QuotaStorePort
+from courseflow.domain.models import QuotaStatus, QuotaWindow
+from courseflow.domain.ports import QuotaStorePort
 
 
 class QuotaService:
@@ -72,7 +72,7 @@ class QuotaService:
         # Check daily budget
         try:
             ledger = await self.quota_store.get_daily_ledger()
-            if ledger.is_exhausted:
+            if ledger.used >= self.daily_budget:
                 # Calculate next reset time (midnight UTC tomorrow)
                 tomorrow = (datetime.now(UTC) + timedelta(days=1)).date()
                 reset_at = datetime.combine(
@@ -80,13 +80,13 @@ class QuotaService:
                     datetime.min.time(),
                     tzinfo=UTC,
                 ).isoformat()
-                raise DailyQuotaExceededError(ledger.used, ledger.limit, reset_at)
+                raise DailyQuotaExceededError(ledger.used, self.daily_budget, reset_at)
         except QuotaStorageError:
             raise
         except DailyQuotaExceededError:
             raise
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def increment_daily_usage(self) -> None:
         """Increment daily quota counter after request processed.
@@ -99,7 +99,7 @@ class QuotaService:
         except QuotaStorageError:
             raise
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def increment_cache_hit(self) -> None:
         """Record cache hit (bypasses quota but counted for metrics).
@@ -112,7 +112,7 @@ class QuotaService:
         except QuotaStorageError:
             raise
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     async def get_quota_status(self, cached_questions_count: int = 10) -> QuotaStatus:
         """Get current quota status for endpoint response.
@@ -133,6 +133,11 @@ class QuotaService:
             # Calculate cache hit rate (hits / total queries)
             total_queries = ledger.used + cache_hits
             hit_rate = (cache_hits / total_queries * 100) if total_queries > 0 else 0.0
+            daily_remaining = max(0, self.daily_budget - ledger.used)
+            daily_percentage = (
+                (ledger.used / self.daily_budget) * 100 if self.daily_budget > 0 else 0.0
+            )
+            quota_warning = daily_percentage >= 80.0
 
             # Calculate next reset time (midnight UTC tomorrow)
             tomorrow = (datetime.now(UTC) + timedelta(days=1)).date()
@@ -144,11 +149,11 @@ class QuotaService:
 
             return QuotaStatus(
                 daily_used=ledger.used,
-                daily_limit=ledger.limit,
-                daily_remaining=ledger.remaining,
-                daily_percentage_used=ledger.percentage_used,
+                daily_limit=self.daily_budget,
+                daily_remaining=daily_remaining,
+                daily_percentage_used=daily_percentage,
                 daily_reset_at=reset_at,
-                quota_warning=ledger.is_warning,
+                quota_warning=quota_warning,
                 cached_questions_count=cached_questions_count,
                 cache_hit_rate=hit_rate,
                 current_time=datetime.now(UTC).isoformat(),
@@ -156,7 +161,7 @@ class QuotaService:
         except QuotaStorageError:
             raise
         except Exception as e:
-            raise QuotaStorageError(e)
+            raise QuotaStorageError(e) from e
 
     # Private methods for per-IP tracking
     def _is_ip_within_limit(self, ip: str) -> bool:
