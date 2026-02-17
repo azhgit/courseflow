@@ -6,7 +6,7 @@
  */
 export function Header({ onNewChat, onReturnHome }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-[#E2E8F0] bg-[#FFFFFF] shadow-sm">
+    <header className="sticky top-0 z-40">
       <div className="mx-auto flex h-[72px] max-w-full items-center justify-between px-[24px]">
         {/* ── Left: Clickable logo + brand name ── */}
         <button
