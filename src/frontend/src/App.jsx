@@ -201,7 +201,7 @@ function App() {
         )}
 
         {/* ── Empty state (landing page with input) or chat history ── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-hidden">
           {showEmptyState ? (
             <EmptyState
               examples={examples}
@@ -215,8 +215,8 @@ function App() {
         </div>
 
         {/* ── Chat input: only at bottom on chat page ── */}
-        {!showEmptyState && <ChatInput onSubmit={handleSubmitQuestion} isDisabled={isLoading} />}
       </main>
+      {!showEmptyState && <ChatInput onSubmit={handleSubmitQuestion} isDisabled={isLoading} />}
     </div>
   );
 }

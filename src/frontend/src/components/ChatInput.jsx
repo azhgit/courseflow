@@ -30,7 +30,7 @@ export function ChatInput({ onSubmit, isDisabled = false }) {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#E2E8F0] bg-[#FFFFFF] shadow-sm">
+    <div className="flex-none border-t border-[#E2E8F0] bg-[#FFFFFF] shadow-sm">
       <div className="mx-auto max-w-[900px] px-[24px] py-[24px]">
         <div className="flex items-center gap-[12px]">
           <label htmlFor="chat-input" className="sr-only">
