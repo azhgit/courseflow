@@ -21,6 +21,7 @@ function extractRetrySeconds(err) {
 
 export function ErrorAlert({ error = {}, onDismiss, onRetry }) {
   const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const retrySeconds = extractRetrySeconds(error);
   const [remaining, setRemaining] = useState(retrySeconds ?? null);
 
@@ -36,8 +37,8 @@ export function ErrorAlert({ error = {}, onDismiss, onRetry }) {
 
   const rawMessage = error?.error?.message || error?.message || '';
   const friendly = /quota|RESOURCE_EXHAUSTED|quota exceeded/i.test(rawMessage)
-    ? '系統配額已用盡，請稍後重試或檢查專案配額。'
-    : '發生錯誤，請稍後重試。';
+    ? 'Quota exceeded. Please wait and retry, or check your project quota.'
+    : 'Something went wrong. Please try again.';
 
   const copyDetails = async () => {
     const txt = JSON.stringify(error, null, 2);
@@ -51,57 +52,92 @@ export function ErrorAlert({ error = {}, onDismiss, onRetry }) {
       document.execCommand('copy');
       document.body.removeChild(ta);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <aside className="error-slide mx-[24px] mt-[24px] rounded-[12px] border border-red-200 bg-red-50 px-[16px] py-[12px]">
+    <aside className="mx-[24px] mt-[24px] rounded-[16px] border border-red-100 bg-white shadow-sm px-[20px] py-[16px]">
+      {/* ── Top row: title + dismiss ── */}
       <div className="flex items-start justify-between gap-[12px]">
-        <div className="flex-1">
-          <h3 className="text-[14px] font-semibold text-red-900">Request failed</h3>
-          <p className="mt-[4px] text-[14px] text-red-800">{friendly}</p>
-          {retrySeconds != null && (
-            <p className="mt-[6px] text-[12px] text-red-700">請於 <span className="font-mono">{remaining > 0 ? `${remaining}s` : '現在'}</span> 後重試</p>
-          )}
+        <div className="flex items-center gap-[8px]">
+          {/* Error icon */}
+          <div className="flex h-[32px] w-[32px] flex-none items-center justify-center rounded-full bg-red-50">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 5v4M8 11h.01" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="8" r="6.5" stroke="#DC2626" strokeWidth="1.5"/>
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-[14px] font-semibold text-[#0F172A]">Request failed</h3>
+            <p className="text-[13px] text-[#64748B]">{friendly}</p>
+          </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
-          <button
-            onClick={onDismiss}
-            className="btn-transition rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-800"
-            aria-label="Dismiss error"
-          >
-            ✕
-          </button>
-        </div>
+        {/* Dismiss X */}
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss error"
+          className="flex h-[28px] w-[28px] flex-none items-center justify-center rounded-full text-[#94A3B8] transition hover:bg-[#F1F5F9] hover:text-[#475569]"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </button>
       </div>
 
-      <div className="mt-[12px] flex items-center gap-2">
-        {onRetry && (
+      {/* ── Retry countdown ── */}
+      {retrySeconds != null && remaining > 0 && (
+        <p className="mt-[10px] text-[12px] text-[#94A3B8]">
+          You can retry in{' '}
+          <span className="font-mono font-medium text-[#475569]">{remaining}s</span>
+        </p>
+      )}
+
+      {/* ── Action row: details actions first, retry below ── */}
+      <div className="mt-[14px]">
+        <div className="flex items-center gap-[8px]">
+          {/* Show/Hide details */}
           <button
-            onClick={onRetry}
-            disabled={remaining > 0}
-            className={`btn-transition rounded-lg border border-red-300 bg-white px-[12px] py-[6px] text-[12px] font-semibold text-red-800 ${
-              remaining > 0 ? 'opacity-60 cursor-not-allowed' : 'hover:bg-red-100'
-            }`}
+            onClick={() => setOpen((s) => !s)}
+            className="rounded-[10px] border border-[#E2E8F0] bg-white px-[14px] py-[7px] text-[13px] font-medium text-[#475569] transition hover:bg-[#F8FAFC]"
           >
-            Retry
+            {open ? 'Hide details' : 'Show details'}
           </button>
+
+          {/* Copy details */}
+          <button
+            onClick={copyDetails}
+            className="rounded-[10px] border border-[#E2E8F0] bg-white px-[14px] py-[7px] text-[13px] font-medium text-[#475569] transition hover:bg-[#F8FAFC]"
+          >
+            {copied ? '✓ Copied' : 'Copy details'}
+          </button>
+        </div>
+
+        {/* ── Expandable raw details ── */}
+        {open && (
+          <pre className="mt-[12px] max-h-[200px] overflow-auto whitespace-pre-wrap break-words rounded-[10px] bg-[#F8FAFC] p-[12px] text-[11px] text-[#64748B]">
+            {JSON.stringify(error, null, 2)}
+          </pre>
         )}
 
-        <button onClick={() => setOpen((s) => !s)} className="text-sm text-indigo-600">
-          {open ? 'Hide details' : 'Show details'}
-        </button>
-
-        <button onClick={copyDetails} className="text-sm text-gray-600">
-          Copy details
-        </button>
+        {/* Retry 主按鈕（下方，樣式為品牌色，disabled 為灰） */}
+        {onRetry && (
+          <div className="mt-[12px]">
+            <button
+              onClick={onRetry}
+              disabled={remaining > 0}
+              className={`rounded-[10px] px-[14px] py-[7px] text-[13px] font-medium text-white ${
+                remaining > 0
+                  ? 'bg-[#94A3B8] opacity-90 cursor-not-allowed'
+                  : 'bg-[#0D9488] hover:bg-[#0B7A6F]'
+              }`}
+            >
+              {remaining > 0 ? `Retry in ${remaining}s` : 'Retry'}
+            </button>
+          </div>
+        )}
       </div>
-
-      {open && (
-        <pre className="mt-3 max-h-[40vh] overflow-auto whitespace-pre-wrap break-words text-xs bg-gray-50 p-3 rounded" aria-live="polite">
-          {JSON.stringify(error, null, 2)}
-        </pre>
-      )}
     </aside>
   );
 }
