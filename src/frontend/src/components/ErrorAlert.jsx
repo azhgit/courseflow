@@ -4,13 +4,27 @@
 import { useEffect, useState } from 'react';
 
 function extractRetrySeconds(err) {
+  // Robustly search the error object for a retryDelay like '20s' and return seconds
   try {
-    const details = err?.error?.details || err?.details || [];
-    for (const d of details) {
-      if (d && d['@type'] && String(d['@type']).includes('RetryInfo')) {
-        const rd = d.retryDelay || d.retry_delay || d.retry || '';
-        const m = String(rd).match(/(\d+(?:\.\d*)?)s/);
+    const queue = [err?.error, err?.details, err?.error?.details, err];
+    const seen = new Set();
+    while (queue.length) {
+      const node = queue.shift();
+      if (!node || seen.has(node)) continue;
+      seen.add(node);
+      if (typeof node === 'string') {
+        const m = node.match(/(\d+(?:\.\d*)?)s/);
         if (m) return Math.ceil(parseFloat(m[1]));
+      } else if (typeof node === 'object') {
+        for (const k of Object.keys(node)) {
+          const v = node[k];
+          if (typeof v === 'string') {
+            const m = v.match(/(\d+(?:\.\d*)?)s/);
+            if (m) return Math.ceil(parseFloat(m[1]));
+          } else if (typeof v === 'object') {
+            queue.push(v);
+          }
+        }
       }
     }
   } catch (e) {
