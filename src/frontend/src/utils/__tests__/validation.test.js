@@ -36,6 +36,25 @@ describe('Validation Functions', () => {
     expect(isValidISO8601('')).toBe(false);
   });
 
+  // Chat session validation
+  test('isValidChatSession should validate complete session', () => {
+    const session = {
+      conversation_id: '550e8400-e29b-4000-a000-000000000000',
+      messages: [
+        {
+          id: '550e8400-e29b-4000-a000-000000000001',
+          role: 'user',
+          content: 'Hello',
+          status: 'complete',
+          timestamp: '2026-02-17T10:30:00Z',
+        },
+      ],
+      created_at: '2026-02-17T10:30:00Z',
+      updated_at: '2026-02-17T10:30:00Z',
+    };
+    expect(isValidChatSession(session)).toBe(true);
+  });
+
   // Message validation
   test('isValidMessage should validate correct messages', () => {
     const message = {

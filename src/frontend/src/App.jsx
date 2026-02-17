@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { Header } from './components/Header.jsx';
 import { ChatHistory } from './components/ChatHistory.jsx';
 import { ChatInput } from './components/ChatInput.jsx';
-import { NewChatButton } from './components/NewChatButton.jsx';
 import { EmptyState } from './components/EmptyState.jsx';
 import { ErrorAlert } from './components/ErrorAlert.jsx';
 import { useChat } from './hooks/useChat.js';
@@ -30,7 +30,6 @@ function App() {
   const abortControllerRef = useRef(null);
   const [examples, setExamples] = useState([]);
 
-  // Restore session from localStorage on mount
   useEffect(() => {
     const session = loadSession();
     if (session) {
@@ -38,7 +37,6 @@ function App() {
       setMessages(session.messages);
     }
 
-    // Load example questions on mount
     const loadExamples = async () => {
       const loaded = await getExampleQuestions();
       if (loaded) {
@@ -46,9 +44,8 @@ function App() {
       }
     };
     loadExamples();
-  }, []);
+  }, [setConversationId, setMessages]);
 
-  // Save session to localStorage whenever it changes
   useEffect(() => {
     if (messages.length > 0 && conversationId) {
       const session = {
@@ -60,6 +57,19 @@ function App() {
       saveSession(session);
     }
   }, [messages, conversationId]);
+
+  useEffect(() => {
+    if (!error) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setError(null);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [error, setError]);
 
   const handleNewChat = () => {
     resetChatState();
@@ -75,14 +85,8 @@ function App() {
 
     setIsLoading(true);
     setError(null);
-
-    // Add user message to history
     addUserMessage(question);
 
-    // Use existing conversation id only; backend creates one for first turn
-    const currentConversationId = conversationId;
-
-    // Create placeholder for assistant message
     const assistantMessageId = generateUUIDv4();
     setMessages((prev) => [
       ...prev,
@@ -99,21 +103,16 @@ function App() {
     let assistantSources = [];
 
     try {
-      // Cancel any previous request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-
       abortControllerRef.current = new AbortController();
 
-      // Post question to backend
-      const response = await postQuery(question, currentConversationId);
+      const response = await postQuery(question, conversationId);
 
-      // Parse SSE stream
       await parseSSEStream(
         response,
         (chunk) => {
-          // Update assistant message with chunk
           assistantContent += chunk;
           setMessages((prev) => {
             const updated = [...prev];
@@ -125,19 +124,27 @@ function App() {
           });
         },
         (sources) => {
-          // Backend returns list[str] for sources; normalize for UI
-          assistantSources = (sources || []).map((source) =>
-            typeof source === 'string' ? { name: source } : source
-          );
+          assistantSources = (sources || []).map((source) => {
+            if (typeof source === 'string') {
+              return { name: source };
+            }
+            if (source && typeof source === 'object') {
+              if (typeof source.name === 'string' && source.name.trim()) {
+                return { name: source.name };
+              }
+              if (typeof source.source === 'string' && source.source.trim()) {
+                return { name: source.source };
+              }
+            }
+            return { name: String(source) };
+          });
         },
         (errorEvent) => {
-          // Handle SSE error
           const errorState = mapSSEErrorToErrorState(errorEvent.error, errorEvent.message);
           setError(errorState);
           setIsLoading(false);
         },
         () => {
-          // On done: finalize message
           setMessages((prev) => {
             const updated = [...prev];
             const assistantMsg = updated.find((m) => m.id === assistantMessageId);
@@ -157,7 +164,6 @@ function App() {
       );
     } catch (err) {
       if (err.name !== 'AbortError') {
-        console.error('Error submitting question:', err);
         setError({
           type: 'network_error',
           message: 'Connection lost. Please check your network and try again.',
@@ -167,48 +173,50 @@ function App() {
     }
   };
 
-  // Show empty state if no messages
   const showEmptyState = messages.length === 0 && !isLoading;
+  const showHeader = messages.length > 0;
 
   return (
-    <div className="flex flex-col h-screen bg-white">
-      {/* Header */}
-      <header className="bg-blue-600 text-white p-4 shadow-sm">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">CourseFlow Chat</h1>
-          <NewChatButton onNewChat={handleNewChat} />
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9]">
+      {/* ── Header: only show on chat page (has messages) ── */}
+      {showHeader && <Header onNewChat={handleNewChat} onReturnHome={handleNewChat} />}
 
-      {/* Error Message */}
-      {error && (
-        <ErrorAlert
-          error={error}
-          onDismiss={() => setError(null)}
-          onRetry={() => {
-            setError(null);
-            if (messages.length > 0) {
-              const lastMessage = messages[messages.length - 1];
-              if (lastMessage.role === 'user') {
-                handleSubmitQuestion(lastMessage.content);
+      {/* ── Main content area ── */}
+      <main className={`relative flex flex-1 flex-col ${showHeader ? 'pt-[72px]' : ''}`}>
+        {/* ── Error alert (if present) ── */}
+        {error && (
+          <ErrorAlert
+            error={error}
+            onDismiss={() => setError(null)}
+            onRetry={() => {
+              setError(null);
+              if (messages.length > 0) {
+                const lastMessage = messages[messages.length - 1];
+                if (lastMessage.role === 'user') {
+                  handleSubmitQuestion(lastMessage.content);
+                }
               }
-            }
-          }}
-        />
-      )}
+            }}
+          />
+        )}
 
-      {/* Empty State or Chat History */}
-      {showEmptyState ? (
-        <EmptyState examples={examples} onExampleClick={handleExampleClick} />
-      ) : (
-        <ChatHistory messages={messages} isLoading={isLoading} />
-      )}
+        {/* ── Empty state (landing page with input) or chat history ── */}
+        <div className="flex-1 overflow-hidden">
+          {showEmptyState ? (
+            <EmptyState
+              examples={examples}
+              onExampleClick={handleExampleClick}
+              onSubmit={handleSubmitQuestion}
+              isDisabled={isLoading}
+            />
+          ) : (
+            <ChatHistory messages={messages} isLoading={isLoading} />
+          )}
+        </div>
 
-      {/* Chat Input */}
-      <ChatInput
-        onSubmit={handleSubmitQuestion}
-        isDisabled={isLoading}
-      />
+        {/* ── Chat input: only at bottom on chat page ── */}
+        {!showEmptyState && <ChatInput onSubmit={handleSubmitQuestion} isDisabled={isLoading} />}
+      </main>
     </div>
   );
 }

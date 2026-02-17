@@ -1,17 +1,19 @@
 /**
- * ErrorAlert: Display error messages with retry/dismiss options
+ * ErrorAlert: Error notification banner
+ * Slides down, red-tinted, with dismiss + retry
  */
 export function ErrorAlert({ error, onDismiss, onRetry }) {
   return (
-    <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded">
-      <div className="flex items-start justify-between">
+    <aside className="error-slide mx-[24px] mt-[24px] rounded-[12px] border border-red-200 bg-red-50 px-[16px] py-[12px]">
+      <div className="flex items-start justify-between gap-[12px]">
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-red-800 mb-1">Error</h3>
-          <p className="text-sm text-red-700">{error.message}</p>
+          <h3 className="text-[14px] font-semibold text-red-900">Request failed</h3>
+          <p className="mt-[4px] text-[14px] text-red-800">{error.message}</p>
         </div>
         <button
           onClick={onDismiss}
-          className="text-red-500 hover:text-red-700 ml-4 text-lg leading-none"
+          className="btn-transition flex-none rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-800"
+          aria-label="Dismiss error"
         >
           ✕
         </button>
@@ -19,11 +21,11 @@ export function ErrorAlert({ error, onDismiss, onRetry }) {
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-3 text-xs bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded transition-colors"
+          className="btn-transition mt-[12px] rounded-lg border border-red-300 bg-[#FFFFFF] px-[12px] py-[6px] text-[12px] font-semibold text-red-800 hover:bg-red-100"
         >
-          Try Again
+          Retry
         </button>
       )}
-    </div>
+    </aside>
   );
 }

@@ -3,31 +3,26 @@ import { MessageBubble } from './MessageBubble.jsx';
 import { SearchStatus } from './SearchStatus.jsx';
 
 /**
- * ChatHistory: Scrollable message history
+ * ChatHistory: Scrollable message list
+ * Padding: 24px, max-width: 900px, centered
+ * Padding-bottom: 120px for fixed input
  */
 export function ChatHistory({ messages, isLoading }) {
   const endRef = useRef(null);
 
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
-      {messages.length === 0 ? (
-        <div className="flex items-center justify-center h-full text-gray-400">
-          <p>No messages yet. Start a conversation!</p>
-        </div>
-      ) : (
-        <>
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          {isLoading && <SearchStatus />}
-          <div ref={endRef} />
-        </>
-      )}
+    <div className="h-full overflow-y-auto px-[24px] py-[24px] pb-[140px]">
+      <div className="mx-auto flex max-w-[900px] flex-col gap-[24px]">
+        {messages.map((message) => (
+          <MessageBubble key={message.id} message={message} />
+        ))}
+        {isLoading && <SearchStatus />}
+        <div ref={endRef} />
+      </div>
     </div>
   );
 }

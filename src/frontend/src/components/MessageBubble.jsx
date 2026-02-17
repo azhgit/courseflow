@@ -2,24 +2,27 @@ import { StreamingCursor } from './StreamingCursor.jsx';
 import { SourceAttribution } from './SourceAttribution.jsx';
 
 /**
- * MessageBubble: Individual chat message (user or assistant)
+ * MessageBubble: Chat message bubble
+ * User: right-aligned, navy bg #0F172A, white text, rounded-tr-sm speech bubble
+ * AI: left-aligned, white bg, navy text, rounded-tl-sm, shadow-card
+ * Max-width: 700px
  */
 export function MessageBubble({ message }) {
   const isUser = message.role === 'user';
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div
-        className={`max-w-xs px-4 py-2 rounded-lg ${
+    <div className={`message-fade flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <article
+        className={`max-w-[700px] rounded-[20px] px-[20px] py-[16px] text-[16px] leading-relaxed ${
           isUser
-            ? 'bg-blue-500 text-white rounded-br-none'
-            : 'bg-gray-200 text-gray-900 rounded-bl-none'
+            ? 'rounded-tr-sm bg-[#0F172A] text-[#FFFFFF]'
+            : 'rounded-tl-sm border border-[#E2E8F0] bg-[#FFFFFF] text-[#1E293B] shadow-md'
         }`}
       >
         <div className="whitespace-pre-wrap break-words">
           {message.content}
           {message.status === 'in-progress' && (
-            <span className="ml-1">
+            <span className="ml-1 inline-block align-middle">
               <StreamingCursor />
             </span>
           )}
@@ -27,7 +30,7 @@ export function MessageBubble({ message }) {
         {!isUser && message.sources && message.status === 'complete' && (
           <SourceAttribution sources={message.sources} />
         )}
-      </div>
+      </article>
     </div>
   );
 }

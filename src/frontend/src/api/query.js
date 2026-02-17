@@ -25,8 +25,16 @@ export async function postQuery(question, conversationId = null) {
   return response;
 }
 
+const DEFAULT_EXAMPLES = [
+  'What is photosynthesis?',
+  'How does machine learning work?',
+  'What are the benefits of exercise?',
+  'Explain the theory of relativity',
+];
+
 /**
- * Fetch example questions from the backend demo cache
+ * Fetch example questions from backend if available.
+ * Falls back to local defaults when endpoint is missing.
  */
 export async function getExampleQuestions() {
   try {
@@ -35,14 +43,14 @@ export async function getExampleQuestions() {
     });
 
     if (!response.ok) {
-      console.warn(`Failed to fetch example questions: ${response.status}`);
-      return null;
+      return DEFAULT_EXAMPLES;
     }
 
     const data = await response.json();
-    return data.examples || null;
-  } catch (error) {
-    console.error('Error fetching example questions:', error);
-    return null;
+    return Array.isArray(data?.examples) && data.examples.length > 0
+      ? data.examples
+      : DEFAULT_EXAMPLES;
+  } catch {
+    return DEFAULT_EXAMPLES;
   }
 }

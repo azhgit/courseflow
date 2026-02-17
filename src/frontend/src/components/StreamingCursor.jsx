@@ -1,9 +1,10 @@
 /**
- * StreamingCursor: Blinking cursor for in-progress messages
+ * StreamingCursor: Blinking cursor during response streaming
+ * Teal color: #14B8A6
  */
 export function StreamingCursor() {
   return (
-    <span className="inline-block animate-blink text-lg">
+    <span className="animate-blink text-[#14B8A6]" aria-hidden="true">
       ▌
     </span>
   );

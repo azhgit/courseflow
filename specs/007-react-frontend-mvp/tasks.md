@@ -214,18 +214,18 @@ Apply Tailwind CSS styling for professional appearance, ensure mobile and deskto
 
 ---
 
-- [ ] T062 [P] Style `src/frontend/src/components/App.jsx` layout: header, main chat area, input footer with Tailwind responsive classes
-- [ ] T063 [P] Style `src/frontend/src/components/ChatHistory.jsx`: scrollable container, proper spacing, auto-scroll behavior
-- [ ] T064 [P] Style `src/frontend/src/components/ChatInput.jsx`: input field, send button, keyboard focus states
-- [ ] T065 [P] Style `src/frontend/src/components/MessageBubble.jsx`: user message (right-align, blue bg), assistant (left-align, gray bg), readable font sizing
-- [ ] T066 [P] Style `src/frontend/src/components/StreamingCursor.jsx`: blinking animation using Tailwind or CSS keyframes
-- [ ] T067 [P] Style `src/frontend/src/components/SourceAttribution.jsx`: gray italic text, readable line-height
-- [ ] T068 [P] Style `src/frontend/src/components/EmptyState.jsx`: centered logo, grid of example buttons, hover states
-- [ ] T069 [P] Style `src/frontend/src/components/ErrorAlert.jsx`: prominent error styling, dismiss button
-- [ ] T070 Implement responsive testing at 375px, 768px, 1280px breakpoints in `src/frontend/src/index.css`
-- [ ] T071 Ensure keyboard navigation works: Tab through input/button, Enter to send, Escape to dismiss error
-- [ ] T072 Add subtle animations: message fade-in, streaming cursor blink, error slide-down
-- [ ] T073 Optimize bundle: run `npm run build` and verify output is <200KB gzipped
+- [x] T062 [P] Style `src/frontend/src/components/App.jsx` layout: header, main chat area, input footer with Tailwind responsive classes
+- [x] T063 [P] Style `src/frontend/src/components/ChatHistory.jsx`: scrollable container, proper spacing, auto-scroll behavior
+- [x] T064 [P] Style `src/frontend/src/components/ChatInput.jsx`: input field, send button, keyboard focus states
+- [x] T065 [P] Style `src/frontend/src/components/MessageBubble.jsx`: user message (right-align, blue bg), assistant (left-align, gray bg), readable font sizing
+- [x] T066 [P] Style `src/frontend/src/components/StreamingCursor.jsx`: blinking animation using Tailwind or CSS keyframes
+- [x] T067 [P] Style `src/frontend/src/components/SourceAttribution.jsx`: gray italic text, readable line-height
+- [x] T068 [P] Style `src/frontend/src/components/EmptyState.jsx`: centered logo, grid of example buttons, hover states
+- [x] T069 [P] Style `src/frontend/src/components/ErrorAlert.jsx`: prominent error styling, dismiss button
+- [x] T070 Implement responsive testing at 375px, 768px, 1280px breakpoints in `src/frontend/src/index.css`
+- [x] T071 Ensure keyboard navigation works: Tab through input/button, Enter to send, Escape to dismiss error
+- [x] T072 Add subtle animations: message fade-in, streaming cursor blink, error slide-down
+- [x] T073 Optimize bundle: run `npm run build` and verify output is <200KB gzipped
 - [ ] T074 Test mobile UX: scroll, input focus, touch interactions on actual device or simulator
 
 ---
@@ -243,18 +243,18 @@ Write test suites for core functionality, create user documentation, and validat
 
 ---
 
-- [ ] T075 Create `src/frontend/src/components/__tests__/ChatHistory.test.jsx` with message rendering and scroll tests
-- [ ] T076 Create `src/frontend/src/components/__tests__/ChatInput.test.jsx` with submit, Enter key, and validation tests
-- [ ] T077 Create `src/frontend/src/components/__tests__/MessageBubble.test.jsx` with role-based styling tests
-- [ ] T078 Create `src/frontend/src/hooks/__tests__/useChat.test.js` with message add/clear operations
-- [ ] T079 Create `src/frontend/src/hooks/__tests__/useStreamingResponse.test.js` with SSE event parsing tests
-- [ ] T080 Create `src/frontend/src/api/__tests__/query.test.js` with API request/response tests
-- [ ] T081 Create integration test `src/frontend/src/__tests__/integration/chatFlow.test.jsx` with full user scenario
-- [ ] T082 Create E2E test script `src/frontend/e2e/chat.spec.js` with Playwright/Cypress for full browser flow
-- [ ] T083 Create `src/frontend/README.md` with setup, development, and build instructions
-- [ ] T084 Create `src/frontend/DEVELOPMENT.md` with architecture overview, component structure, API integration
-- [ ] T085 Run test suite: `npm test` and verify coverage >80%
-- [ ] T086 Run linter: `npm run lint` and fix all issues
+- [x] T075 Create `src/frontend/src/components/__tests__/ChatHistory.test.jsx` with message rendering and scroll tests
+- [x] T076 Create `src/frontend/src/components/__tests__/ChatInput.test.jsx` with submit, Enter key, and validation tests
+- [x] T077 Create `src/frontend/src/components/__tests__/MessageBubble.test.jsx` with role-based styling tests
+- [x] T078 Create `src/frontend/src/hooks/__tests__/useChat.test.js` with message add/clear operations
+- [x] T079 Create `src/frontend/src/hooks/__tests__/useStreamingResponse.test.js` with SSE event parsing tests
+- [x] T080 Create `src/frontend/src/api/__tests__/query.test.js` with API request/response tests
+- [x] T081 Create integration test `src/frontend/src/__tests__/integration/chatFlow.test.jsx` with full user scenario
+- [x] T082 Create E2E test script `src/frontend/e2e/chat.spec.js` with Playwright/Cypress for full browser flow
+- [x] T083 Create `src/frontend/README.md` with setup, development, and build instructions
+- [x] T084 Create `src/frontend/DEVELOPMENT.md` with architecture overview, component structure, API integration
+- [x] T085 Run test suite: `npm test` and verify coverage >80% (33 tests passing, 82.64% statements)
+- [x] T086 Run linter: `npm run lint` and fix all issues
 - [ ] T087 Manual acceptance test: All 9 success criteria (SC-001 through SC-009) verified
 
 ---

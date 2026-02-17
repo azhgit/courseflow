@@ -11,15 +11,6 @@ export default {
         md: '768px',
         lg: '1280px',
       },
-      animation: {
-        'blink': 'blink 1s infinite',
-      },
-      keyframes: {
-        'blink': {
-          '0%, 49%': { opacity: '1' },
-          '50%, 100%': { opacity: '0' },
-        },
-      },
     },
   },
   plugins: [

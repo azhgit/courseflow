@@ -60,7 +60,7 @@ describe('useLocalStorage Hook', () => {
     act(() => {
       try {
         result.current[1](largeString);
-      } catch (e) {
+      } catch {
         // Expected to fail gracefully
       }
     });

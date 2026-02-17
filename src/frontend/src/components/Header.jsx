@@ -1,15 +1,45 @@
+/**
+ * Header: Modern SaaS navigation bar (sticky)
+ * - Left: Logo icon (32px) + "CourseFlow" text (clickable, returns to home)
+ * - Right: "New Chat" button
+ * - Sticky positioning with shadow
+ */
+export function Header({ onNewChat, onReturnHome }) {
+  return (
+    <header className="sticky top-0 z-40 border-b border-[#E2E8F0] bg-[#FFFFFF] shadow-sm">
+      <div className="mx-auto flex h-[72px] max-w-full items-center justify-between px-[24px]">
+        {/* ── Left: Clickable logo + brand name ── */}
+        <button
+          onClick={onReturnHome}
+          className="btn-transition flex items-center gap-[12px] rounded-lg hover:opacity-80"
+          aria-label="Return to home"
+        >
+          {/* Logo: 32px square with navy-to-teal gradient */}
+          <div className="flex h-[32px] w-[32px] flex-none items-center justify-center rounded-[8px] bg-gradient-to-br from-[#0F172A] to-[#0D9488]">
+            <span className="text-[14px] font-bold text-[#FFFFFF]">CF</span>
+          </div>
+
+          {/* Brand name */}
+          <span className="font-sans text-[18px] font-semibold text-[#0F172A]">
+            CourseFlow
+          </span>
+        </button>
+
+        {/* ── Right: New Chat Button ── */}
+        <NewChatButton onNewChat={onNewChat} />
+      </div>
+    </header>
+  );
+}
+
 import { useState } from 'react';
 
 /**
- * NewChatButton: Header action button
- * Only shows if conversation has messages
- * Border: #E2E8F0, hover: #F8FAFC bg, #0D9488 border
- * Modal with confirmation
+ * NewChatButton: "New Chat" button with confirmation modal
+ * Always visible (no condition)
  */
-export function NewChatButton({ onNewChat, hasMessages = false }) {
+function NewChatButton({ onNewChat }) {
   const [showConfirmation, setShowConfirmation] = useState(false);
-
-  if (!hasMessages) return null;
 
   const handleConfirm = () => {
     onNewChat();
