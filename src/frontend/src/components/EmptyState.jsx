@@ -55,9 +55,9 @@ export function EmptyState({ examples = [], onExampleClick, onSubmit, isDisabled
         </div>
       </div>
 
-      {/* ── Input footer (fixed to bottom, RWD) ── */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-[#E2E8F0] bg-[#FFFFFF] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
-        <div className="mx-auto max-w-[768px] px-[16px] py-[16px] sm:px-[24px] sm:py-[20px]">
+      {/* ── Input footer (fixed to bottom, RWD, centered) ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[#E2E8F0] bg-[#FFFFFF] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+        <div className="mx-auto w-full max-w-[768px] px-[16px] py-[16px] sm:px-[24px] sm:py-[20px]">
           <LandingPageInput onSubmit={onSubmit} isDisabled={isDisabled} />
         </div>
       </div>
