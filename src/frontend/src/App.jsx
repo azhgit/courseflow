@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header.jsx';
 import { ChatHistory } from './components/ChatHistory.jsx';
-import { ChatInput } from './components/ChatInput.jsx';
+import { FixedInput } from './components/FixedInput.jsx';
 import { EmptyState } from './components/EmptyState.jsx';
 import { ErrorAlert } from './components/ErrorAlert.jsx';
 import { useChat } from './hooks/useChat.js';
@@ -176,13 +176,18 @@ function App() {
   const showEmptyState = messages.length === 0 && !isLoading;
   const showHeader = messages.length > 0;
 
+  // Calculate input placeholder based on current state
+  const inputPlaceholder = showEmptyState
+    ? 'Ask a question about your course content…'
+    : 'Ask a follow-up question…';
+
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9]">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       {/* ── Header: only show on chat page (has messages) ── */}
       {showHeader && <Header onNewChat={handleNewChat} onReturnHome={handleNewChat} />}
 
       {/* ── Main content area ── */}
-      <main className={`relative flex flex-1 flex-col ${showHeader ? 'pt-[72px]' : ''}`}>
+      <main className={`relative flex flex-1 flex-col ${showHeader ? 'pt-14' : ''}`}>
         {/* ── Error alert (if present) ── */}
         {error && (
           <ErrorAlert
@@ -200,23 +205,25 @@ function App() {
           />
         )}
 
-        {/* ── Empty state (landing page with input) or chat history ── */}
+        {/* ── Empty state or chat history ── */}
         <div className="flex-1 overflow-hidden">
           {showEmptyState ? (
             <EmptyState
               examples={examples}
               onExampleClick={handleExampleClick}
-              onSubmit={handleSubmitQuestion}
-              isDisabled={isLoading}
             />
           ) : (
             <ChatHistory messages={messages} isLoading={isLoading} />
           )}
         </div>
-
-        {/* ── Chat input: only at bottom on chat page ── */}
-        {!showEmptyState && <ChatInput onSubmit={handleSubmitQuestion} isDisabled={isLoading} />}
       </main>
+
+      {/* ── Fixed input at bottom (for both landing and chat) ── */}
+      <FixedInput
+        onSubmit={handleSubmitQuestion}
+        isDisabled={isLoading}
+        placeholder={inputPlaceholder}
+      />
     </div>
   );
 }

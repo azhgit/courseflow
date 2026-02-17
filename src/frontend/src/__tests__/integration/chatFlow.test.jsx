@@ -23,7 +23,7 @@ describe('chat flow integration', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    const input = screen.getByLabelText(/ask your question/i);
+    const input = screen.getByLabelText(/ask a question/i);
     await user.type(input, 'Test question');
     await user.click(screen.getByRole('button', { name: /send/i }));
 
