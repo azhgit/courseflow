@@ -1,56 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
-/**
- * NewChatButton: Header action button
- * Only shows if conversation has messages
- * Border: #E2E8F0, hover: #F8FAFC bg, #0D9488 border
- * Modal with confirmation
- */
-export function NewChatButton({ onNewChat, hasMessages = false }) {
+export function NewChatButton({ onNewChat }) {
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!hasMessages) return null;
+  useEffect(() => { setMounted(true); }, []);
 
   const handleConfirm = () => {
     onNewChat();
     setShowConfirmation(false);
   };
 
+  const modal = (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.3)', padding: '0 24px' }}
+      onClick={(e) => { if (e.target === e.currentTarget) setShowConfirmation(false); }}
+    >
+      <div style={{ width: '100%', maxWidth: '384px', borderRadius: '16px', backgroundColor: '#fff', padding: '24px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <h3 style={{ fontSize: '24px', fontWeight: 700, color: '#0F172A', margin: 0 }}>Start a new chat?</h3>
+        <p style={{ marginTop: '12px', fontSize: '16px', color: '#475569', lineHeight: 1.6 }}>
+          This will clear the current conversation history from this session.
+        </p>
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+          <button
+            onClick={() => setShowConfirmation(false)}
+            style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '14px', cursor: 'pointer', color: '#475569' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#1E293B', color: '#fff', fontSize: '14px', cursor: 'pointer' }}
+          >
+            Clear history
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <button
         onClick={() => setShowConfirmation(true)}
-        className="btn-transition rounded-[8px] border border-[#E2E8F0] bg-[#FFFFFF] px-[16px] py-[8px] text-[14px] font-semibold text-[#334155] hover:border-[#0D9488] hover:bg-[#F8FAFC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2"
+        className="btn-transition rounded-[8px] border border-[#E2E8F0] bg-[#FFFFFF] px-[16px] py-[8px] text-[14px] font-semibold text-[#334155] hover:border-[#0D9488] hover:bg-[#F8FAFC]"
       >
         New Chat
       </button>
-
-      {showConfirmation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/30 px-[24px] backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-[16px] border border-[#E2E8F0] bg-[#FFFFFF] p-[24px] shadow-lg animation-fadeIn">
-            <h3 className="font-sans text-[24px] font-bold text-[#0F172A]">
-              Start a new chat?
-            </h3>
-            <p className="mt-[12px] text-[16px] leading-relaxed text-[#475569]">
-              This will clear the current conversation history from this session.
-            </p>
-            <div className="mt-[24px] flex justify-end gap-[12px]">
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="btn-transition rounded-[8px] border border-[#E2E8F0] bg-[#FFFFFF] px-[16px] py-[8px] text-[14px] font-medium text-[#475569] hover:bg-[#F8FAFC]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                className="btn-transition rounded-[8px] bg-[#1E293B] px-[16px] py-[8px] text-[14px] font-medium text-[#FFFFFF] hover:bg-[#0F172A]"
-              >
-                Clear history
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {mounted && showConfirmation && createPortal(modal, document.body)}
     </>
   );
 }
