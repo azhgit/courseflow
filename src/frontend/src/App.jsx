@@ -39,34 +39,25 @@ function App() {
 
     const loadExamples = async () => {
       const loaded = await getExampleQuestions();
-      if (loaded) {
-        setExamples(loaded);
-      }
+      if (loaded) setExamples(loaded);
     };
     loadExamples();
   }, [setConversationId, setMessages]);
 
   useEffect(() => {
     if (messages.length > 0 && conversationId) {
-      const session = {
+      saveSession({
         conversation_id: conversationId,
         messages,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      };
-      saveSession(session);
+      });
     }
   }, [messages, conversationId]);
 
   useEffect(() => {
     if (!error) return undefined;
-
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setError(null);
-      }
-    };
-
+    const onKeyDown = (e) => { if (e.key === 'Escape') setError(null); };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [error, setError]);
@@ -76,9 +67,7 @@ function App() {
     clearSession();
   };
 
-  const handleExampleClick = (question) => {
-    handleSubmitQuestion(question);
-  };
+  const handleExampleClick = (question) => handleSubmitQuestion(question);
 
   const handleSubmitQuestion = async (question) => {
     if (!question.trim()) return;
@@ -103,9 +92,7 @@ function App() {
     let assistantSources = [];
 
     try {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      if (abortControllerRef.current) abortControllerRef.current.abort();
       abortControllerRef.current = new AbortController();
 
       const response = await postQuery(question, conversationId);
@@ -116,41 +103,32 @@ function App() {
           assistantContent += chunk;
           setMessages((prev) => {
             const updated = [...prev];
-            const assistantMsg = updated.find((m) => m.id === assistantMessageId);
-            if (assistantMsg) {
-              assistantMsg.content = assistantContent;
-            }
+            const msg = updated.find((m) => m.id === assistantMessageId);
+            if (msg) msg.content = assistantContent;
             return updated;
           });
         },
         (sources) => {
           assistantSources = (sources || []).map((source) => {
-            if (typeof source === 'string') {
-              return { name: source };
-            }
+            if (typeof source === 'string') return { name: source };
             if (source && typeof source === 'object') {
-              if (typeof source.name === 'string' && source.name.trim()) {
-                return { name: source.name };
-              }
-              if (typeof source.source === 'string' && source.source.trim()) {
-                return { name: source.source };
-              }
+              if (typeof source.name === 'string' && source.name.trim()) return { name: source.name };
+              if (typeof source.source === 'string' && source.source.trim()) return { name: source.source };
             }
             return { name: String(source) };
           });
         },
         (errorEvent) => {
-          const errorState = mapSSEErrorToErrorState(errorEvent.error, errorEvent.message);
-          setError(errorState);
+          setError(mapSSEErrorToErrorState(errorEvent.error, errorEvent.message));
           setIsLoading(false);
         },
         () => {
           setMessages((prev) => {
             const updated = [...prev];
-            const assistantMsg = updated.find((m) => m.id === assistantMessageId);
-            if (assistantMsg) {
-              assistantMsg.status = 'complete';
-              assistantMsg.sources = assistantSources;
+            const msg = updated.find((m) => m.id === assistantMessageId);
+            if (msg) {
+              msg.status = 'complete';
+              msg.sources = assistantSources;
             }
             return updated;
           });
@@ -177,31 +155,34 @@ function App() {
   const showHeader = messages.length > 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9]">
-      {/* ── Header: only show on chat page (has messages) ── */}
-      {showHeader && <Header onNewChat={handleNewChat} onReturnHome={handleNewChat} />}
+    <div className="flex h-screen flex-col bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9]">
 
-      {/* ── Main content area ── */}
-      <main className={`relative flex flex-1 flex-col ${showHeader ? 'pt-[72px]' : ''}`}>
-        {/* ── Error alert (if present) ── */}
+      {showHeader && (
+        <Header onNewChat={handleNewChat} onReturnHome={handleNewChat} />
+      )}
+
+      <main className="flex flex-1 flex-col overflow-hidden">
+
         {error && (
           <ErrorAlert
             error={error}
             onDismiss={() => setError(null)}
             onRetry={() => {
               setError(null);
-              if (messages.length > 0) {
-                const lastMessage = messages[messages.length - 1];
-                if (lastMessage.role === 'user') {
-                  handleSubmitQuestion(lastMessage.content);
+              // find the most recent user message to retry
+              for (let i = messages.length - 1; i >= 0; i--) {
+                const m = messages[i];
+                if (m?.role === 'user' && m?.content && m.content.trim()) {
+                  handleSubmitQuestion(m.content);
+                  return;
                 }
               }
+              // fallback: do nothing if no user message found
             }}
           />
         )}
 
-        {/* ── Empty state (landing page with input) or chat history ── */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
           {showEmptyState ? (
             <EmptyState
               examples={examples}
@@ -214,9 +195,10 @@ function App() {
           )}
         </div>
 
-        {/* ── Chat input: only at bottom on chat page ── */}
+        {!showEmptyState && (
+          <ChatInput onSubmit={handleSubmitQuestion} isDisabled={isLoading} />
+        )}
       </main>
-      {!showEmptyState && <ChatInput onSubmit={handleSubmitQuestion} isDisabled={isLoading} />}
     </div>
   );
 }
