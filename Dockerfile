@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy project configuration and install Python dependencies
 COPY pyproject.toml .
+COPY src ./src
 RUN pip install --no-cache-dir --user -e .
 
 # Final stage
@@ -37,7 +38,7 @@ COPY . .
 RUN mkdir -p /app/data/chroma
 
 # Set Python path
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
 
 # Expose port (Zeabur will set PORT env var)
 ENV PORT=8000
@@ -48,4 +49,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/api/v1/health')"
 
 # Start uvicorn with PORT binding
-CMD uvicorn src.courseflow.api.main:app --host 0.0.0.0 --port ${PORT}
+CMD uvicorn courseflow.api.main:app --host 0.0.0.0 --port ${PORT}
