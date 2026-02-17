@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChatHistory } from './components/ChatHistory.jsx';
 import { ChatInput } from './components/ChatInput.jsx';
+import { NewChatButton } from './components/NewChatButton.jsx';
 import { useChat } from './hooks/useChat.js';
 import { useStreamingResponse } from './hooks/useStreamingResponse.js';
 import { useLocalStorage } from './hooks/useLocalStorage.js';
@@ -39,9 +40,9 @@ function App() {
 
   // Save session to localStorage whenever it changes
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && conversationId) {
       const session = {
-        conversation_id: conversationId || generateUUIDv4(),
+        conversation_id: conversationId,
         messages,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -65,7 +66,7 @@ function App() {
     const userMessage = addUserMessage(question);
     
     // Create new conversation ID if needed
-    const currentConversationId = conversationId || generateUUIDv4();
+    let currentConversationId = conversationId || generateUUIDv4();
     if (!conversationId) {
       setConversationId(currentConversationId);
     }
@@ -74,6 +75,7 @@ function App() {
     const assistantMessageId = generateUUIDv4();
     let assistantContent = '';
     let assistantSources = [];
+    let newConversationId = null;
 
     try {
       // Cancel any previous request
@@ -130,6 +132,13 @@ function App() {
             return updated;
           });
           setIsLoading(false);
+        },
+        (receivedConversationId) => {
+          // Handle conversation ID from start event
+          newConversationId = receivedConversationId;
+          if (!conversationId || conversationId !== receivedConversationId) {
+            setConversationId(receivedConversationId);
+          }
         }
       );
     } catch (err) {
@@ -167,18 +176,13 @@ function App() {
       <header className="bg-blue-600 text-white p-4 shadow-sm">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">CourseFlow Chat</h1>
-          <button
-            onClick={handleNewChat}
-            className="px-4 py-2 bg-blue-700 hover:bg-blue-800 rounded-lg text-sm font-medium transition-colors"
-          >
-            New Chat
-          </button>
+          <NewChatButton onNewChat={handleNewChat} />
         </div>
       </header>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-4 rounded">
           <p className="font-semibold">{error.message}</p>
           <button
             onClick={() => setError(null)}

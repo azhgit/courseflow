@@ -9,8 +9,9 @@ export function useStreamingResponse() {
   const [streamedContent, setStreamedContent] = useState('');
   const [sources, setSources] = useState([]);
   const [streamError, setStreamError] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
 
-  const parseSSEStream = useCallback(async (response, onChunk, onSources, onError, onDone) => {
+  const parseSSEStream = useCallback(async (response, onChunk, onSources, onError, onDone, onConversationId) => {
     setIsStreaming(true);
     setStreamedContent('');
     setSources([]);
@@ -38,7 +39,11 @@ export function useStreamingResponse() {
             try {
               const event = JSON.parse(dataStr);
               
-              if (event.type === 'chunk' && event.content) {
+              if (event.type === 'start' && event.conversation_id) {
+                // Extract conversation ID from start event
+                setConversationId(event.conversation_id);
+                onConversationId?.(event.conversation_id);
+              } else if (event.type === 'chunk' && event.content) {
                 setStreamedContent((prev) => prev + event.content);
                 onChunk?.(event.content);
               } else if (event.type === 'sources' && event.sources) {
@@ -69,6 +74,8 @@ export function useStreamingResponse() {
     streamedContent,
     sources,
     streamError,
+    conversationId,
+    setConversationId,
     parseSSEStream,
   };
 }
