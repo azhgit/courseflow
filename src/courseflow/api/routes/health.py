@@ -5,13 +5,13 @@ from time import perf_counter
 from typing import Any
 
 import aiosqlite
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 
-from courseflow.api.dependencies import get_query_repository, get_rate_limiter, get_vector_store
-from courseflow.domain.models import RateLimitTracker
-from courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
-from courseflow.infrastructure.vector_store.chroma import ChromaAdapter
+from src.courseflow.api.dependencies import get_query_repository, get_rate_limiter, get_vector_store
+from src.courseflow.domain.models import RateLimitTracker
+from src.courseflow.infrastructure.repositories.query_repo import SQLiteQueryRepository
+from src.courseflow.infrastructure.vector_store.chroma import ChromaAdapter
 
 router = APIRouter()
 _START_TIME = perf_counter()
@@ -19,6 +19,7 @@ _START_TIME = perf_counter()
 
 @router.get("/health", response_model=dict[str, Any])
 async def health_check(
+    request: Request,
     vector_store: ChromaAdapter = Depends(get_vector_store),
     query_repo: SQLiteQueryRepository = Depends(get_query_repository),
     rate_limiter: RateLimitTracker = Depends(get_rate_limiter),
@@ -26,6 +27,7 @@ async def health_check(
     """Return detailed component health status."""
     status_name = "healthy"
     components: dict[str, dict[str, Any]] = {}
+    quota_warning = False
 
     chroma_start = perf_counter()
     try:
@@ -72,11 +74,20 @@ async def health_check(
             "limit_per_minute": rate_limiter.max_requests_per_minute,
         }
 
+    # Check quota warning (if quota_service available)
+    try:
+        if hasattr(request.app.state, "quota_service"):
+            quota_status = await request.app.state.quota_service.get_quota_status()
+            quota_warning = quota_status.quota_warning
+    except Exception:
+        pass  # Quota service not available, leave warning as False
+
     payload = {
         "success": status_name == "healthy",
         "data": {
             "status": status_name,
             "components": components,
+            "quota_warning": quota_warning,
             "uptime_seconds": int(perf_counter() - _START_TIME),
         },
     }

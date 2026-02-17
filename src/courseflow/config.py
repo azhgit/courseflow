@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     EVAL_KEYWORD_MATCH_THRESHOLD: float = Field(default=0.80, ge=0.0, le=1.0)
     EVAL_LATENCY_P95_THRESHOLD_MS: int = Field(default=10000, ge=0)
 
+    # Quota Protection (006-demo-protection)
+    QUOTA_HOURLY_LIMIT: int = Field(default=20, ge=1)  # Per-IP requests per hour
+    QUOTA_DAILY_BUDGET: int = Field(default=300, ge=1)  # Global daily budget
+    QUOTA_CACHE_ENABLED: bool = True  # Enable demo cache bypass
+    QUOTA_STREAM_DELAY_MS: int = Field(default=30, ge=0)  # Word delay for cached responses
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -156,6 +162,22 @@ class Settings(BaseSettings):
     @property
     def eval_schedule_minute(self) -> int:
         return self.EVAL_SCHEDULE_MINUTE
+
+    @property
+    def quota_hourly_limit(self) -> int:
+        return self.QUOTA_HOURLY_LIMIT
+
+    @property
+    def quota_daily_budget(self) -> int:
+        return self.QUOTA_DAILY_BUDGET
+
+    @property
+    def quota_cache_enabled(self) -> bool:
+        return self.QUOTA_CACHE_ENABLED
+
+    @property
+    def quota_stream_delay_ms(self) -> int:
+        return self.QUOTA_STREAM_DELAY_MS
 
 
 # Global settings instance (initialized once at import)

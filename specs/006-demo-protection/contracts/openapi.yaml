@@ -1,0 +1,159 @@
+openapi: 3.0.3
+info:
+  title: CourseFlow Quota Protection API
+  description: |
+    Demo quota protection middleware for CourseFlow RAG system.
+    
+    **Features:**
+    - Per-IP hourly rate limiting (20 queries/hour, sliding window)
+    - Global daily quota tracking (300 queries/day, resets at midnight UTC)
+    - Cache-hit bypass for 10 pre-cached demo questions
+    - Quota status visibility and warnings (80%+ usage)
+    
+    **Response Headers:**
+    - `X-RateLimit-Remaining`: Requests remaining in hourly window
+    - `X-RateLimit-Limit`: Per-IP hourly limit
+    - `X-Cache-Hit`: true/false if answer came from cache
+    - `Retry-After`: Seconds until retry allowed (on 429)
+    
+    **Error Handling:**
+    - HTTP 429: Rate limit (per-IP) or daily quota exceeded
+    - HTTP 400: Unable to determine client IP
+    - HTTP 503: Quota storage unavailable
+    
+    **Base URL:** `http://localhost:8000/api/v1`
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+
+tags:
+  - name: quota
+    description: Quota status and monitoring endpoints
+  - name: health
+    description: Health check and system status
+
+paths:
+  /quota/status:
+    get:
+      operationId: getQuotaStatus
+      summary: Get current quota status
+      description: |
+        Returns current quota usage statistics for monitoring and capacity planning.
+        Includes per-day usage, cache hit rate, and warning state.
+      tags:
+        - quota
+      responses:
+        '200':
+          description: Quota status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotaStatusResponse'
+        '503':
+          $ref: '#/components/responses/StorageUnavailable'
+
+  /health:
+    get:
+      operationId: getHealth
+      summary: Check system health
+      description: |
+        Returns system health status, including quota warning state.
+      tags:
+        - health
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    QuotaStatusResponse:
+      type: object
+      required: [daily, cache, quota_warning, timestamp]
+      properties:
+        daily:
+          type: object
+          required: [used, limit, remaining, percentage_used, reset_at]
+          properties:
+            used: {type: integer, minimum: 0, description: "Queries used today"}
+            limit: {type: integer, minimum: 1, description: "Daily quota limit"}
+            remaining: {type: integer, minimum: 0, description: "Queries remaining"}
+            percentage_used: {type: number, format: float, description: "0-100%"}
+            reset_at: {type: string, format: date-time, description: "Midnight UTC tomorrow"}
+        cache:
+          type: object
+          required: [questions_count, hit_rate]
+          properties:
+            questions_count: {type: integer, minimum: 0, description: "Cached questions available"}
+            hit_rate: {type: number, format: float, minimum: 0, maximum: 100, description: "Cache hit % (0-100)"}
+        quota_warning: {type: boolean, description: "true if usage >= 80%"}
+        timestamp: {type: string, format: date-time, description: "Server time (ISO 8601)"}
+    
+    RateLimitError:
+      type: object
+      required: [error, message, current, limit, retry_after_seconds]
+      properties:
+        error: {type: string, enum: ["Per-IP hourly limit exceeded", "Daily quota exhausted"]}
+        message: {type: string}
+        current: {type: integer, description: "Current count (hourly for IP limit, daily for budget)"}
+        limit: {type: integer, description: "Applied limit"}
+        retry_after_seconds: {type: integer, minimum: 0, description: "Seconds until reset"}
+    
+    HealthResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean}
+        data:
+          type: object
+          required: [status, quota_warning, uptime_seconds]
+          properties:
+            status: {type: string, enum: [healthy, degraded], description: "System status"}
+            quota_warning: {type: boolean, description: "true if daily usage >= 80%"}
+            uptime_seconds: {type: integer, minimum: 0}
+            components:
+              type: object
+              description: "Component health details (chromadb, sqlite, gemini_api)"
+    
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error: {type: string, description: "Error type"}
+        message: {type: string, description: "Detailed error message"}
+        details: {type: object, description: "Additional context"}
+        timestamp: {type: string, format: date-time}
+        path: {type: string, description: "Request path"}
+  
+  responses:
+    RateLimitExceeded:
+      description: |
+        Rate limit exceeded. 
+        - Per-IP: 20 requests/hour (sliding window, reset based on oldest request)
+        - Daily: 300 requests/day (resets at midnight UTC)
+      headers:
+        X-RateLimit-Remaining:
+          schema: {type: integer}
+          description: Requests remaining in hourly window
+        X-RateLimit-Limit:
+          schema: {type: integer}
+          description: Per-IP hourly limit
+        Retry-After:
+          schema: {type: integer}
+          description: Seconds until retry allowed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RateLimitError'
+    
+    StorageUnavailable:
+      description: Quota storage temporarily unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
