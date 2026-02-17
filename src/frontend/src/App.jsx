@@ -201,7 +201,7 @@ function App() {
         )}
 
         {/* ── Empty state (landing page with input) or chat history ── */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
           {showEmptyState ? (
             <EmptyState
               examples={examples}
