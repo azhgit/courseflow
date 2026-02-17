@@ -6,11 +6,10 @@ import { EmptyState } from './components/EmptyState.jsx';
 import { ErrorAlert } from './components/ErrorAlert.jsx';
 import { useChat } from './hooks/useChat.js';
 import { useStreamingResponse } from './hooks/useStreamingResponse.js';
-import { useLocalStorage } from './hooks/useLocalStorage.js';
 import { postQuery, getExampleQuestions } from './api/query.js';
 import { loadSession, saveSession, clearSession } from './utils/storage.js';
 import { generateUUIDv4 } from './utils/uuid.js';
-import { mapHttpErrorToErrorState, mapSSEErrorToErrorState } from './utils/errorMapping.js';
+import { mapSSEErrorToErrorState } from './utils/errorMapping.js';
 import './index.css';
 
 function App() {
@@ -24,7 +23,6 @@ function App() {
     error,
     setError,
     addUserMessage,
-    addAssistantMessage,
     clearChat: resetChatState,
   } = useChat();
 
@@ -79,19 +77,26 @@ function App() {
     setError(null);
 
     // Add user message to history
-    const userMessage = addUserMessage(question);
-    
-    // Create new conversation ID if needed
-    let currentConversationId = conversationId || generateUUIDv4();
-    if (!conversationId) {
-      setConversationId(currentConversationId);
-    }
+    addUserMessage(question);
+
+    // Use existing conversation id only; backend creates one for first turn
+    const currentConversationId = conversationId;
 
     // Create placeholder for assistant message
     const assistantMessageId = generateUUIDv4();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        status: 'in-progress',
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+
     let assistantContent = '';
     let assistantSources = [];
-    let newConversationId = null;
 
     try {
       // Cancel any previous request
@@ -103,14 +108,6 @@ function App() {
 
       // Post question to backend
       const response = await postQuery(question, currentConversationId);
-
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        const errorState = mapHttpErrorToErrorState(response.status, errorBody);
-        setError(errorState);
-        setIsLoading(false);
-        return;
-      }
 
       // Parse SSE stream
       await parseSSEStream(
@@ -128,13 +125,16 @@ function App() {
           });
         },
         (sources) => {
-          // Update sources
-          assistantSources = sources;
+          // Backend returns list[str] for sources; normalize for UI
+          assistantSources = (sources || []).map((source) =>
+            typeof source === 'string' ? { name: source } : source
+          );
         },
         (errorEvent) => {
           // Handle SSE error
-          const errorState = mapSSEErrorToErrorState(errorEvent.error_type, errorEvent.message);
+          const errorState = mapSSEErrorToErrorState(errorEvent.error, errorEvent.message);
           setError(errorState);
+          setIsLoading(false);
         },
         () => {
           // On done: finalize message
@@ -150,8 +150,6 @@ function App() {
           setIsLoading(false);
         },
         (receivedConversationId) => {
-          // Handle conversation ID from start event
-          newConversationId = receivedConversationId;
           if (!conversationId || conversationId !== receivedConversationId) {
             setConversationId(receivedConversationId);
           }
@@ -168,23 +166,6 @@ function App() {
       setIsLoading(false);
     }
   };
-
-  // Add assistant message with in-progress status
-  useEffect(() => {
-    if (isLoading && messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'user') {
-        const assistantMsg = {
-          id: generateUUIDv4(),
-          role: 'assistant',
-          content: '',
-          status: 'in-progress',
-          timestamp: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-      }
-    }
-  }, [isLoading]);
 
   // Show empty state if no messages
   const showEmptyState = messages.length === 0 && !isLoading;

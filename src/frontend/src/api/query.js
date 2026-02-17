@@ -1,15 +1,15 @@
-import { makeRequest, buildUrl } from './client.js';
+import { makeRequest } from './client.js';
 
 /**
  * Post a question to the backend and return an SSE stream
  */
 export async function postQuery(question, conversationId = null) {
   const body = {
-    question,
+    query: question,
     ...(conversationId && { conversation_id: conversationId }),
   };
 
-  const response = await makeRequest('/api/v1/query', {
+  const response = await makeRequest('/api/v1/query/stream', {
     method: 'POST',
     body: JSON.stringify(body),
   });
