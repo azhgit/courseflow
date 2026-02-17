@@ -11,7 +11,7 @@ export function Header({ onNewChat, onReturnHome }) {
         {/* ── Left: Clickable logo + brand name ── */}
         <button
           onClick={onReturnHome}
-          className="btn-transition flex items-center gap-[12px] rounded-lg hover:opacity-80"
+          className="flex items-center gap-[12px] p-0 bg-transparent border-0"
           aria-label="Return to home"
         >
           {/* Logo: 32px square with navy-to-teal gradient */}
