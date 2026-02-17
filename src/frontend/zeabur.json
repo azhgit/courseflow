@@ -1,0 +1,9 @@
+{
+  "build": {
+    "command": "npm run build",
+    "output": "dist"
+  },
+  "env": {
+    "VITE_API_BASE_URL": "https://courseflow-backend.zeabur.app"
+  }
+}
