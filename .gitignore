@@ -48,9 +48,14 @@ htmlcov/
 .env.local
 
 # Local data (ChromaDB, SQLite)
-data/
+data/*
+!data/chroma/
+!data/chroma/**
+!data/courseflow.db
+data/evaluations.db
 *.db
 *.db-journal
+!data/courseflow.db
 
 # Logs
 *.log

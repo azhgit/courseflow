@@ -48,5 +48,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/api/v1/health')"
 
-# Start uvicorn with PORT binding
-CMD uvicorn courseflow.api.main:app --host 0.0.0.0 --port ${PORT}
+# Start app with Zeabur bootstrap script
+CMD ["bash", "scripts/zeabur-start.sh"]

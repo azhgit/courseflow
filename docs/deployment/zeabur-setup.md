@@ -63,7 +63,20 @@ QUOTA_DAILY_BUDGET=300
 2. Wait for build to complete (~2-3 minutes)
 3. Once deployed, copy the backend URL (e.g., `https://courseflow-backend-xxx.zeabur.app`)
 
-### 2.5 Verify Backend Health
+### 2.5 Data Bootstrap Behavior (Important)
+
+Backend startup now uses `scripts/zeabur-start.sh`:
+
+- Ensures `data/` and `data/chroma/` directories exist
+- Initializes SQLite schema (`scripts/init_db.py`)
+- Auto-runs `scripts/ingest_docs.py` only when ChromaDB files are missing
+- Starts API server after data is ready
+
+This means deployment works with both:
+- Pre-committed `data/chroma` + `data/courseflow.db` (fast startup), and
+- Fresh containers without persisted data (self-healing bootstrap).
+
+### 2.6 Verify Backend Health
 
 Test the health check endpoint:
 ```bash
