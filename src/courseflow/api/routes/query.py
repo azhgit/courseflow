@@ -241,15 +241,25 @@ async def query_endpoint(
             conversation_history=conversation_history,
         )
 
-        # Format sources
+        # Format sources (deduplicate by document source path, preserve order)
+        seen = set()
+        unique_answer_sources = []
+        for source in answer.sources:
+            key = getattr(source.document.metadata, "source", None)
+            if key is None:
+                continue
+            if key not in seen:
+                seen.add(key)
+                unique_answer_sources.append(source)
+
         sources = [
             SourceInfo(
-                content=source.document.content[:500],  # Truncate to 500 chars
-                source=source.document.metadata.source,
-                subject=source.document.metadata.subject,
-                similarity_score=source.similarity_score,
+                content=src.document.content[:500],
+                source=src.document.metadata.source,
+                subject=src.document.metadata.subject,
+                similarity_score=src.similarity_score,
             )
-            for source in answer.sources
+            for src in unique_answer_sources
         ]
 
         # Save assistant turn after successful RAG
@@ -528,6 +538,7 @@ async def stream_query_endpoint(
 
             all_chunks: list[str] = []
             all_sources: list[str] = []
+            _all_sources_set: set[str] = set()
             first_chunk_at: datetime | None = None
 
             async for chunk_text, source_names in rag_service.stream_query(
@@ -542,7 +553,11 @@ async def stream_query_endpoint(
                     first_ms = int((first_chunk_at - request_started).total_seconds() * 1000)
                     streaming_metrics.observe_first_token_latency(first_ms)
                 if source_names:
-                    all_sources = source_names
+                    # source_names may be a list of source paths; append unique ones preserving order
+                    for name in source_names:
+                        if name not in _all_sources_set:
+                            _all_sources_set.add(name)
+                            all_sources.append(name)
 
             if conversation_id is None:
                 conversation_id = str((await conversation_repo.create_conversation()).id)
