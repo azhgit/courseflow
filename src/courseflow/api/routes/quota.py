@@ -3,7 +3,7 @@
 Provides visibility into quota usage and health status.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 
 from courseflow.application.quota_service import QuotaService
 from courseflow.domain.exceptions import QuotaStorageError
@@ -11,7 +11,7 @@ from courseflow.domain.exceptions import QuotaStorageError
 router = APIRouter(prefix="/api/v1/quota", tags=["quota"])
 
 
-async def get_quota_service(request) -> QuotaService:
+async def get_quota_service(request: Request) -> QuotaService:
     """Dependency: Get quota service from app state.
 
     Args:

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import statistics
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
@@ -40,6 +41,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["query"])
 
 DOCS_DIR = Path("docs")
+_QUERY_STOP_WORDS = {
+    "what",
+    "which",
+    "how",
+    "why",
+    "when",
+    "where",
+    "who",
+    "tell",
+    "about",
+    "explain",
+    "and",
+    "the",
+    "for",
+    "with",
+}
 
 
 def _normalize_source_path(source: str) -> str | None:
@@ -83,6 +100,21 @@ def _normalize_source_path(source: str) -> str | None:
             return f"docs/{md_matches[0].relative_to(docs_root).as_posix()}"
 
     return None
+
+
+def _extract_query_terms(query_text: str) -> set[str]:
+    terms = {
+        token
+        for token in re.findall(r"[a-zA-Z0-9]+", query_text.lower())
+        if len(token) >= 4 and token not in _QUERY_STOP_WORDS
+    }
+    return terms
+
+
+def _source_matches_query(source_path: str, query_terms: set[str]) -> bool:
+    stem = Path(source_path).stem.lower()
+    source_tokens = set(re.split(r"[_\-\s]+", stem))
+    return bool(source_tokens & query_terms)
 
 
 def _is_local_unlimited() -> bool:
@@ -313,6 +345,17 @@ async def query_endpoint(
             )
             for src, normalized_source in unique_answer_sources
         ]
+
+        # Prefer sources whose filename tokens match query terms; fallback to full set if none match.
+        query_terms = _extract_query_terms(query_text)
+        if query_terms and sources:
+            matched_sources = [
+                source_info
+                for source_info in sources
+                if _source_matches_query(source_info.source, query_terms)
+            ]
+            if matched_sources:
+                sources = matched_sources
 
         # Save assistant turn after successful RAG
         assistant_turn = ConversationTurn(
@@ -546,6 +589,7 @@ async def stream_query_endpoint(
                         error="rate_limit_exceeded",
                         message=f"Rate limit exceeded. Retry after {retry_after}s.",
                         retry_after=retry_after,
+                        error_source="local_guard",
                     ).to_sse()
                     return
 
@@ -615,6 +659,14 @@ async def stream_query_endpoint(
             if conversation_id is None:
                 conversation_id = str((await conversation_repo.create_conversation()).id)
 
+            query_terms = _extract_query_terms(query_text)
+            if query_terms and all_sources:
+                matched_sources = [
+                    source for source in all_sources if _source_matches_query(source, query_terms)
+                ]
+                if matched_sources:
+                    all_sources = matched_sources
+
             yield SSEEvent.with_sources(
                 sources=all_sources,
                 retrieval_count=len(all_sources),
@@ -643,11 +695,13 @@ async def stream_query_endpoint(
             ).to_sse()
         except QuotaExceededError as e:
             streaming_metrics.error_count += 1
+            error_source = "local_guard" if "local guard" in e.message.lower() else "gemini"
             yield SSEEvent(
                 type="error",
                 error="rate_limit_exceeded",
                 message=e.message,
                 retry_after=e.retry_after,
+                error_source=error_source,
             ).to_sse()
         except (CourseFlowTimeoutError, TimeoutError):
             streaming_metrics.timeout_count += 1

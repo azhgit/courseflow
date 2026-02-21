@@ -151,6 +151,7 @@ class TestStreamingErrorHandling:
         assert error_event["type"] == "error"
         assert error_event["error"] == "rate_limit_exceeded"
         assert "retry_after" in error_event
+        assert error_event.get("error_source") == "gemini"
 
     def test_rate_limit_includes_retry_timing(self, client: TestClient) -> None:
         """T018: Rate limit error includes retry_after timing."""
@@ -185,6 +186,7 @@ class TestStreamingErrorHandling:
         assert error_event["error"] == "rate_limit_exceeded"
         # Should have retry_after (even if default)
         assert "retry_after" in error_event or "60" in error_event.get("message", "")
+        assert error_event.get("error_source") == "gemini"
 
     # ========== T019: Timeout ==========
 

@@ -180,7 +180,13 @@ function App() {
           });
         },
         (errorEvent) => {
-          setError(mapSSEErrorToErrorState(errorEvent.error, errorEvent.message));
+          setError(
+            mapSSEErrorToErrorState(
+              errorEvent.error,
+              errorEvent.message,
+              errorEvent.error_source
+            )
+          );
           setIsLoading(false);
         },
         () => {

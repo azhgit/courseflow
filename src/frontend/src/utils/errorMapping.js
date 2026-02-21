@@ -41,11 +41,20 @@ export function mapHttpErrorToErrorState(status, body) {
 /**
  * Map SSE stream error events to error states
  */
-export function mapSSEErrorToErrorState(errorType, message) {
+export function mapSSEErrorToErrorState(errorType, message, errorSource = null) {
   if (errorType === 'no_relevant_documents') {
     return {
       type: 'no_documents',
       message: 'No content found for this query. Try rephrasing your question.',
+    };
+  }
+
+  if (errorType === 'rate_limit_exceeded') {
+    const sourceLabel = errorSource === 'local_guard' ? 'Local guard' : 'Gemini';
+    return {
+      type: 'rate_limit',
+      source: errorSource || 'gemini',
+      message: `${sourceLabel} rate limit reached. ${message || 'Please retry later.'}`,
     };
   }
 

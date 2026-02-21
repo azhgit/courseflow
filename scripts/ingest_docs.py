@@ -8,6 +8,7 @@ Run this script once during setup: python scripts/ingest_docs.py
 
 import asyncio
 import re
+import sys
 from pathlib import Path
 
 from courseflow.config import settings
@@ -106,8 +107,13 @@ async def ingest_documents(docs_dir: str = "./docs") -> None:
             
             # Chunk document
             chunks = chunk_text(content, max_tokens=500, overlap=50)
+            # Domain model requires at least 100 chars per chunk
+            chunks = [c for c in chunks if len(c.strip()) >= 100]
             print(f"\n📄 {doc_path.name} ({subject}/{topic})")
             print(f"   Chunks: {len(chunks)}")
+            if not chunks:
+                print("   ⏭️  Skipped (all chunks shorter than 100 chars)")
+                continue
             
             # Process each chunk
             documents = []
