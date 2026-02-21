@@ -1,4 +1,5 @@
 import { getExampleQuestions, postQuery } from '../query.js';
+import { EXAMPLE_QUESTIONS } from '../../constants/exampleQuestions.js';
 
 describe('query api', () => {
   beforeEach(() => {
@@ -37,12 +38,7 @@ describe('query api', () => {
 
     const examples = await getExampleQuestions();
 
-    expect(examples).toEqual([
-      'What is photosynthesis?',
-      'How does machine learning work?',
-      'What are the benefits of exercise?',
-      'Explain the theory of relativity',
-    ]);
+    expect(examples).toEqual(EXAMPLE_QUESTIONS);
   });
 
   it('falls back to defaults on fetch error', async () => {
@@ -50,11 +46,6 @@ describe('query api', () => {
 
     const examples = await getExampleQuestions();
 
-    expect(examples).toEqual([
-      'What is photosynthesis?',
-      'How does machine learning work?',
-      'What are the benefits of exercise?',
-      'Explain the theory of relativity',
-    ]);
+    expect(examples).toEqual(EXAMPLE_QUESTIONS);
   });
 });

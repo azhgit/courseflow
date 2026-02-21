@@ -29,6 +29,7 @@ function App() {
   const { parseSSEStream } = useStreamingResponse();
   const abortControllerRef = useRef(null);
   const [examples, setExamples] = useState([]);
+  const [isExamplesLoading, setIsExamplesLoading] = useState(true);
 
   useEffect(() => {
     const session = loadSession();
@@ -38,8 +39,10 @@ function App() {
     }
 
     const loadExamples = async () => {
+      setIsExamplesLoading(true);
       const loaded = await getExampleQuestions();
       if (loaded) setExamples(loaded);
+      setIsExamplesLoading(false);
     };
     loadExamples();
   }, [setConversationId, setMessages]);
@@ -216,6 +219,7 @@ function App() {
           {showEmptyState ? (
             <EmptyState
               examples={examples}
+              isExamplesLoading={isExamplesLoading}
               onExampleClick={handleExampleClick}
               onSubmit={handleSubmitQuestion}
               isDisabled={isLoading}

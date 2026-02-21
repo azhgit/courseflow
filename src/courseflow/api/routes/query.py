@@ -90,10 +90,10 @@ class DemoExamplesResponse(BaseModel):
 
 
 DEMO_EXAMPLE_QUESTIONS = [
-    "What is photosynthesis?",
-    "How does machine learning work?",
-    "What are the benefits of exercise?",
-    "Explain the theory of relativity",
+    "What is photosynthesis and how does it convert light energy?",
+    "Explain how async/await works in Python",
+    "What were the main causes of World War II?",
+    "What is matrix multiplication and when is it defined?",
 ]
 
 
