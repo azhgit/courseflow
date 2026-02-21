@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { StreamingCursor } from './StreamingCursor.jsx';
 import { SourceAttribution } from './SourceAttribution.jsx';
+import { SourcePreview } from './SourcePreview.jsx';
+import { extractKeywords } from '../utils/keywordExtractor';
 
 /**
  * MessageBubble: Chat message bubble
@@ -9,28 +12,47 @@ import { SourceAttribution } from './SourceAttribution.jsx';
  */
 export function MessageBubble({ message }) {
   const isUser = message.role === 'user';
+  const [selectedSource, setSelectedSource] = useState(null);
+
+  const handleSourceClick = (sourceName, sourcePath) => {
+    // Extract keywords from the message content for highlighting
+    const keywords = extractKeywords(message.content, 5);
+    setSelectedSource({ name: sourceName, path: sourcePath, keywords });
+  };
 
   return (
-    <div className={`message-fade flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <article
-        className={`max-w-[700px] rounded-[20px] px-[20px] py-[16px] text-[16px] leading-relaxed ${
-          isUser
-            ? 'rounded-tr-sm bg-[#0F172A] text-[#FFFFFF]'
-            : 'rounded-tl-sm border border-[#E2E8F0] bg-[#FFFFFF] text-[#1E293B] shadow-md'
-        }`}
-      >
-        <div className="whitespace-pre-wrap break-words">
-          {message.content}
-          {message.status === 'in-progress' && (
-            <span className="ml-1 inline-block align-middle">
-              <StreamingCursor />
-            </span>
+    <>
+      <div className={`message-fade flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+        <article
+          className={`max-w-[700px] rounded-[20px] px-[20px] py-[16px] text-[16px] leading-relaxed ${
+            isUser
+              ? 'rounded-tr-sm bg-[#0F172A] text-[#FFFFFF]'
+              : 'rounded-tl-sm border border-[#E2E8F0] bg-[#FFFFFF] text-[#1E293B] shadow-md'
+          }`}
+        >
+          <div className="whitespace-pre-wrap break-words">
+            {message.content}
+            {message.status === 'in-progress' && (
+              <span className="ml-1 inline-block align-middle">
+                <StreamingCursor />
+              </span>
+            )}
+          </div>
+          {!isUser && message.sources && message.status === 'complete' && (
+            <SourceAttribution sources={message.sources} onSourceClick={handleSourceClick} />
           )}
-        </div>
-        {!isUser && message.sources && message.status === 'complete' && (
-          <SourceAttribution sources={message.sources} />
-        )}
-      </article>
-    </div>
+        </article>
+      </div>
+
+      {/* Source Preview Modal */}
+      {selectedSource && (
+        <SourcePreview
+          sourceName={selectedSource.name}
+          sourcePath={selectedSource.path}
+          onClose={() => setSelectedSource(null)}
+          highlightTerms={selectedSource.keywords || []}
+        />
+      )}
+    </>
   );
 }

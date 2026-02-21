@@ -142,6 +142,17 @@ class TestSSEEventSerialization:
         assert data["message"] == "Retry after 60s"
         assert data["content"] is None
 
+    def test_sse_error_event_with_source_serializes(self) -> None:
+        """Should serialize optional error_source for rate-limit diagnostics."""
+        event = SSEEvent(
+            type="error",
+            error="rate_limit_exceeded",
+            message="Retry after 60s",
+            error_source="gemini",
+        )
+        parsed = json.loads(event.to_sse().replace("data: ", "").strip())
+        assert parsed["error_source"] == "gemini"
+
     def test_sse_error_event_no_relevant_documents(self) -> None:
         """Should create error event for no relevant documents."""
         event = SSEEvent.failure(

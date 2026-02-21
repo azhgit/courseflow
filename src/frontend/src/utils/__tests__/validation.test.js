@@ -28,6 +28,7 @@ describe('Validation Functions', () => {
   // ISO8601 validation
   test('isValidISO8601 should validate correct timestamps', () => {
     expect(isValidISO8601('2026-02-17T10:30:00Z')).toBe(true);
+    expect(isValidISO8601('2026-02-17T10:30:00.123Z')).toBe(true);
   });
 
   test('isValidISO8601 should reject invalid timestamps', () => {
@@ -63,6 +64,17 @@ describe('Validation Functions', () => {
       content: 'Hello',
       status: 'complete',
       timestamp: '2026-02-17T10:30:00Z',
+    };
+    expect(isValidMessage(message)).toBe(true);
+  });
+
+  test('isValidMessage should allow empty content while in-progress', () => {
+    const message = {
+      id: '550e8400-e29b-4000-a000-000000000000',
+      role: 'assistant',
+      content: '',
+      status: 'in-progress',
+      timestamp: '2026-02-17T10:30:00.123Z',
     };
     expect(isValidMessage(message)).toBe(true);
   });

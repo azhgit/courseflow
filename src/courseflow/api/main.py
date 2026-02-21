@@ -169,17 +169,38 @@ def create_app() -> FastAPI:
     try:
         from courseflow.api.middleware.rate_limit import RateLimitMiddleware
 
-        app.add_middleware(
-            RateLimitMiddleware,
-            db_path=settings.database_path,
-            hourly_limit=settings.QUOTA_HOURLY_LIMIT,
-        )
-        logger.info(f"Rate limit middleware registered: {settings.QUOTA_HOURLY_LIMIT} req/hour")
+        # Allow disabling rate limiting for local development by setting
+        # LOCAL_UNLIMITED=true (default true for local/dev).
+        # Production deployments should set LOCAL_UNLIMITED=false.
+        # Also skip registration if QUOTA_HOURLY_LIMIT <= 0 (treat as unlimited).
+        local_unlimited = settings.LOCAL_UNLIMITED
+
+        if local_unlimited:
+            logger.info(
+                "Rate limit middleware disabled for local development (LOCAL_UNLIMITED=true)."
+            )
+        elif settings.QUOTA_HOURLY_LIMIT <= 0:
+            logger.info("Rate limit middleware disabled because QUOTA_HOURLY_LIMIT <= 0.")
+        else:
+            app.add_middleware(
+                RateLimitMiddleware,
+                db_path=settings.database_path,
+                hourly_limit=settings.QUOTA_HOURLY_LIMIT,
+            )
+            logger.info(f"Rate limit middleware registered: {settings.QUOTA_HOURLY_LIMIT} req/hour")
     except Exception as e:
         logger.warning(f"Failed to initialize rate limit middleware: {e}")
 
     # Quota middleware (must be added BEFORE CORS for proper ordering)
-    if hasattr(app.state, "quota_service"):
+    # Skip when local development overrides are active.
+    mock_mode = settings.MOCK_QUERY_MODE
+    if local_unlimited or mock_mode:
+        logger.info(
+            "Quota middleware disabled (LOCAL_UNLIMITED=%s, MOCK_QUERY_MODE=%s).",
+            local_unlimited,
+            mock_mode,
+        )
+    elif hasattr(app.state, "quota_service"):
         from courseflow.api.middleware.quota_middleware import QuotaMiddleware
 
         app.add_middleware(QuotaMiddleware, quota_service=app.state.quota_service)
@@ -205,6 +226,11 @@ def create_app() -> FastAPI:
     app.include_router(subjects.router, tags=["subjects"])
     app.include_router(quota.router, tags=["quota"])
     app.include_router(evaluation.router, prefix=settings.api_v1_prefix, tags=["evaluation"])
+
+    # Source document retrieval (safe access to docs/)
+    from courseflow.api.routes.source import router as source_router
+
+    app.include_router(source_router, tags=["source"])
 
     return app
 

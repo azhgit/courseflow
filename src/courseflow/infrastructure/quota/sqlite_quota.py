@@ -27,7 +27,7 @@ class SQLiteQuotaStore(QuotaStorePort):
     CREATE TABLE IF NOT EXISTS daily_quota (
         date TEXT PRIMARY KEY,
         used INTEGER NOT NULL DEFAULT 0,
-        limit INTEGER NOT NULL,
+        "limit" INTEGER NOT NULL,
         cache_hits INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -80,7 +80,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                     try:
                         cursor = await db.execute(
                             """
-                            SELECT date, used, limit FROM daily_quota
+                            SELECT date, used, "limit" FROM daily_quota
                             WHERE date = ?
                             """,
                             (today,),
@@ -92,7 +92,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                             await db.execute(
                                 """
                                 INSERT INTO daily_quota
-                                (date, used, limit, cache_hits, created_at, updated_at)
+                                (date, used, "limit", cache_hits, created_at, updated_at)
                                 VALUES (?, ?, ?, ?, ?, ?)
                                 """,
                                 (today, 0, 300, 0, now_iso, now_iso),
@@ -134,7 +134,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                 await db.execute(
                     """
                     INSERT INTO daily_quota
-                    (date, used, limit, cache_hits, created_at, updated_at)
+                    (date, used, "limit", cache_hits, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT(date) DO UPDATE SET
                     used = used + 1,
@@ -164,7 +164,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                 await db.execute(
                     """
                     INSERT INTO daily_quota
-                    (date, used, limit, cache_hits, created_at, updated_at)
+                    (date, used, "limit", cache_hits, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT(date) DO UPDATE SET
                     used = 0,
@@ -217,7 +217,7 @@ class SQLiteQuotaStore(QuotaStorePort):
                 await db.execute(
                     """
                     INSERT INTO daily_quota
-                    (date, used, limit, cache_hits, created_at, updated_at)
+                    (date, used, "limit", cache_hits, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT(date) DO UPDATE SET
                     cache_hits = cache_hits + 1,

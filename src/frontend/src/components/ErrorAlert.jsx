@@ -50,8 +50,11 @@ export function ErrorAlert({ error = {}, onDismiss, onRetry }) {
   }, [remaining]);
 
   const rawMessage = error?.error?.message || error?.message || '';
-  const friendly = /quota|RESOURCE_EXHAUSTED|quota exceeded/i.test(rawMessage)
-    ? 'Quota exceeded. Please wait and retry, or check your project quota.'
+  const quotaLike = /quota|RESOURCE_EXHAUSTED|quota exceeded|rate limit/i.test(rawMessage);
+  const source = error?.source || error?.error?.details?.source;
+  const sourceLabel = source === 'local_guard' ? 'Local guard' : source === 'gemini' ? 'Gemini' : null;
+  const friendly = quotaLike
+    ? `${sourceLabel ? `${sourceLabel} ` : ''}quota/rate limit reached. Please wait and retry.`
     : 'Something went wrong. Please try again.';
 
   const copyDetails = async () => {

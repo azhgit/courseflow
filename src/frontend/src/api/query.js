@@ -1,4 +1,5 @@
 import { makeRequest } from './client.js';
+import { EXAMPLE_QUESTIONS } from '../constants/exampleQuestions.js';
 
 /**
  * Post a question to the backend and return an SSE stream
@@ -25,13 +26,6 @@ export async function postQuery(question, conversationId = null) {
   return response;
 }
 
-const DEFAULT_EXAMPLES = [
-  'What is photosynthesis?',
-  'How does machine learning work?',
-  'What are the benefits of exercise?',
-  'Explain the theory of relativity',
-];
-
 /**
  * Fetch example questions from backend if available.
  * Falls back to local defaults when endpoint is missing.
@@ -43,14 +37,14 @@ export async function getExampleQuestions() {
     });
 
     if (!response.ok) {
-      return DEFAULT_EXAMPLES;
+      return EXAMPLE_QUESTIONS;
     }
 
     const data = await response.json();
     return Array.isArray(data?.examples) && data.examples.length > 0
       ? data.examples
-      : DEFAULT_EXAMPLES;
+      : EXAMPLE_QUESTIONS;
   } catch {
-    return DEFAULT_EXAMPLES;
+    return EXAMPLE_QUESTIONS;
   }
 }

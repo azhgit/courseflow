@@ -1,7 +1,7 @@
 """
 Rate limit middleware for Zeabur deployment.
 
-Enforces 20 requests per hour per IP address to protect Gemini API quota.
+Enforces configurable requests per hour per IP address to protect Gemini API quota.
 Uses SQLite persistence to survive container restarts.
 """
 
@@ -20,7 +20,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     Middleware to enforce IP-based rate limiting.
 
     Applies to all endpoints except /health.
-    Enforces 20 requests per hour per IP (configurable via QUOTA_HOURLY_LIMIT).
+    Enforces configurable requests per hour per IP (via QUOTA_HOURLY_LIMIT).
     Persists state in SQLite for container restart resilience.
     """
 

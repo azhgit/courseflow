@@ -1,24 +1,21 @@
+import { useState, useRef } from 'react';
+import { EXAMPLE_QUESTIONS } from '../constants/exampleQuestions.js';
+import { DemoNotice } from './DemoNotice.jsx';
+
 /**
  * EmptyState: Landing page with hero section + cards + input
  * No header — full screen experience
  * Input at bottom (sticky footer)
  */
-export function EmptyState({ examples = [], onExampleClick, onSubmit, isDisabled = false }) {
-  const defaultExamples = [
-    'What is photosynthesis and how does it convert light energy?',
-    'Explain how async/await works in Python',
-    'What were the main causes of World War II?',
-    'How does machine learning differ from traditional programming?',
-  ];
-
+export function EmptyState({ examples = [], isExamplesLoading = false, onExampleClick, onSubmit, isDisabled = false }) {
   const displayExamples = examples.length > 0
     ? examples.map((ex) => typeof ex === 'string' ? ex : ex.question || ex.text || String(ex))
-    : defaultExamples;
+    : EXAMPLE_QUESTIONS;
 
   return (
     <div className="flex h-screen flex-col">
       {/* ── Hero section (scrollable) ── */}
-      <div className="flex flex-1 items-center justify-center overflow-y-auto px-[24px] py-[64px]">
+      <div className="flex flex-1 justify-center overflow-y-auto px-[24px] py-[64px]">
         <div className="w-full max-w-[700px]">
           {/* ── Logo: 64×64 gradient square ── */}
           <div className="mx-auto mb-[24px] flex h-[64px] w-[64px] items-center justify-center rounded-[16px] bg-gradient-to-br from-[#0F172A] to-[#0D9488] shadow-lg">
@@ -35,22 +32,37 @@ export function EmptyState({ examples = [], onExampleClick, onSubmit, isDisabled
             AI-powered learning assistant for any subject
           </p>
 
+          {/* ── Demo Notice ── */}
+          <div className="mt-[32px]">
+            <DemoNotice variant="banner" />
+          </div>
+
           {/* ── Example cards: 2×2 grid ── */}
-          <div className="mt-[48px] grid grid-cols-1 gap-[16px] sm:grid-cols-2">
-            {displayExamples.map((example, idx) => (
-              <button
-                key={idx}
-                onClick={() => onExampleClick(example)}
-                className="hover-lift group cursor-pointer rounded-[16px] border border-[#E2E8F0] bg-[#FFFFFF] px-[20px] py-[20px] text-left shadow-sm transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2"
-              >
-                <p className="text-[16px] font-medium text-[#334155]">
-                  {example}
-                </p>
-                <p className="mt-[8px] text-[12px] text-[#94A3B8]">
-                  Click to ask →
-                </p>
-              </button>
-            ))}
+          <div className="mt-[32px] grid grid-cols-1 gap-[16px] sm:grid-cols-2">
+            {isExamplesLoading
+              ? Array.from({ length: 4 }).map((_, idx) => (
+                <div
+                  key={`skeleton-${idx}`}
+                  className="animate-pulse rounded-[16px] border border-[#E2E8F0] bg-[#FFFFFF] px-[20px] py-[20px] shadow-sm"
+                >
+                  <div className="h-[20px] w-full rounded bg-[#E2E8F0]" />
+                  <div className="mt-[8px] h-[12px] w-[35%] rounded bg-[#E2E8F0]" />
+                </div>
+              ))
+              : displayExamples.map((example, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onExampleClick(example)}
+                  className="hover-lift group cursor-pointer rounded-[16px] border border-[#E2E8F0] bg-[#FFFFFF] px-[20px] py-[20px] text-left shadow-sm transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2"
+                >
+                  <p className="text-[16px] font-medium text-[#334155]">
+                    {example}
+                  </p>
+                  <p className="mt-[8px] text-[12px] text-[#94A3B8]">
+                    Click to ask →
+                  </p>
+                </button>
+              ))}
           </div>
         </div>
       </div>
@@ -69,7 +81,6 @@ export function EmptyState({ examples = [], onExampleClick, onSubmit, isDisabled
  * LandingPageInput: Input component for landing page
  * Integrated with EmptyState
  */
-import { useState, useRef } from 'react';
 
 function LandingPageInput({ onSubmit, isDisabled = false }) {
   const [input, setInput] = useState('');

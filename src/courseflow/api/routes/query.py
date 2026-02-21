@@ -2,9 +2,11 @@
 
 import asyncio
 import logging
+import re
 import statistics
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import aiosqlite
@@ -32,10 +34,115 @@ from courseflow.domain.exceptions import (
     TimeoutError as CourseFlowTimeoutError,
 )
 from courseflow.domain.models import ConversationTurn, Query, SSEEvent, StreamingQuery
+from courseflow.infrastructure.streaming.cached_response import stream_cached_answer
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["query"])
+
+DOCS_DIR = Path("docs")
+_QUERY_STOP_WORDS = {
+    "what",
+    "which",
+    "how",
+    "why",
+    "when",
+    "where",
+    "who",
+    "tell",
+    "about",
+    "explain",
+    "and",
+    "the",
+    "for",
+    "with",
+}
+
+
+def _normalize_source_path(source: str) -> str | None:
+    """Normalize source metadata to a valid docs-relative path (docs/...).
+
+    Returns None when source cannot be resolved to an existing markdown file.
+    """
+    raw = source.strip().lstrip("/")
+    if not raw:
+        return None
+
+    docs_root = DOCS_DIR.resolve()
+
+    def _resolve_candidate(rel: str) -> str | None:
+        rel_path = Path(rel)
+        try:
+            full_path = (docs_root / rel_path).resolve()
+            full_path.relative_to(docs_root)
+        except ValueError:
+            return None
+        if full_path.is_file() and full_path.suffix.lower() == ".md":
+            return f"docs/{full_path.relative_to(docs_root).as_posix()}"
+        return None
+
+    candidates: list[str] = []
+    if raw.startswith("docs/"):
+        candidates.append(raw[len("docs/") :])
+    else:
+        candidates.append(raw)
+
+    for candidate in candidates:
+        normalized = _resolve_candidate(candidate)
+        if normalized is not None:
+            return normalized
+
+    # Last fallback: bare file name -> uniquely match anywhere under docs/
+    if "/" not in raw:
+        matches = list(docs_root.rglob(raw))
+        md_matches = [m for m in matches if m.is_file() and m.suffix.lower() == ".md"]
+        if len(md_matches) == 1:
+            return f"docs/{md_matches[0].relative_to(docs_root).as_posix()}"
+
+    return None
+
+
+def _extract_query_terms(query_text: str) -> set[str]:
+    terms = {
+        token
+        for token in re.findall(r"[a-zA-Z0-9]+", query_text.lower())
+        if len(token) >= 4 and token not in _QUERY_STOP_WORDS
+    }
+    return terms
+
+
+def _source_matches_query(source_path: str, query_terms: set[str]) -> bool:
+    stem = Path(source_path).stem.lower()
+    source_tokens = set(re.split(r"[_\-\s]+", stem))
+    return bool(source_tokens & query_terms)
+
+
+def _is_local_unlimited() -> bool:
+    """Whether local quota/rate limits are disabled for development."""
+    from courseflow.config import settings
+
+    return settings.LOCAL_UNLIMITED
+
+
+def _is_mock_query_mode() -> bool:
+    """Whether query responses should be mocked (local development only)."""
+    from courseflow.config import settings
+
+    return settings.MOCK_QUERY_MODE
+
+
+def _build_mock_answer(query_text: str) -> tuple[str, list[str]]:
+    """Build deterministic mock answer and sources for frontend development."""
+    answer = (
+        "[Mock Mode] This is a simulated streaming response for frontend development. "
+        f'Your query was: "{query_text}". '
+        "You can continue working on layout, source interactions, and error states "
+        "without consuming Gemini API quota."
+    )
+    return answer, [
+        "docs/biology/photosynthesis.md",
+        "docs/programming/python-async.md",
+    ]
 
 
 # Request/Response schemas
@@ -90,10 +197,10 @@ class DemoExamplesResponse(BaseModel):
 
 
 DEMO_EXAMPLE_QUESTIONS = [
-    "What is photosynthesis?",
-    "How does machine learning work?",
-    "What are the benefits of exercise?",
-    "Explain the theory of relativity",
+    "What is photosynthesis and how does it convert light energy?",
+    "Explain how async/await works in Python",
+    "What were the main causes of World War II?",
+    "What is matrix multiplication and when is it defined?",
 ]
 
 
@@ -155,13 +262,14 @@ async def query_endpoint(
         # Create Query model (domain validation)
         query = Query(text=query_text)
 
-        allowed, retry_after = rate_limiter.is_allowed()
-        if not allowed:
-            logger.warning(f"Local rate limit exceeded; retry_after={retry_after}s")
-            raise QuotaExceededError(
-                message="Rate limit exceeded (local guard)",
-                retry_after=retry_after,
-            )
+        if not _is_local_unlimited():
+            allowed, retry_after = rate_limiter.is_allowed()
+            if not allowed:
+                logger.warning(f"Local rate limit exceeded; retry_after={retry_after}s")
+                raise QuotaExceededError(
+                    message="Rate limit exceeded (local guard)",
+                    retry_after=retry_after,
+                )
 
         logger.info(f"Received query: {query.id} - '{query.text[:50]}...'")
 
@@ -213,16 +321,43 @@ async def query_endpoint(
             conversation_history=conversation_history,
         )
 
-        # Format sources
+        # Format sources (deduplicate by document source path, preserve order)
+        seen = set()
+        unique_answer_sources = []
+        for source in answer.sources:
+            source_value = getattr(source.document.metadata, "source", None)
+            if not source_value:
+                continue
+            normalized_source = _normalize_source_path(source_value)
+            if not normalized_source:
+                continue
+            key = normalized_source
+            if key is None:
+                continue
+            if key not in seen:
+                seen.add(key)
+                unique_answer_sources.append((source, normalized_source))
+
         sources = [
             SourceInfo(
-                content=source.document.content[:500],  # Truncate to 500 chars
-                source=source.document.metadata.source,
-                subject=source.document.metadata.subject,
-                similarity_score=source.similarity_score,
+                content=src.document.content[:500],
+                source=normalized_source,
+                subject=src.document.metadata.subject,
+                similarity_score=src.similarity_score,
             )
-            for source in answer.sources
+            for src, normalized_source in unique_answer_sources
         ]
+
+        # Prefer sources whose filename tokens match query terms; fallback to full set if none match.
+        query_terms = _extract_query_terms(query_text)
+        if query_terms and sources:
+            matched_sources = [
+                source_info
+                for source_info in sources
+                if _source_matches_query(source_info.source, query_terms)
+            ]
+            if matched_sources:
+                sources = matched_sources
 
         # Save assistant turn after successful RAG
         assistant_turn = ConversationTurn(
@@ -448,15 +583,17 @@ async def stream_query_endpoint(
             )
             streaming_metrics.query_count += 1
 
-            allowed, retry_after = rate_limiter.is_allowed()
-            if not allowed:
-                yield SSEEvent(
-                    type="error",
-                    error="rate_limit_exceeded",
-                    message=f"Rate limit exceeded. Retry after {retry_after}s.",
-                    retry_after=retry_after,
-                ).to_sse()
-                return
+            if not _is_local_unlimited():
+                allowed, retry_after = rate_limiter.is_allowed()
+                if not allowed:
+                    yield SSEEvent(
+                        type="error",
+                        error="rate_limit_exceeded",
+                        message=f"Rate limit exceeded. Retry after {retry_after}s.",
+                        retry_after=retry_after,
+                        error_source="local_guard",
+                    ).to_sse()
+                    return
 
             conversation_id: str | None = streaming_query.conversation_id
             conversation_history: str | None = None
@@ -475,8 +612,31 @@ async def stream_query_endpoint(
                 )
                 conversation_history = turn_history.to_llm_context() if turn_history.turns else None
 
+            if _is_mock_query_mode():
+                if conversation_id is None:
+                    conversation_id = str((await conversation_repo.create_conversation()).id)
+
+                mock_answer, mock_sources = _build_mock_answer(streaming_query.query)
+                async for chunk in stream_cached_answer(
+                    mock_answer,
+                    delay_ms=5,
+                ):
+                    yield chunk
+
+                yield SSEEvent.with_sources(
+                    sources=mock_sources,
+                    retrieval_count=len(mock_sources),
+                ).to_sse()
+                yield SSEEvent.done(
+                    conversation_id=conversation_id,
+                    token_count=len(mock_answer.split()),
+                ).to_sse()
+                streaming_metrics.success_count += 1
+                return
+
             all_chunks: list[str] = []
             all_sources: list[str] = []
+            _all_sources_set: set[str] = set()
             first_chunk_at: datetime | None = None
 
             async for chunk_text, source_names in rag_service.stream_query(
@@ -491,10 +651,23 @@ async def stream_query_endpoint(
                     first_ms = int((first_chunk_at - request_started).total_seconds() * 1000)
                     streaming_metrics.observe_first_token_latency(first_ms)
                 if source_names:
-                    all_sources = source_names
+                    # source_names may be a list of source paths; append unique ones preserving order
+                    for name in source_names:
+                        normalized = _normalize_source_path(name)
+                        if normalized and normalized not in _all_sources_set:
+                            _all_sources_set.add(normalized)
+                            all_sources.append(normalized)
 
             if conversation_id is None:
                 conversation_id = str((await conversation_repo.create_conversation()).id)
+
+            query_terms = _extract_query_terms(query_text)
+            if query_terms and all_sources:
+                matched_sources = [
+                    source for source in all_sources if _source_matches_query(source, query_terms)
+                ]
+                if matched_sources:
+                    all_sources = matched_sources
 
             yield SSEEvent.with_sources(
                 sources=all_sources,
@@ -524,11 +697,13 @@ async def stream_query_endpoint(
             ).to_sse()
         except QuotaExceededError as e:
             streaming_metrics.error_count += 1
+            error_source = "local_guard" if "local guard" in e.message.lower() else "gemini"
             yield SSEEvent(
                 type="error",
                 error="rate_limit_exceeded",
                 message=e.message,
                 retry_after=e.retry_after,
+                error_source=error_source,
             ).to_sse()
         except (CourseFlowTimeoutError, TimeoutError):
             streaming_metrics.timeout_count += 1

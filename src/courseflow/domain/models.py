@@ -613,6 +613,10 @@ class SSEEvent(BaseModel):
         ge=0,
         description="Seconds to wait before retry (for rate limit errors)",
     )
+    error_source: str | None = Field(
+        default=None,
+        description='Rate-limit origin for error events ("gemini" | "local_guard")',
+    )
 
     model_config = {"frozen": True}  # Immutable value object
 
@@ -642,6 +646,8 @@ class SSEEvent(BaseModel):
             payload["message"] = self.message
         if self.retry_after is not None:
             payload["retry_after"] = self.retry_after
+        if self.error_source is not None:
+            payload["error_source"] = self.error_source
 
         import json
 
