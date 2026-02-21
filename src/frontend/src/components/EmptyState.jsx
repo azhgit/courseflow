@@ -15,7 +15,7 @@ export function EmptyState({ examples = [], isExamplesLoading = false, onExample
   return (
     <div className="flex h-screen flex-col">
       {/* ── Hero section (scrollable) ── */}
-      <div className="flex flex-1 items-center justify-center overflow-y-auto px-[24px] py-[64px]">
+      <div className="flex flex-1 justify-center overflow-y-auto px-[24px] py-[64px]">
         <div className="w-full max-w-[700px]">
           {/* ── Logo: 64×64 gradient square ── */}
           <div className="mx-auto mb-[24px] flex h-[64px] w-[64px] items-center justify-center rounded-[16px] bg-gradient-to-br from-[#0F172A] to-[#0D9488] shadow-lg">
