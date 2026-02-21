@@ -1,10 +1,11 @@
 """Integration tests for source document API."""
 
+import os
+import tempfile
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
-from pathlib import Path
-import tempfile
-import os
 
 from courseflow.api.main import create_app
 

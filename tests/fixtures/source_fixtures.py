@@ -1,7 +1,6 @@
 """Test fixtures for source API."""
 
 import pytest
-from pathlib import Path
 
 
 @pytest.fixture

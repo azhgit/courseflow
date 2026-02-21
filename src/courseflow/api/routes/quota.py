@@ -3,7 +3,7 @@
 Provides visibility into quota usage and health status.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from courseflow.application.quota_service import QuotaService
 from courseflow.domain.exceptions import QuotaStorageError

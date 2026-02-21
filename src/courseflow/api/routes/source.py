@@ -60,11 +60,11 @@ def _validate_source_path(requested_path: str) -> Path:
     allowed_resolved = ALLOWED_DIRECTORY.resolve()
     try:
         full_path.relative_to(allowed_resolved)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: path is outside allowed directory",
-        )
+        ) from err
 
     # Only allow .md files
     if full_path.suffix.lower() != ".md":
