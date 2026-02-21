@@ -5,6 +5,7 @@ import logging
 import statistics
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import aiosqlite
@@ -37,6 +38,51 @@ from courseflow.infrastructure.streaming.cached_response import stream_cached_an
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["query"])
+
+DOCS_DIR = Path("docs")
+
+
+def _normalize_source_path(source: str) -> str | None:
+    """Normalize source metadata to a valid docs-relative path (docs/...).
+
+    Returns None when source cannot be resolved to an existing markdown file.
+    """
+    raw = source.strip().lstrip("/")
+    if not raw:
+        return None
+
+    docs_root = DOCS_DIR.resolve()
+
+    def _resolve_candidate(rel: str) -> str | None:
+        rel_path = Path(rel)
+        try:
+            full_path = (docs_root / rel_path).resolve()
+            full_path.relative_to(docs_root)
+        except ValueError:
+            return None
+        if full_path.is_file() and full_path.suffix.lower() == ".md":
+            return f"docs/{full_path.relative_to(docs_root).as_posix()}"
+        return None
+
+    candidates: list[str] = []
+    if raw.startswith("docs/"):
+        candidates.append(raw[len("docs/") :])
+    else:
+        candidates.append(raw)
+
+    for candidate in candidates:
+        normalized = _resolve_candidate(candidate)
+        if normalized is not None:
+            return normalized
+
+    # Last fallback: bare file name -> uniquely match anywhere under docs/
+    if "/" not in raw:
+        matches = list(docs_root.rglob(raw))
+        md_matches = [m for m in matches if m.is_file() and m.suffix.lower() == ".md"]
+        if len(md_matches) == 1:
+            return f"docs/{md_matches[0].relative_to(docs_root).as_posix()}"
+
+    return None
 
 
 def _is_local_unlimited() -> bool:
@@ -245,21 +291,27 @@ async def query_endpoint(
         seen = set()
         unique_answer_sources = []
         for source in answer.sources:
-            key = getattr(source.document.metadata, "source", None)
+            source_value = getattr(source.document.metadata, "source", None)
+            if not source_value:
+                continue
+            normalized_source = _normalize_source_path(source_value)
+            if not normalized_source:
+                continue
+            key = normalized_source
             if key is None:
                 continue
             if key not in seen:
                 seen.add(key)
-                unique_answer_sources.append(source)
+                unique_answer_sources.append((source, normalized_source))
 
         sources = [
             SourceInfo(
                 content=src.document.content[:500],
-                source=src.document.metadata.source,
+                source=normalized_source,
                 subject=src.document.metadata.subject,
                 similarity_score=src.similarity_score,
             )
-            for src in unique_answer_sources
+            for src, normalized_source in unique_answer_sources
         ]
 
         # Save assistant turn after successful RAG
@@ -555,9 +607,10 @@ async def stream_query_endpoint(
                 if source_names:
                     # source_names may be a list of source paths; append unique ones preserving order
                     for name in source_names:
-                        if name not in _all_sources_set:
-                            _all_sources_set.add(name)
-                            all_sources.append(name)
+                        normalized = _normalize_source_path(name)
+                        if normalized and normalized not in _all_sources_set:
+                            _all_sources_set.add(normalized)
+                            all_sources.append(normalized)
 
             if conversation_id is None:
                 conversation_id = str((await conversation_repo.create_conversation()).id)

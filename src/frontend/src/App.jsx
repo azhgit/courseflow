@@ -132,13 +132,51 @@ function App() {
           });
         },
         (sources) => {
-          assistantSources = (sources || []).map((source) => {
-            if (typeof source === 'string') return { name: source };
-            if (source && typeof source === 'object') {
-              if (typeof source.name === 'string' && source.name.trim()) return { name: source.name };
-              if (typeof source.source === 'string' && source.source.trim()) return { name: source.source };
+          const normalizeSource = (source) => {
+            let path = '';
+            let name = '';
+
+            if (typeof source === 'string') {
+              path = source.trim();
+            } else if (source && typeof source === 'object') {
+              if (typeof source.path === 'string' && source.path.trim()) {
+                path = source.path.trim();
+              } else if (typeof source.source === 'string' && source.source.trim()) {
+                path = source.source.trim();
+              }
+
+              if (typeof source.name === 'string' && source.name.trim()) {
+                name = source.name.trim();
+              }
             }
-            return { name: String(source) };
+
+            const basename = (path || name).split('/').filter(Boolean).pop() || (path || name || String(source));
+            return {
+              name: basename,
+              path: path || basename,
+            };
+          };
+
+          const normalized = (sources || []).map(normalizeSource);
+
+          // If both "docs/.../file.md" and "file.md" exist, keep only the full-path one.
+          const hasFullPathByBase = new Set(
+            normalized
+              .filter((item) => typeof item.path === 'string' && item.path.includes('/'))
+              .map((item) => item.name.toLowerCase())
+          );
+
+          const filtered = normalized.filter((item) => {
+            const isBareName = typeof item.path === 'string' && !item.path.includes('/');
+            return !(isBareName && hasFullPathByBase.has(item.name.toLowerCase()));
+          });
+
+          const seenPaths = new Set();
+          assistantSources = filtered.filter((item) => {
+            const key = (item.path || item.name).toLowerCase();
+            if (seenPaths.has(key)) return false;
+            seenPaths.add(key);
+            return true;
           });
         },
         (errorEvent) => {

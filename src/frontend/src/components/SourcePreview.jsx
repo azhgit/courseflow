@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { buildUrl } from '../api/client';
 
 export function SourcePreview({ sourceName, sourcePath, onClose, highlightTerms = [] }) {
   const [content, setContent] = useState(null);
@@ -7,9 +8,38 @@ export function SourcePreview({ sourceName, sourcePath, onClose, highlightTerms 
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const mockContent = getMockContent(sourcePath);
-    setContent(mockContent);
-    setLoading(false);
+    const fetchContent = async () => {
+      try {
+        const encodedPath = sourcePath
+          .split('/')
+          .map((segment) => encodeURIComponent(segment))
+          .join('/');
+        const response = await fetch(buildUrl(`/api/v1/source/${encodedPath}`));
+
+        if (!response.ok) {
+          if (response.status === 404) setError('Source file not found');
+          else if (response.status === 403) setError('Access denied to this source');
+          else setError('Failed to load source file');
+          return;
+        }
+
+        const data = await response.json();
+        if (data.success && data.data?.content) {
+          setContent(data.data.content);
+        } else {
+          setError('Invalid response format');
+        }
+      } catch (err) {
+        console.warn('Failed to fetch from API, using mock:', err);
+        const mockContent = getMockContent(sourcePath);
+        if (mockContent) setContent(mockContent);
+        else setError('Source not found');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContent();
   }, [sourcePath]);
 
   useEffect(() => {
@@ -100,7 +130,8 @@ If A is m×n and B is n×p, then AB is an m×p matrix where each element is a do
     if (!text || terms.length === 0) return text;
     let result = text;
     terms.forEach((term) => {
-      const regex = new RegExp(`(${term})`, 'gi');
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, 'gi');
       result = result.replace(
         regex,
         '<mark style="background-color:#FCD34D;padding:2px 4px;border-radius:2px;">$1</mark>'
@@ -199,7 +230,7 @@ If A is m×n and B is n×p, then AB is an m×p matrix where each element is a do
                 <h2 className="truncate text-[18px] font-semibold text-[#0F172A]">
                   {sourceName}
                 </h2>
-                <p className="truncate text-[12px] text-[#94A3B8]">{sourcePath}</p>
+                <p className="truncate text-[12px] text-[#94A3B8]">{sourceName}</p>
               </div>
               <button
                 onClick={onClose}
