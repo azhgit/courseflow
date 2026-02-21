@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     QUOTA_CACHE_ENABLED: bool = True  # Enable demo cache bypass
     QUOTA_STREAM_DELAY_MS: int = Field(default=30, ge=0)  # Word delay for cached responses
 
+    # Development flags
+    LOCAL_UNLIMITED: bool = True  # Disable rate/quota limits for local dev
+    MOCK_QUERY_MODE: bool = False  # Return mock answers without calling Gemini
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

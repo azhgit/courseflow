@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import os
 import statistics
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
@@ -33,6 +32,7 @@ from courseflow.domain.exceptions import (
     TimeoutError as CourseFlowTimeoutError,
 )
 from courseflow.domain.models import ConversationTurn, Query, SSEEvent, StreamingQuery
+from courseflow.infrastructure.streaming.cached_response import stream_cached_answer
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,28 @@ router = APIRouter(prefix="/api/v1", tags=["query"])
 
 def _is_local_unlimited() -> bool:
     """Whether local quota/rate limits are disabled for development."""
-    return os.getenv("LOCAL_UNLIMITED", "true").lower() == "true"
+    from courseflow.config import settings
+    return settings.LOCAL_UNLIMITED
+
+
+def _is_mock_query_mode() -> bool:
+    """Whether query responses should be mocked (local development only)."""
+    from courseflow.config import settings
+    return settings.MOCK_QUERY_MODE
+
+
+def _build_mock_answer(query_text: str) -> tuple[str, list[str]]:
+    """Build deterministic mock answer and sources for frontend development."""
+    answer = (
+        "[Mock Mode] This is a simulated streaming response for frontend development. "
+        f"Your query was: \"{query_text}\". "
+        "You can continue working on layout, source interactions, and error states "
+        "without consuming Gemini API quota."
+    )
+    return answer, [
+        "docs/biology/photosynthesis.md",
+        "docs/programming/python-async.md",
+    ]
 
 
 # Request/Response schemas
@@ -482,6 +503,28 @@ async def stream_query_endpoint(
                     max_count=5,
                 )
                 conversation_history = turn_history.to_llm_context() if turn_history.turns else None
+
+            if _is_mock_query_mode():
+                if conversation_id is None:
+                    conversation_id = str((await conversation_repo.create_conversation()).id)
+
+                mock_answer, mock_sources = _build_mock_answer(streaming_query.query)
+                async for chunk in stream_cached_answer(
+                    mock_answer,
+                    delay_ms=5,
+                ):
+                    yield chunk
+
+                yield SSEEvent.with_sources(
+                    sources=mock_sources,
+                    retrieval_count=len(mock_sources),
+                ).to_sse()
+                yield SSEEvent.done(
+                    conversation_id=conversation_id,
+                    token_count=len(mock_answer.split()),
+                ).to_sse()
+                streaming_metrics.success_count += 1
+                return
 
             all_chunks: list[str] = []
             all_sources: list[str] = []

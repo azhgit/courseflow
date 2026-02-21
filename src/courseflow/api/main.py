@@ -173,7 +173,7 @@ def create_app() -> FastAPI:
         # LOCAL_UNLIMITED=true (default true for local/dev).
         # Production deployments should set LOCAL_UNLIMITED=false.
         # Also skip registration if QUOTA_HOURLY_LIMIT <= 0 (treat as unlimited).
-        local_unlimited = os.getenv("LOCAL_UNLIMITED", "true").lower() == "true"
+        local_unlimited = settings.LOCAL_UNLIMITED
 
         if local_unlimited:
             logger.info("Rate limit middleware disabled for local development (LOCAL_UNLIMITED=true).")
@@ -190,7 +190,15 @@ def create_app() -> FastAPI:
         logger.warning(f"Failed to initialize rate limit middleware: {e}")
 
     # Quota middleware (must be added BEFORE CORS for proper ordering)
-    if hasattr(app.state, "quota_service"):
+    # Skip when local development overrides are active.
+    mock_mode = settings.MOCK_QUERY_MODE
+    if local_unlimited or mock_mode:
+        logger.info(
+            "Quota middleware disabled (LOCAL_UNLIMITED=%s, MOCK_QUERY_MODE=%s).",
+            local_unlimited,
+            mock_mode,
+        )
+    elif hasattr(app.state, "quota_service"):
         from courseflow.api.middleware.quota_middleware import QuotaMiddleware
 
         app.add_middleware(QuotaMiddleware, quota_service=app.state.quota_service)
