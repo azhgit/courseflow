@@ -225,6 +225,10 @@ def create_app() -> FastAPI:
     app.include_router(quota.router, tags=["quota"])
     app.include_router(evaluation.router, prefix=settings.api_v1_prefix, tags=["evaluation"])
 
+    # Source document retrieval (safe access to docs/)
+    from courseflow.api.routes.source import router as source_router
+    app.include_router(source_router, tags=["source"])
+
     return app
 
 

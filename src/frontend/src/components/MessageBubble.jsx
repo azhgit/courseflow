@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StreamingCursor } from './StreamingCursor.jsx';
 import { SourceAttribution } from './SourceAttribution.jsx';
 import { SourcePreview } from './SourcePreview.jsx';
+import { extractKeywords } from '../utils/keywordExtractor';
 
 /**
  * MessageBubble: Chat message bubble
@@ -14,7 +15,9 @@ export function MessageBubble({ message }) {
   const [selectedSource, setSelectedSource] = useState(null);
 
   const handleSourceClick = (sourceName, sourcePath) => {
-    setSelectedSource({ name: sourceName, path: sourcePath });
+    // Extract keywords from the message content for highlighting
+    const keywords = extractKeywords(message.content, 5);
+    setSelectedSource({ name: sourceName, path: sourcePath, keywords });
   };
 
   return (
@@ -47,7 +50,7 @@ export function MessageBubble({ message }) {
           sourceName={selectedSource.name}
           sourcePath={selectedSource.path}
           onClose={() => setSelectedSource(null)}
-          highlightTerms={[]}
+          highlightTerms={selectedSource.keywords || []}
         />
       )}
     </>
