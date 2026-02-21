@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { EXAMPLE_QUESTIONS } from '../constants/exampleQuestions.js';
+import { DemoNotice } from './DemoNotice.jsx';
 
 /**
  * EmptyState: Landing page with hero section + cards + input
@@ -31,8 +32,13 @@ export function EmptyState({ examples = [], isExamplesLoading = false, onExample
             AI-powered learning assistant for any subject
           </p>
 
+          {/* ── Demo Notice ── */}
+          <div className="mt-[32px]">
+            <DemoNotice variant="banner" />
+          </div>
+
           {/* ── Example cards: 2×2 grid ── */}
-          <div className="mt-[48px] grid grid-cols-1 gap-[16px] sm:grid-cols-2">
+          <div className="mt-[32px] grid grid-cols-1 gap-[16px] sm:grid-cols-2">
             {isExamplesLoading
               ? Array.from({ length: 4 }).map((_, idx) => (
                 <div
