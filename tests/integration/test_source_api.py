@@ -20,7 +20,7 @@ def temp_docs_dir():
         # Create test structure
         (docs_dir / "biology").mkdir()
         (docs_dir / "biology" / "photosynthesis.md").write_text(
-        "# Photosynthesis\n\nPhotosynthesis is the process by which plants convert light energy into chemical energy."
+            "# Photosynthesis\n\nPhotosynthesis is the process by which plants convert light energy into chemical energy."
         )
         (docs_dir / "programming").mkdir()
         (docs_dir / "programming" / "python.md").write_text(
@@ -52,7 +52,10 @@ def test_get_existing_source_file(client, temp_docs_dir):
     assert data["success"] is True
     assert data["data"]["name"] == "photosynthesis.md"
     assert "Photosynthesis" in data["data"]["content"]
-    assert "docs/biology/photosynthesis.md" in data["data"]["path"] or "biology/photosynthesis.md" in data["data"]["path"]
+    assert (
+        "docs/biology/photosynthesis.md" in data["data"]["path"]
+        or "biology/photosynthesis.md" in data["data"]["path"]
+    )
 
 
 def test_get_existing_source_file_with_docs_prefix(client, temp_docs_dir):

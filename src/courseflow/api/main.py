@@ -176,7 +176,9 @@ def create_app() -> FastAPI:
         local_unlimited = settings.LOCAL_UNLIMITED
 
         if local_unlimited:
-            logger.info("Rate limit middleware disabled for local development (LOCAL_UNLIMITED=true).")
+            logger.info(
+                "Rate limit middleware disabled for local development (LOCAL_UNLIMITED=true)."
+            )
         elif settings.QUOTA_HOURLY_LIMIT <= 0:
             logger.info("Rate limit middleware disabled because QUOTA_HOURLY_LIMIT <= 0.")
         else:
@@ -227,6 +229,7 @@ def create_app() -> FastAPI:
 
     # Source document retrieval (safe access to docs/)
     from courseflow.api.routes.source import router as source_router
+
     app.include_router(source_router, tags=["source"])
 
     return app

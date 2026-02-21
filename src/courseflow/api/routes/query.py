@@ -120,12 +120,14 @@ def _source_matches_query(source_path: str, query_terms: set[str]) -> bool:
 def _is_local_unlimited() -> bool:
     """Whether local quota/rate limits are disabled for development."""
     from courseflow.config import settings
+
     return settings.LOCAL_UNLIMITED
 
 
 def _is_mock_query_mode() -> bool:
     """Whether query responses should be mocked (local development only)."""
     from courseflow.config import settings
+
     return settings.MOCK_QUERY_MODE
 
 
@@ -133,7 +135,7 @@ def _build_mock_answer(query_text: str) -> tuple[str, list[str]]:
     """Build deterministic mock answer and sources for frontend development."""
     answer = (
         "[Mock Mode] This is a simulated streaming response for frontend development. "
-        f"Your query was: \"{query_text}\". "
+        f'Your query was: "{query_text}". '
         "You can continue working on layout, source interactions, and error states "
         "without consuming Gemini API quota."
     )
