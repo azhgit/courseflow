@@ -169,12 +169,22 @@ def create_app() -> FastAPI:
     try:
         from courseflow.api.middleware.rate_limit import RateLimitMiddleware
 
-        app.add_middleware(
-            RateLimitMiddleware,
-            db_path=settings.database_path,
-            hourly_limit=settings.QUOTA_HOURLY_LIMIT,
-        )
-        logger.info(f"Rate limit middleware registered: {settings.QUOTA_HOURLY_LIMIT} req/hour")
+        # Allow disabling rate limiting for local development by setting
+        # the environment variable LOCAL_UNLIMITED=true (in .env or shell).
+        # Also skip registration if QUOTA_HOURLY_LIMIT <= 0 (treat as unlimited).
+        local_unlimited = os.getenv("LOCAL_UNLIMITED", "false").lower() == "true"
+
+        if local_unlimited:
+            logger.info("Rate limit middleware disabled for local development (LOCAL_UNLIMITED=true).")
+        elif settings.QUOTA_HOURLY_LIMIT <= 0:
+            logger.info("Rate limit middleware disabled because QUOTA_HOURLY_LIMIT <= 0.")
+        else:
+            app.add_middleware(
+                RateLimitMiddleware,
+                db_path=settings.database_path,
+                hourly_limit=settings.QUOTA_HOURLY_LIMIT,
+            )
+            logger.info(f"Rate limit middleware registered: {settings.QUOTA_HOURLY_LIMIT} req/hour")
     except Exception as e:
         logger.warning(f"Failed to initialize rate limit middleware: {e}")
 
