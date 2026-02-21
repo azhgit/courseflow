@@ -152,6 +152,9 @@ class GeminiLLMClient(LLMPort):
 
             logger.info(f"Streaming complete: ~{token_count} tokens")
 
+        except QuotaExceededError:
+            raise
+
         except Exception as e:
             error_msg = str(e)
             if "429" in error_msg or "quota" in error_msg.lower():

@@ -28,10 +28,11 @@ CourseFlow uses environment variables for configuration in both backend and fron
 | `LLM_TIMEOUT_SECONDS` | Timeout for LLM API calls | `30` | Increase for long responses |
 | `EMBEDDING_TIMEOUT_SECONDS` | Timeout for embedding API calls | `10` | Usually fast, rarely needs increase |
 | `LOG_LEVEL` | Logging level | `INFO` | Options: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `QUOTA_HOURLY_LIMIT` | Per-IP requests per hour | `20` | Rate limiting (Feature 006) |
+| `QUOTA_HOURLY_LIMIT` | Per-IP requests per hour | `100` | Rate limiting (Feature 006) |
 | `QUOTA_DAILY_BUDGET` | Global daily request budget | `300` | Quota protection (Feature 006) |
 | `QUOTA_CACHE_ENABLED` | Enable demo cache bypass | `true` | Set to `false` to disable caching |
 | `QUOTA_STREAM_DELAY_MS` | Word delay for cached responses (ms) | `30` | Simulates streaming for cached responses |
+| `LOCAL_UNLIMITED` | Disable local rate/quota enforcement | `true` | Set `false` in production |
 
 ### Evaluation System Variables
 

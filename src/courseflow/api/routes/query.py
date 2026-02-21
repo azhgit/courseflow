@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import statistics
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
@@ -36,6 +37,11 @@ from courseflow.domain.models import ConversationTurn, Query, SSEEvent, Streamin
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["query"])
+
+
+def _is_local_unlimited() -> bool:
+    """Whether local quota/rate limits are disabled for development."""
+    return os.getenv("LOCAL_UNLIMITED", "true").lower() == "true"
 
 
 # Request/Response schemas
@@ -155,13 +161,14 @@ async def query_endpoint(
         # Create Query model (domain validation)
         query = Query(text=query_text)
 
-        allowed, retry_after = rate_limiter.is_allowed()
-        if not allowed:
-            logger.warning(f"Local rate limit exceeded; retry_after={retry_after}s")
-            raise QuotaExceededError(
-                message="Rate limit exceeded (local guard)",
-                retry_after=retry_after,
-            )
+        if not _is_local_unlimited():
+            allowed, retry_after = rate_limiter.is_allowed()
+            if not allowed:
+                logger.warning(f"Local rate limit exceeded; retry_after={retry_after}s")
+                raise QuotaExceededError(
+                    message="Rate limit exceeded (local guard)",
+                    retry_after=retry_after,
+                )
 
         logger.info(f"Received query: {query.id} - '{query.text[:50]}...'")
 
@@ -448,15 +455,16 @@ async def stream_query_endpoint(
             )
             streaming_metrics.query_count += 1
 
-            allowed, retry_after = rate_limiter.is_allowed()
-            if not allowed:
-                yield SSEEvent(
-                    type="error",
-                    error="rate_limit_exceeded",
-                    message=f"Rate limit exceeded. Retry after {retry_after}s.",
-                    retry_after=retry_after,
-                ).to_sse()
-                return
+            if not _is_local_unlimited():
+                allowed, retry_after = rate_limiter.is_allowed()
+                if not allowed:
+                    yield SSEEvent(
+                        type="error",
+                        error="rate_limit_exceeded",
+                        message=f"Rate limit exceeded. Retry after {retry_after}s.",
+                        retry_after=retry_after,
+                    ).to_sse()
+                    return
 
             conversation_id: str | None = streaming_query.conversation_id
             conversation_history: str | None = None

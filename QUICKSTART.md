@@ -260,10 +260,11 @@ curl http://localhost:8000/health
 
 ```env
 # 演示模式（默認）
-QUOTA_HOURLY_LIMIT=20
+QUOTA_HOURLY_LIMIT=100
 QUOTA_DAILY_BUDGET=300
 QUOTA_CACHE_ENABLED=true
 QUOTA_STREAM_DELAY_MS=30
+LOCAL_UNLIMITED=true      # 本地測試關閉用量限制
 
 # 開發測試
 QUOTA_HOURLY_LIMIT=5         # 容易達到限制

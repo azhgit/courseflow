@@ -170,9 +170,10 @@ def create_app() -> FastAPI:
         from courseflow.api.middleware.rate_limit import RateLimitMiddleware
 
         # Allow disabling rate limiting for local development by setting
-        # the environment variable LOCAL_UNLIMITED=true (in .env or shell).
+        # LOCAL_UNLIMITED=true (default true for local/dev).
+        # Production deployments should set LOCAL_UNLIMITED=false.
         # Also skip registration if QUOTA_HOURLY_LIMIT <= 0 (treat as unlimited).
-        local_unlimited = os.getenv("LOCAL_UNLIMITED", "false").lower() == "true"
+        local_unlimited = os.getenv("LOCAL_UNLIMITED", "true").lower() == "true"
 
         if local_unlimited:
             logger.info("Rate limit middleware disabled for local development (LOCAL_UNLIMITED=true).")

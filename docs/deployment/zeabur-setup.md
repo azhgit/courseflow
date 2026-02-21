@@ -53,8 +53,9 @@ CORS_ORIGINS=https://courseflow.zeabur.app,http://localhost:5173
 RATE_LIMIT_RPM=15
 DATABASE_URL=sqlite+aiosqlite:///./data/courseflow.db
 CHROMA_PERSIST_DIR=./data/chroma
-QUOTA_HOURLY_LIMIT=20
+QUOTA_HOURLY_LIMIT=100
 QUOTA_DAILY_BUDGET=300
+LOCAL_UNLIMITED=false
 ```
 
 ### 2.4 Deploy Backend

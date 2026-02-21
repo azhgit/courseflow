@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     EVAL_LATENCY_P95_THRESHOLD_MS: int = Field(default=10000, ge=0)
 
     # Quota Protection (006-demo-protection)
-    QUOTA_HOURLY_LIMIT: int = Field(default=20, ge=1)  # Per-IP requests per hour
+    QUOTA_HOURLY_LIMIT: int = Field(default=100, ge=1)  # Per-IP requests per hour
     QUOTA_DAILY_BUDGET: int = Field(default=300, ge=1)  # Global daily budget
     QUOTA_CACHE_ENABLED: bool = True  # Enable demo cache bypass
     QUOTA_STREAM_DELAY_MS: int = Field(default=30, ge=0)  # Word delay for cached responses
