@@ -1,6 +1,6 @@
 """Contract tests for POST /api/v1/query endpoint."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -56,7 +56,11 @@ class TestQueryEndpointContract:
         assert len(data["examples"]) == 4
         assert all(isinstance(example, str) for example in data["examples"])
 
-    def test_valid_query_request(self, client, mock_rag_service):
+    @patch(
+        "courseflow.api.routes.query._normalize_source_path",
+        side_effect=lambda s: f"docs/{s}" if s else None,
+    )
+    def test_valid_query_request(self, mock_norm, client, mock_rag_service):
         """Test valid query request matches OpenAPI schema."""
         # Setup mock response
         metadata = DocumentMetadata(
