@@ -222,7 +222,9 @@ class ChromaDBStorageAdapter(StoragePort):
 
             # Find earliest and latest timestamps
             timestamps = [
-                m.get("scrape_timestamp", "") for m in metadatas if m.get("scrape_timestamp")
+                m.get("scrape_timestamp", "")
+                for m in (metadatas or [])
+                if m.get("scrape_timestamp")
             ]
             timestamps.sort()
 
@@ -318,7 +320,7 @@ class ChromaDBStorageAdapter(StoragePort):
             # Group by article title
             articles_map: dict[str, dict[str, Any]] = {}
 
-            for metadata in results["metadatas"]:
+            for metadata in results["metadatas"] or []:
                 article_title = metadata.get("article_title")
                 if not article_title:
                     continue

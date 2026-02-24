@@ -128,7 +128,7 @@ class ScrapingService:
         self,
         topics: list[str],
         chunk_size: int = 1000,
-    ) -> dict[str, list[dict[str, str | int]]]:
+    ) -> dict[str, list[dict[str, str | int]] | str]:
         """Preview scraping operation without actual execution (dry-run).
 
         Args:
@@ -141,7 +141,7 @@ class ScrapingService:
         if not topics:
             raise ValueError("Topics list cannot be empty")
 
-        preview_results = []
+        preview_results: list[dict[str, str | int]] = []
 
         for topic in topics:
             try:
@@ -165,7 +165,7 @@ class ScrapingService:
                             "topic": topic,
                             "status": "would_fail",
                             "error": "Article not found (404)",
-                            "estimated_chunks": 0,
+                            "estimated_chunks": "0",
                         }
                     )
 
@@ -175,18 +175,25 @@ class ScrapingService:
                         "topic": topic,
                         "status": "would_fail",
                         "error": str(e),
-                        "estimated_chunks": 0,
+                        "estimated_chunks": "0",
                     }
                 )
 
         return {
             "preview": preview_results,
-            "total_topics": len(topics),
-            "estimated_total_chunks": sum(
-                int(r.get("estimated_chunks", 0))
-                if isinstance(r.get("estimated_chunks"), int)
-                else 10  # Default estimate
-                for r in preview_results
+            "total_topics": str(len(topics)),
+            "estimated_total_chunks": str(
+                sum(
+                    int(str(r.get("estimated_chunks", "0")).split("-")[0])
+                    if isinstance(r.get("estimated_chunks"), str)
+                    and "-" in str(r.get("estimated_chunks", "0"))
+                    else (
+                        int(r.get("estimated_chunks", 0))
+                        if isinstance(r.get("estimated_chunks"), int)
+                        else 0
+                    )
+                    for r in preview_results
+                )
             ),
         }
 

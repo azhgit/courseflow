@@ -8,7 +8,7 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
-import nltk
+import nltk  # type: ignore[import-untyped]
 
 from courseflow.domain.scraping.exceptions import ChunkingError, ParsingError
 from courseflow.domain.scraping.ports import ProcessingPort
@@ -108,7 +108,7 @@ class ContentProcessor(ProcessingPort):
                 raise ChunkingError("No sentences found in content", article_title)
 
             chunks = []
-            current_chunk = []
+            current_chunk: list[str] = []
             current_word_count = 0
             chunk_index = 0
 
@@ -246,7 +246,7 @@ class ContentProcessor(ProcessingPort):
         if not sentences:
             return []
 
-        overlap_sentences = []
+        overlap_sentences: list[str] = []
         word_count = 0
 
         # Take sentences from end until we reach target overlap
