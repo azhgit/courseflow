@@ -25,8 +25,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def with_retry(
-    max_attempts: int = 3,
-    retriable_exceptions: tuple = (NetworkError, RateLimitError)
+    max_attempts: int = 3, retriable_exceptions: tuple = (NetworkError, RateLimitError)
 ) -> Callable[[F], F]:
     """Decorator for retrying async operations with exponential backoff.
 

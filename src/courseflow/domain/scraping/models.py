@@ -49,9 +49,7 @@ class ScrapingConfig(BaseModel):
         """Validate overlap does not exceed half of chunk size."""
         chunk_size = info.data.get("chunk_size", 1000)
         if v > chunk_size / 2:
-            raise ValueError(
-                f"Overlap ({v}) cannot exceed half of chunk size ({chunk_size})"
-            )
+            raise ValueError(f"Overlap ({v}) cannot exceed half of chunk size ({chunk_size})")
         return v
 
 
@@ -202,9 +200,7 @@ class ContentChunk(BaseModel):
         """Validate overlap_end does not exceed text length."""
         text = info.data.get("text", "")
         if v > len(text):
-            raise ValueError(
-                f"overlap_end ({v}) cannot exceed text length ({len(text)})"
-            )
+            raise ValueError(f"overlap_end ({v}) cannot exceed text length ({len(text)})")
         return v
 
     def to_chroma_metadata(self) -> dict[str, Any]:

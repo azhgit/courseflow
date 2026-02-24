@@ -126,9 +126,7 @@ class MediaWikiAdapter(ScrapingPort):
                     return False
                 elif response.status_code == 429:
                     retry_after = response.headers.get("Retry-After")
-                    raise RateLimitError(
-                        retry_after=int(retry_after) if retry_after else None
-                    )
+                    raise RateLimitError(retry_after=int(retry_after) if retry_after else None)
 
                 response.raise_for_status()
                 return True
@@ -194,9 +192,7 @@ class MediaWikiAdapter(ScrapingPort):
                 raise ArticleNotFoundError(title)
             if response.status_code == 429:
                 retry_after = response.headers.get("Retry-After")
-                raise RateLimitError(
-                    retry_after=int(retry_after) if retry_after else None
-                )
+                raise RateLimitError(retry_after=int(retry_after) if retry_after else None)
             if response.status_code >= 500:
                 raise NetworkError(f"Wikipedia server error: HTTP {response.status_code}")
 
@@ -217,9 +213,7 @@ class MediaWikiAdapter(ScrapingPort):
         return self._encode_title(target) if target else None
 
     def _build_article_dict(
-        self,
-        original_title: str,
-        api_response: dict[str, Any]
+        self, original_title: str, api_response: dict[str, Any]
     ) -> dict[str, Any]:
         """Build article dictionary from API response.
 

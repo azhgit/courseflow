@@ -97,22 +97,23 @@ class ChromaDBStorageAdapter(StoragePort):
             for chunk_data in chunks:
                 # Generate deterministic ID for deduplication
                 chunk_id = self._generate_chunk_id(
-                    chunk_data["source_url"],
-                    chunk_data["chunk_index"]
+                    chunk_data["source_url"], chunk_data["chunk_index"]
                 )
 
                 documents.append(chunk_data["text"])
-                metadatas.append({
-                    "article_title": chunk_data["article_title"],
-                    "source": chunk_data.get("source", chunk_data["source_url"]),
-                    "file_path": chunk_data.get("file_path", ""),
-                    "subject": "scraped",
-                    "source_url": chunk_data["source_url"],
-                    "chunk_index": chunk_data["chunk_index"],
-                    "total_chunks": chunk_data["total_chunks"],
-                    "scrape_timestamp": chunk_data["created_at"].isoformat(),
-                    "word_count": chunk_data["word_count"],
-                })
+                metadatas.append(
+                    {
+                        "article_title": chunk_data["article_title"],
+                        "source": chunk_data.get("source", chunk_data["source_url"]),
+                        "file_path": chunk_data.get("file_path", ""),
+                        "subject": "scraped",
+                        "source_url": chunk_data["source_url"],
+                        "chunk_index": chunk_data["chunk_index"],
+                        "total_chunks": chunk_data["total_chunks"],
+                        "scrape_timestamp": chunk_data["created_at"].isoformat(),
+                        "word_count": chunk_data["word_count"],
+                    }
+                )
                 ids.append(chunk_id)
 
             embeddings = []
@@ -134,12 +135,10 @@ class ChromaDBStorageAdapter(StoragePort):
         except Exception as e:
             if "embed" in str(e).lower():
                 raise EmbeddingError(
-                    f"Failed to generate embeddings: {e}",
-                    article_title=article_title
+                    f"Failed to generate embeddings: {e}", article_title=article_title
                 ) from e
             raise StorageError(
-                f"Failed to ingest chunks for '{article_title}': {e}",
-                article_title=article_title
+                f"Failed to ingest chunks for '{article_title}': {e}", article_title=article_title
             ) from e
 
     async def check_article_exists(self, article_title: str) -> bool:
@@ -188,8 +187,7 @@ class ChromaDBStorageAdapter(StoragePort):
 
         except Exception as e:
             raise StorageError(
-                f"Failed to delete article '{article_title}': {e}",
-                article_title=article_title
+                f"Failed to delete article '{article_title}': {e}", article_title=article_title
             ) from e
 
     async def get_article_metadata(
@@ -224,9 +222,7 @@ class ChromaDBStorageAdapter(StoragePort):
 
             # Find earliest and latest timestamps
             timestamps = [
-                m.get("scrape_timestamp", "")
-                for m in metadatas
-                if m.get("scrape_timestamp")
+                m.get("scrape_timestamp", "") for m in metadatas if m.get("scrape_timestamp")
             ]
             timestamps.sort()
 
@@ -240,8 +236,7 @@ class ChromaDBStorageAdapter(StoragePort):
 
         except Exception as e:
             raise StorageError(
-                f"Failed to get metadata for '{article_title}': {e}",
-                article_title=article_title
+                f"Failed to get metadata for '{article_title}': {e}", article_title=article_title
             ) from e
 
     async def search(
@@ -283,13 +278,17 @@ class ChromaDBStorageAdapter(StoragePort):
             search_results = []
             for i in range(len(results["ids"][0])):
                 metadata = results["metadatas"][0][i]
-                search_results.append({
-                    "text": results["documents"][0][i],
-                    "article_title": metadata.get("article_title") or metadata.get("source", "unknown"),
-                    "source_url": metadata.get("source_url") or metadata.get("source", ""),
-                    "chunk_index": int(metadata.get("chunk_index", 0)),
-                    "relevance_score": 1.0 - results["distances"][0][i],  # Convert distance to similarity
-                })
+                search_results.append(
+                    {
+                        "text": results["documents"][0][i],
+                        "article_title": metadata.get("article_title")
+                        or metadata.get("source", "unknown"),
+                        "source_url": metadata.get("source_url") or metadata.get("source", ""),
+                        "chunk_index": int(metadata.get("chunk_index", 0)),
+                        "relevance_score": 1.0
+                        - results["distances"][0][i],  # Convert distance to similarity
+                    }
+                )
 
             return search_results
 

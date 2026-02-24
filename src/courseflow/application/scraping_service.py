@@ -151,27 +151,33 @@ class ScrapingService:
                 if exists:
                     # Estimate chunk count (simple heuristic)
                     # In real implementation, would fetch and analyze content
-                    preview_results.append({
-                        "topic": topic,
-                        "status": "would_succeed",
-                        "estimated_chunks": "5-20",  # Placeholder estimation
-                        "source_url": f"https://en.wikipedia.org/wiki/{topic.replace(' ', '_')}",
-                    })
+                    preview_results.append(
+                        {
+                            "topic": topic,
+                            "status": "would_succeed",
+                            "estimated_chunks": "5-20",  # Placeholder estimation
+                            "source_url": f"https://en.wikipedia.org/wiki/{topic.replace(' ', '_')}",
+                        }
+                    )
                 else:
-                    preview_results.append({
-                        "topic": topic,
-                        "status": "would_fail",
-                        "error": "Article not found (404)",
-                        "estimated_chunks": 0,
-                    })
+                    preview_results.append(
+                        {
+                            "topic": topic,
+                            "status": "would_fail",
+                            "error": "Article not found (404)",
+                            "estimated_chunks": 0,
+                        }
+                    )
 
             except Exception as e:
-                preview_results.append({
-                    "topic": topic,
-                    "status": "would_fail",
-                    "error": str(e),
-                    "estimated_chunks": 0,
-                })
+                preview_results.append(
+                    {
+                        "topic": topic,
+                        "status": "would_fail",
+                        "error": str(e),
+                        "estimated_chunks": 0,
+                    }
+                )
 
         return {
             "preview": preview_results,

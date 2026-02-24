@@ -165,13 +165,9 @@ def _display_results(job: Any) -> None:
 
     # Statistics
     click.echo(f"\nTotal articles: {stats.total_articles}")
-    click.echo(
-        click.style(f"Successful: {stats.successful_articles}", fg="green")
-    )
+    click.echo(click.style(f"Successful: {stats.successful_articles}", fg="green"))
     if stats.failed_articles > 0:
-        click.echo(
-            click.style(f"Failed: {stats.failed_articles}", fg="red")
-        )
+        click.echo(click.style(f"Failed: {stats.failed_articles}", fg="red"))
     click.echo(f"Total chunks created: {stats.total_chunks_created}")
     click.echo(f"Processing time: {stats.total_processing_time_seconds:.2f}s")
 
@@ -230,6 +226,7 @@ def search(query: str, limit: int) -> None:
 @scraper.command(name="list")
 def list_articles() -> None:
     """List all ingested Wikipedia articles."""
+
     async def _run_list():
         service = ScrapingService()
         try:
@@ -269,6 +266,7 @@ def delete(article_title: str) -> None:
     Example:
         scraper delete "Python (programming language)"
     """
+
     async def _run_delete():
         service = ScrapingService()
         try:

@@ -55,9 +55,7 @@ class ContentProcessor(ProcessingPort):
                 # Plain text extract (from summary endpoint)
                 content = raw_api_response["extract"]
             else:
-                raise ParsingError(
-                    f"Unexpected API response structure: {raw_api_response.keys()}"
-                )
+                raise ParsingError(f"Unexpected API response structure: {raw_api_response.keys()}")
 
             # Remove HTML tags if present
             content = self._remove_html_tags(content)
@@ -120,19 +118,15 @@ class ContentProcessor(ProcessingPort):
 
                 # If adding this sentence exceeds target, save current chunk
                 if current_word_count + sentence_words > chunk_size and current_chunk:
-                    chunks.append(self._create_chunk_dict(
-                        current_chunk,
-                        chunk_index,
-                        article_title,
-                        source_url
-                    ))
+                    chunks.append(
+                        self._create_chunk_dict(
+                            current_chunk, chunk_index, article_title, source_url
+                        )
+                    )
                     chunk_index += 1
 
                     # Start new chunk with overlap from previous
-                    overlap_sentences = self._get_overlap_sentences(
-                        current_chunk,
-                        chunk_overlap
-                    )
+                    overlap_sentences = self._get_overlap_sentences(current_chunk, chunk_overlap)
                     current_chunk = overlap_sentences
                     current_word_count = sum(len(s.split()) for s in current_chunk)
 
@@ -141,12 +135,9 @@ class ContentProcessor(ProcessingPort):
 
             # Add final chunk if not empty
             if current_chunk:
-                chunks.append(self._create_chunk_dict(
-                    current_chunk,
-                    chunk_index,
-                    article_title,
-                    source_url
-                ))
+                chunks.append(
+                    self._create_chunk_dict(current_chunk, chunk_index, article_title, source_url)
+                )
 
             # Update total_chunks for all chunks
             total_chunks = len(chunks)
@@ -176,11 +167,7 @@ class ContentProcessor(ProcessingPort):
         except (UnicodeDecodeError, UnicodeEncodeError):
             return False
 
-    async def estimate_chunk_count(
-        self,
-        content: str,
-        chunk_size: int = 1000
-    ) -> int:
+    async def estimate_chunk_count(self, content: str, chunk_size: int = 1000) -> int:
         """Estimate number of chunks for article content.
 
         Args:
@@ -236,11 +223,7 @@ class ContentProcessor(ProcessingPort):
         return text
 
     def _create_chunk_dict(
-        self,
-        sentences: list[str],
-        chunk_index: int,
-        article_title: str,
-        source_url: str
+        self, sentences: list[str], chunk_index: int, article_title: str, source_url: str
     ) -> dict[str, Any]:
         """Create chunk dictionary from sentences."""
         text = " ".join(sentences)
@@ -258,11 +241,7 @@ class ContentProcessor(ProcessingPort):
             "created_at": datetime.now(UTC),
         }
 
-    def _get_overlap_sentences(
-        self,
-        sentences: list[str],
-        target_overlap_words: int
-    ) -> list[str]:
+    def _get_overlap_sentences(self, sentences: list[str], target_overlap_words: int) -> list[str]:
         """Get sentences from end of list to create overlap of target words."""
         if not sentences:
             return []

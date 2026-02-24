@@ -86,11 +86,7 @@ class StoragePort(ABC):
     """
 
     @abstractmethod
-    async def ingest_chunks(
-        self,
-        chunks: list[dict[str, Any]],
-        article_title: ArticleTitle
-    ) -> int:
+    async def ingest_chunks(self, chunks: list[dict[str, Any]], article_title: ArticleTitle) -> int:
         """Ingest article chunks into ChromaDB with deduplication.
 
         Args:
@@ -144,10 +140,7 @@ class StoragePort(ABC):
         pass
 
     @abstractmethod
-    async def get_article_metadata(
-        self,
-        article_title: ArticleTitle
-    ) -> dict[str, Any] | None:
+    async def get_article_metadata(self, article_title: ArticleTitle) -> dict[str, Any] | None:
         """Get metadata for an ingested article.
 
         Args:
@@ -169,10 +162,7 @@ class StoragePort(ABC):
 
     @abstractmethod
     async def search(
-        self,
-        query: str,
-        top_k: int = 5,
-        article_filter: ArticleTitle | None = None
+        self, query: str, top_k: int = 5, article_filter: ArticleTitle | None = None
     ) -> list[dict[str, Any]]:
         """Semantic search across all ingested Wikipedia articles.
 
@@ -245,7 +235,7 @@ class ProcessingPort(ABC):
         article_title: ArticleTitle,
         source_url: str,
         chunk_size: int = 1000,
-        chunk_overlap: int = 100
+        chunk_overlap: int = 100,
     ) -> list[dict[str, Any]]:
         """Chunk article content with sentence boundaries and overlap.
 
@@ -277,11 +267,7 @@ class ProcessingPort(ABC):
         pass
 
     @abstractmethod
-    async def estimate_chunk_count(
-        self,
-        content: ArticleContent,
-        chunk_size: int = 1000
-    ) -> int:
+    async def estimate_chunk_count(self, content: ArticleContent, chunk_size: int = 1000) -> int:
         """Estimate number of chunks for article content.
 
         Args:

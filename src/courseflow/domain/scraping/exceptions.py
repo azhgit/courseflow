@@ -29,10 +29,7 @@ class ArticleNotFoundError(ScrapingError):
         Args:
             article_title: Title of the missing article
         """
-        super().__init__(
-            f"Article not found: {article_title}",
-            article_title=article_title
-        )
+        super().__init__(f"Article not found: {article_title}", article_title=article_title)
 
 
 class RateLimitError(ScrapingError):
