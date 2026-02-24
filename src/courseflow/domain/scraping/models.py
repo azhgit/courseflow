@@ -4,16 +4,16 @@ This module defines all Pydantic models used in the Wikipedia scraping feature.
 Models include validation rules, state transitions, and serialization methods.
 """
 
+import hashlib
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
-import hashlib
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     """Status of a scraping job."""
 
     PENDING = "pending"
@@ -39,6 +39,7 @@ class ScrapingConfig(BaseModel):
     retry_attempts: int = Field(default=3, ge=0, le=5)
     timeout_seconds: int = Field(default=30, ge=5, le=300)
     dry_run: bool = False
+    no_ingest: bool = False
     chunk_size: int = Field(default=1000, ge=100, le=5000)
     chunk_overlap: int = Field(default=100, ge=0)
 

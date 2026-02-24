@@ -5,15 +5,16 @@ orchestrates the scraping workflow using port interfaces.
 """
 
 import logging
+import re
 from datetime import UTC, datetime
-from typing import Any
+from pathlib import Path
 
+from courseflow.config import settings
 from courseflow.domain.scraping.exceptions import ScrapingError
 from courseflow.domain.scraping.models import (
     ArticleError,
     JobStatistics,
     JobStatus,
-    ScrapingConfig,
     ScrapingJob,
     WikipediaArticle,
 )
@@ -100,6 +101,7 @@ class ScrapingOrchestrator:
                 model_data = {k: v for k, v in article_data.items() if k != "raw_api_response"}
                 model_data["content"] = content
                 article = WikipediaArticle(**model_data)
+                source_file_path = self._save_article_markdown(article)
 
                 # Chunk content
                 logger.info(f"Chunking content for: {article.canonical_title}")
@@ -110,19 +112,25 @@ class ScrapingOrchestrator:
                     chunk_size=job.config.chunk_size,
                     chunk_overlap=job.config.chunk_overlap,
                 )
+                for chunk in chunks:
+                    chunk["source"] = source_file_path
+                    chunk["file_path"] = source_file_path
 
                 logger.info(f"Created {len(chunks)} chunks for: {article.canonical_title}")
 
                 # Ingest to ChromaDB
-                logger.info(f"Ingesting chunks for: {article.canonical_title}")
-                chunks_ingested = await self.storage_port.ingest_chunks(
-                    chunks=chunks,
-                    article_title=article.canonical_title,
-                )
-
-                logger.info(
-                    f"Successfully ingested {chunks_ingested} chunks for: {article.canonical_title}"
-                )
+                chunks_ingested = 0
+                if not job.config.no_ingest:
+                    logger.info(f"Ingesting chunks for: {article.canonical_title}")
+                    chunks_ingested = await self.storage_port.ingest_chunks(
+                        chunks=chunks,
+                        article_title=article.canonical_title,
+                    )
+                    logger.info(
+                        f"Successfully ingested {chunks_ingested} chunks for: {article.canonical_title}"
+                    )
+                else:
+                    logger.info(f"Skipping ingestion for: {article.canonical_title}")
 
                 successful_count += 1
                 total_chunks += chunks_ingested
@@ -130,7 +138,9 @@ class ScrapingOrchestrator:
             except ScrapingError as e:
                 # Collect error for this article
                 logger.error(f"Failed to process article '{topic}': {e}")
-                error_type = type(e).__name__.replace("Error", "").lower()
+                error_type = re.sub(r"(?<!^)(?=[A-Z])", "_", type(e).__name__).lower()
+                error_type = re.sub(r"^article_", "", error_type)
+                error_type = re.sub(r"_error$", "", error_type)
 
                 errors.append(
                     ArticleError(
@@ -185,3 +195,27 @@ class ScrapingOrchestrator:
             )
 
         return job
+
+    def _save_article_markdown(self, article: WikipediaArticle) -> str:
+        """Persist scraped article text for manual review."""
+        output_dir = Path(settings.SCRAPER_OUTPUT_DIR)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        file_name = article.title.replace(" ", "_").replace("/", "_")
+        file_path = output_dir / f"{file_name}.md"
+
+        scraped_at = article.retrieved_at.astimezone(UTC).replace(microsecond=0).isoformat()
+        content = (
+            "---\n"
+            f"title: {article.canonical_title}\n"
+            "source: wikipedia\n"
+            f"url: {article.source_url}\n"
+            f"scraped_at: {scraped_at}\n"
+            f"word_count: {article.word_count}\n"
+            "---\n\n"
+            f"# {article.canonical_title}\n\n"
+            f"{article.content}\n"
+        )
+        file_path.write_text(content, encoding="utf-8")
+        logger.info(f"Saved markdown: {file_path}")
+        return f"docs/{file_path.relative_to(Path('docs')).as_posix()}"

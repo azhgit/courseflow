@@ -4,9 +4,10 @@ Tests all Pydantic model validation rules, field validators,
 cross-field validation, state transitions, and serialization.
 """
 
-import pytest
-from datetime import datetime, UTC
+from datetime import datetime
 from uuid import UUID
+
+import pytest
 
 from courseflow.domain.scraping.models import (
     ArticleError,
@@ -29,6 +30,7 @@ class TestScrapingConfig:
         assert config.retry_attempts == 3
         assert config.timeout_seconds == 30
         assert config.dry_run is False
+        assert config.no_ingest is False
         assert config.chunk_size == 1000
         assert config.chunk_overlap == 100
 

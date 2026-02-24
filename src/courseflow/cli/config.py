@@ -47,6 +47,16 @@ def dry_run_option():
     )
 
 
+def no_ingest_option():
+    """Click option for skipping Chroma ingestion."""
+    return click.option(
+        "--no-ingest",
+        is_flag=True,
+        default=False,
+        help="Save markdown output but skip ChromaDB ingestion",
+    )
+
+
 def chunk_size_option():
     """Click option for chunk size."""
     return click.option(

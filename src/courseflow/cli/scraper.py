@@ -7,6 +7,7 @@ Wikipedia articles into the CourseFlow knowledge base.
 import asyncio
 import logging
 import sys
+from pathlib import Path
 from typing import Any
 
 import click
@@ -16,21 +17,35 @@ from courseflow.cli.config import (
     chunk_overlap_option,
     chunk_size_option,
     dry_run_option,
+    no_ingest_option,
     rate_limit_option,
     retry_attempts_option,
     timeout_option,
     topics_option,
     verbose_option,
 )
+from courseflow.config import settings
 from courseflow.domain.scraping.models import JobStatus, ScrapingConfig
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-
 logger = logging.getLogger(__name__)
+
+
+def _configure_logging(verbose: bool) -> None:
+    """Configure console + file logging for scraper commands."""
+    log_level = logging.DEBUG if verbose else logging.INFO
+    log_path = Path(settings.SCRAPER_LOG_FILE)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    handlers: list[logging.Handler] = [
+        logging.StreamHandler(),
+        logging.FileHandler(log_path, encoding="utf-8"),
+    ]
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=handlers,
+        force=True,
+    )
 
 
 @click.group()
@@ -43,6 +58,7 @@ def scraper():
 @topics_option()
 @rate_limit_option()
 @dry_run_option()
+@no_ingest_option()
 @chunk_size_option()
 @chunk_overlap_option()
 @timeout_option()
@@ -52,6 +68,7 @@ def scrape(
     topics: tuple[str, ...],
     rate_limit: float,
     dry_run: bool,
+    no_ingest: bool,
     chunk_size: int,
     chunk_overlap: int,
     timeout: int,
@@ -65,11 +82,8 @@ def scrape(
         scraper scrape -t "Artificial intelligence" --dry-run
         scraper scrape -t "Python" --verbose
     """
-    # Configure logging level based on verbose flag
-    if verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logging.getLogger("courseflow").setLevel(logging.DEBUG)
-    
+    _configure_logging(verbose)
+
     # Convert tuple to list
     topics_list = list(topics)
 
@@ -79,6 +93,7 @@ def scrape(
         retry_attempts=retry_attempts,
         timeout_seconds=timeout,
         dry_run=dry_run,
+        no_ingest=no_ingest,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )
@@ -97,6 +112,8 @@ def scrape(
     click.echo(f"Retry attempts: {retry_attempts}")
     if dry_run:
         click.echo(click.style("MODE: DRY-RUN (preview only)", fg="yellow", bold=True))
+    if no_ingest:
+        click.echo(click.style("MODE: NO-INGEST (markdown only)", fg="yellow", bold=True))
     click.echo("=" * 60 + "\n")
 
     # Execute scraping

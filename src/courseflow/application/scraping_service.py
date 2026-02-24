@@ -7,6 +7,7 @@ adapters, implementing the use case logic for Wikipedia scraping.
 import logging
 from uuid import uuid4
 
+from courseflow.config import settings
 from courseflow.domain.scraping.models import (
     JobStatistics,
     ScrapingConfig,
@@ -16,7 +17,6 @@ from courseflow.domain.scraping.services import ScrapingOrchestrator
 from courseflow.infrastructure.scrapers.chroma_storage import ChromaDBStorageAdapter
 from courseflow.infrastructure.scrapers.mediawiki import MediaWikiAdapter
 from courseflow.infrastructure.scrapers.processor import ContentProcessor
-from courseflow.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class ScrapingService:
         )
 
         self.storage_adapter = ChromaDBStorageAdapter(
-            collection_name=collection_name or settings.WIKIPEDIA_CHROMA_COLLECTION,
+            collection_name=collection_name or settings.CHROMA_COLLECTION_NAME,
         )
 
         self.processor = ContentProcessor()
@@ -122,6 +122,7 @@ class ScrapingService:
         finally:
             # Cleanup connections
             await self.mediawiki_adapter.close()
+            await self.storage_adapter.close()
 
     async def preview_scraping(
         self,
@@ -186,3 +187,4 @@ class ScrapingService:
     async def cleanup(self) -> None:
         """Cleanup resources and connections."""
         await self.mediawiki_adapter.close()
+        await self.storage_adapter.close()

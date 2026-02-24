@@ -9,9 +9,11 @@ from typing import Any
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 
-from courseflow.domain.scraping.exceptions import StorageError, EmbeddingError
-from courseflow.domain.scraping.ports import StoragePort
 from courseflow.config import settings
+from courseflow.domain.scraping.exceptions import EmbeddingError, StorageError
+from courseflow.domain.scraping.ports import StoragePort
+from courseflow.infrastructure.embeddings.gemini import GeminiEmbeddingClient
+from courseflow.infrastructure.scrapers.rate_limiter import RateLimiter
 
 
 class ChromaDBStorageAdapter(StoragePort):
@@ -56,9 +58,14 @@ class ChromaDBStorageAdapter(StoragePort):
                 name=self._collection_name,
                 metadata={"hnsw:space": "cosine"},
             )
+            self._embedding_client = GeminiEmbeddingClient(
+                api_key=settings.GEMINI_API_KEY,
+                model=settings.GEMINI_EMBEDDING_MODEL,
+            )
+            self._embedding_rate_limiter = RateLimiter(rate=settings.SCRAPER_EMBEDDING_RPS)
 
         except Exception as e:
-            raise StorageError(f"Failed to initialize ChromaDB: {e}")
+            raise StorageError(f"Failed to initialize ChromaDB: {e}") from e
 
     async def ingest_chunks(
         self,
@@ -97,6 +104,9 @@ class ChromaDBStorageAdapter(StoragePort):
                 documents.append(chunk_data["text"])
                 metadatas.append({
                     "article_title": chunk_data["article_title"],
+                    "source": chunk_data.get("source", chunk_data["source_url"]),
+                    "file_path": chunk_data.get("file_path", ""),
+                    "subject": "scraped",
                     "source_url": chunk_data["source_url"],
                     "chunk_index": chunk_data["chunk_index"],
                     "total_chunks": chunk_data["total_chunks"],
@@ -105,9 +115,16 @@ class ChromaDBStorageAdapter(StoragePort):
                 })
                 ids.append(chunk_id)
 
+            embeddings = []
+            for text in documents:
+                async with self._embedding_rate_limiter:
+                    embedding = await self._embedding_client.generate_embedding(text)
+                embeddings.append(embedding)
+
             # Upsert to ChromaDB (replaces existing chunks with same ID)
             self.collection.upsert(
                 documents=documents,
+                embeddings=embeddings,
                 metadatas=metadatas,
                 ids=ids,
             )
@@ -119,11 +136,11 @@ class ChromaDBStorageAdapter(StoragePort):
                 raise EmbeddingError(
                     f"Failed to generate embeddings: {e}",
                     article_title=article_title
-                )
+                ) from e
             raise StorageError(
                 f"Failed to ingest chunks for '{article_title}': {e}",
                 article_title=article_title
-            )
+            ) from e
 
     async def check_article_exists(self, article_title: str) -> bool:
         """Check if article chunks already exist in ChromaDB.
@@ -142,7 +159,7 @@ class ChromaDBStorageAdapter(StoragePort):
             return len(results.get("ids", [])) > 0
 
         except Exception as e:
-            raise StorageError(f"Failed to check article existence: {e}")
+            raise StorageError(f"Failed to check article existence: {e}") from e
 
     async def delete_article(self, article_title: str) -> int:
         """Delete all chunks for an article from ChromaDB.
@@ -173,7 +190,7 @@ class ChromaDBStorageAdapter(StoragePort):
             raise StorageError(
                 f"Failed to delete article '{article_title}': {e}",
                 article_title=article_title
-            )
+            ) from e
 
     async def get_article_metadata(
         self,
@@ -225,7 +242,7 @@ class ChromaDBStorageAdapter(StoragePort):
             raise StorageError(
                 f"Failed to get metadata for '{article_title}': {e}",
                 article_title=article_title
-            )
+            ) from e
 
     async def search(
         self,
@@ -250,7 +267,7 @@ class ChromaDBStorageAdapter(StoragePort):
         try:
             # Build query parameters
             query_kwargs: dict[str, Any] = {
-                "query_texts": [query],
+                "query_embeddings": [await self._embedding_client.generate_embedding(query)],
                 "n_results": top_k,
                 "include": ["documents", "metadatas", "distances"],
             }
@@ -265,11 +282,12 @@ class ChromaDBStorageAdapter(StoragePort):
             # Format results
             search_results = []
             for i in range(len(results["ids"][0])):
+                metadata = results["metadatas"][0][i]
                 search_results.append({
                     "text": results["documents"][0][i],
-                    "article_title": results["metadatas"][0][i]["article_title"],
-                    "source_url": results["metadatas"][0][i]["source_url"],
-                    "chunk_index": results["metadatas"][0][i]["chunk_index"],
+                    "article_title": metadata.get("article_title") or metadata.get("source", "unknown"),
+                    "source_url": metadata.get("source_url") or metadata.get("source", ""),
+                    "chunk_index": int(metadata.get("chunk_index", 0)),
                     "relevance_score": 1.0 - results["distances"][0][i],  # Convert distance to similarity
                 })
 
@@ -277,8 +295,8 @@ class ChromaDBStorageAdapter(StoragePort):
 
         except Exception as e:
             if "embed" in str(e).lower():
-                raise EmbeddingError(f"Failed to embed query: {e}")
-            raise StorageError(f"Failed to execute search: {e}")
+                raise EmbeddingError(f"Failed to embed query: {e}") from e
+            raise StorageError(f"Failed to execute search: {e}") from e
 
     async def list_all_articles(self) -> list[dict[str, Any]]:
         """List all ingested Wikipedia articles with metadata.
@@ -302,14 +320,16 @@ class ChromaDBStorageAdapter(StoragePort):
             articles_map: dict[str, dict[str, Any]] = {}
 
             for metadata in results["metadatas"]:
-                article_title = metadata["article_title"]
+                article_title = metadata.get("article_title")
+                if not article_title:
+                    continue
 
                 if article_title not in articles_map:
                     articles_map[article_title] = {
                         "article_title": article_title,
-                        "source_url": metadata["source_url"],
+                        "source_url": metadata.get("source_url", ""),
                         "total_chunks": 0,
-                        "created_at": metadata["scrape_timestamp"],
+                        "created_at": metadata.get("scrape_timestamp"),
                     }
 
                 articles_map[article_title]["total_chunks"] += 1
@@ -317,7 +337,11 @@ class ChromaDBStorageAdapter(StoragePort):
             return list(articles_map.values())
 
         except Exception as e:
-            raise StorageError(f"Failed to list articles: {e}")
+            raise StorageError(f"Failed to list articles: {e}") from e
+
+    async def close(self) -> None:
+        """Close adapter resources."""
+        await self._embedding_client.close()
 
     def _generate_chunk_id(self, source_url: str, chunk_index: int) -> str:
         """Generate deterministic ChromaDB document ID.

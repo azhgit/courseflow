@@ -4,8 +4,9 @@ This module implements the ScrapingPort interface for fetching Wikipedia
 article content via the MediaWiki REST API with rate limiting and retries.
 """
 
-from typing import Any
+import re
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -77,42 +78,30 @@ class MediaWikiAdapter(ScrapingPort):
             NetworkError: Connection timeout or network failure
             ParsingError: Invalid API response format
         """
-        async with self.rate_limiter:
-            try:
-                # Use MediaWiki REST API /page/{title} endpoint
-                url = f"{self.base_url}/page/{self._encode_title(title)}"
+        try:
+            current_title = title
+            data: dict[str, Any] | None = None
 
-                response = await self.client.get(url)
+            for _ in range(3):
+                data = await self._request_page(current_title)
+                redirect_target = self._extract_redirect_target(data)
+                if not redirect_target or redirect_target == current_title:
+                    break
+                current_title = redirect_target
 
-                # Handle HTTP errors
-                if response.status_code == 404:
-                    raise ArticleNotFoundError(title)
-                elif response.status_code == 429:
-                    retry_after = response.headers.get("Retry-After")
-                    raise RateLimitError(
-                        retry_after=int(retry_after) if retry_after else None
-                    )
-                elif response.status_code >= 500:
-                    raise NetworkError(
-                        f"Wikipedia server error: HTTP {response.status_code}"
-                    )
+            if data is None:
+                raise ParsingError(f"Failed to fetch article '{title}'")
 
-                response.raise_for_status()
+            return self._build_article_dict(title, data)
 
-                # Parse JSON response
-                data = response.json()
-
-                # Extract article metadata
-                return self._build_article_dict(title, data)
-
-            except httpx.TimeoutException as e:
-                raise NetworkError(f"Request timeout for article '{title}'", e)
-            except httpx.NetworkError as e:
-                raise NetworkError(f"Network error fetching article '{title}'", e)
-            except httpx.HTTPStatusError as e:
-                raise NetworkError(f"HTTP error {e.response.status_code}", e)
-            except ValueError as e:
-                raise ParsingError(f"Invalid JSON response for article '{title}'")
+        except httpx.TimeoutException as e:
+            raise NetworkError(f"Request timeout for article '{title}'", e) from e
+        except httpx.NetworkError as e:
+            raise NetworkError(f"Network error fetching article '{title}'", e) from e
+        except httpx.HTTPStatusError as e:
+            raise NetworkError(f"HTTP error {e.response.status_code}", e) from e
+        except ValueError as e:
+            raise ParsingError(f"Invalid JSON response for article '{title}'") from e
 
     @with_retry(max_attempts=3)
     async def validate_article_exists(self, title: str) -> bool:
@@ -145,13 +134,13 @@ class MediaWikiAdapter(ScrapingPort):
                 return True
 
             except httpx.TimeoutException as e:
-                raise NetworkError(f"Request timeout checking article '{title}'", e)
+                raise NetworkError(f"Request timeout checking article '{title}'", e) from e
             except httpx.NetworkError as e:
-                raise NetworkError(f"Network error checking article '{title}'", e)
+                raise NetworkError(f"Network error checking article '{title}'", e) from e
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
                     return False
-                raise NetworkError(f"HTTP error {e.response.status_code}", e)
+                raise NetworkError(f"HTTP error {e.response.status_code}", e) from e
 
     @with_retry(max_attempts=3)
     async def follow_redirect(self, title: str) -> str:
@@ -176,7 +165,7 @@ class MediaWikiAdapter(ScrapingPort):
             except ArticleNotFoundError:
                 raise
             except Exception as e:
-                raise NetworkError(f"Failed to follow redirect for '{title}'", e)
+                raise NetworkError(f"Failed to follow redirect for '{title}'", e) from e
 
     async def close(self) -> None:
         """Close the HTTP client connection."""
@@ -194,6 +183,38 @@ class MediaWikiAdapter(ScrapingPort):
         # Replace spaces with underscores (Wikipedia convention)
         encoded = title.replace(" ", "_")
         return encoded
+
+    async def _request_page(self, title: str) -> dict[str, Any]:
+        """Request one article page from MediaWiki REST API."""
+        async with self.rate_limiter:
+            url = f"{self.base_url}/page/{self._encode_title(title)}"
+            response = await self.client.get(url)
+
+            if response.status_code == 404:
+                raise ArticleNotFoundError(title)
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After")
+                raise RateLimitError(
+                    retry_after=int(retry_after) if retry_after else None
+                )
+            if response.status_code >= 500:
+                raise NetworkError(f"Wikipedia server error: HTTP {response.status_code}")
+
+            response.raise_for_status()
+            return response.json()
+
+    def _extract_redirect_target(self, api_response: dict[str, Any]) -> str | None:
+        """Extract redirect target from MediaWiki source content."""
+        source = api_response.get("source")
+        if not isinstance(source, str):
+            return None
+
+        match = re.match(r"^\s*#redirect\s*\[\[([^\]]+)\]\]", source, flags=re.IGNORECASE)
+        if not match:
+            return None
+
+        target = match.group(1).split("|", 1)[0].split("#", 1)[0].strip()
+        return self._encode_title(target) if target else None
 
     def _build_article_dict(
         self,
@@ -225,7 +246,7 @@ class MediaWikiAdapter(ScrapingPort):
                 # For HTML response, would need additional processing
                 content = api_response["html"]
             else:
-                raise ParsingError(f"No content found in API response")
+                raise ParsingError("No content found in API response")
 
             # Calculate word count
             word_count = len(content.split())
@@ -248,4 +269,4 @@ class MediaWikiAdapter(ScrapingPort):
             }
 
         except KeyError as e:
-            raise ParsingError(f"Missing required field in API response: {e}")
+            raise ParsingError(f"Missing required field in API response: {e}") from e

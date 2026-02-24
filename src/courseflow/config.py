@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     MEDIAWIKI_RATE_LIMIT: float = Field(default=1.0, ge=0.1, le=10.0)
     MEDIAWIKI_TIMEOUT_SECONDS: int = Field(default=30, ge=5, le=300)
     WIKIPEDIA_CHROMA_COLLECTION: str = "wikipedia_articles"
+    SCRAPER_OUTPUT_DIR: str = "./docs/scraped"
+    SCRAPER_LOG_FILE: str = "./logs/scraper.log"
+    SCRAPER_EMBEDDING_RPS: float = Field(default=0.2, ge=0.05, le=5.0)
 
     # Development flags
     LOCAL_UNLIMITED: bool = True  # Disable rate/quota limits for local dev
