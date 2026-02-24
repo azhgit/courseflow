@@ -75,9 +75,9 @@ class ContentProcessor(ProcessingPort):
             return content
 
         except KeyError as e:
-            raise ParsingError(f"Missing expected field in API response: {e}")
+            raise ParsingError(f"Missing expected field in API response: {e}") from e
         except Exception as e:
-            raise ParsingError(f"Failed to extract content: {e}")
+            raise ParsingError(f"Failed to extract content: {e}") from e
 
     async def chunk_content(
         self,
@@ -158,7 +158,7 @@ class ContentProcessor(ProcessingPort):
         except Exception as e:
             if isinstance(e, ChunkingError):
                 raise
-            raise ChunkingError(f"Failed to chunk content: {e}", article_title)
+            raise ChunkingError(f"Failed to chunk content: {e}", article_title) from e
 
     async def validate_utf8(self, text: str) -> bool:
         """Validate text is valid UTF-8 without partial multibyte sequences.

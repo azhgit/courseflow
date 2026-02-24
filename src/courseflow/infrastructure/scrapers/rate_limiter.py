@@ -6,7 +6,6 @@ to respect Wikipedia's API guidelines (default 1 req/sec).
 
 import asyncio
 import time
-from typing import AsyncIterator
 
 
 class RateLimiter:

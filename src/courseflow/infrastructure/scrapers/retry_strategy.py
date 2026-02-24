@@ -4,21 +4,21 @@ This module provides a decorator for retrying async operations with exponential
 backoff (1s, 2s, 4s delays, max 3 retries) for transient failures.
 """
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from tenacity import (
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
 )
 
 from courseflow.domain.scraping.exceptions import (
     NetworkError,
     RateLimitError,
 )
-
 
 # Type variable for decorated functions
 F = TypeVar("F", bound=Callable[..., Any])

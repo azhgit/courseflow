@@ -6,7 +6,6 @@ external dependencies (Wikipedia API, ChromaDB, content processing).
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Any
 
 # Type aliases for clarity
