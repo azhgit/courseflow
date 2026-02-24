@@ -1,7 +1,7 @@
 # Implementation Plan: Wikipedia Knowledge Base Scraper
 
-**Branch**: `001-wikipedia-scraper` | **Date**: 2025-02-23 | **Spec**: [spec.md](./spec.md)  
-**Input**: Feature specification from `/specs/001-wikipedia-scraper/spec.md`
+**Branch**: `009-web-scraping` | **Date**: 2025-02-23 | **Spec**: [spec.md](./spec.md)  
+**Input**: Feature specification from `/specs/009-wikipedia-scraper/spec.md`
 
 ## Summary
 
@@ -137,7 +137,7 @@ Will verify after generating data model and contracts:
 ### Documentation (this feature)
 
 ```text
-specs/001-wikipedia-scraper/
+specs/009-wikipedia-scraper/
 ├── plan.md              # This file (comprehensive implementation plan)
 ├── research.md          # Phase 0: Technology decisions, best practices, dependency versions
 ├── data-model.md        # Phase 1: Entity definitions, validation rules, state transitions
@@ -885,7 +885,7 @@ class ProcessingPort(ABC):
 
 ## Phase 1: Quickstart Guide
 
-### File: specs/001-wikipedia-scraper/quickstart.md
+### File: specs/009-wikipedia-scraper/quickstart.md
 
 ```markdown
 # Quickstart: Wikipedia Knowledge Base Scraper
@@ -1470,7 +1470,7 @@ This implementation plan provides a comprehensive blueprint for the Wikipedia Kn
 3. Begin implementation following suggested sequence
 4. Iterate on architecture if Phase 0 research reveals new requirements
 
-**Branch**: `001-wikipedia-scraper` is ready for implementation.
+**Branch**: `009-web-scraping` is ready for implementation.
 
 ---
 

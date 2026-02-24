@@ -1,6 +1,6 @@
 # Tasks: Wikipedia Knowledge Base Scraper
 
-**Input**: Design documents from `/specs/001-wikipedia-scraper/`
+**Input**: Design documents from `/specs/009-wikipedia-scraper/`
 **Prerequisites**: plan.md, spec.md, data-model.md, contracts/, research.md
 
 **Constitution Compliance**: All tasks must align with constitution principles:

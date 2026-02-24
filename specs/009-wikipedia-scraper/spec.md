@@ -1,6 +1,6 @@
 # Feature Specification: Wikipedia Knowledge Base Scraper
 
-**Feature Branch**: `001-wikipedia-scraper`  
+**Feature Branch**: `009-web-scraping`  
 **Created**: 2024-02-23  
 **Status**: Draft  
 **Input**: User description: "Automated Knowledge Base Update via Web Scraping - Scraping educational content from Wikipedia with rate limiting, content processing, error handling, and automatic ChromaDB ingestion. Support CLI-driven scraping with dry-run mode, topic selection, and configurable rate limits. Implement hexagonal architecture with Port/Adapter pattern."
