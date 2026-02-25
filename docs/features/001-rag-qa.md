@@ -1,51 +1,48 @@
-# 001 - RAG Q&A 系統
+# 001 - Basic RAG Question Answering
 
-> 檢索增強生成（RAG）核心系統
+## Summary
+This feature delivers the core CourseFlow experience: users send a question, the system retrieves relevant knowledge chunks from ChromaDB, and Gemini generates a grounded answer.
 
-## 📖 概述
+## Key Capabilities
+- Query endpoint for single-turn Q&A.
+- Retrieval with fixed top-k (`k=3`) and similarity threshold (`>= 0.5`).
+- Answer generation constrained by retrieved content.
+- Clear error handling for empty queries and no relevant documents.
+- Basic request quota enforcement (15 requests/minute).
 
-**001-rag-qa** 是 CourseFlow 的核心功能，實現了一個完整的 RAG（Retrieval-Augmented Generation）系統，使系統能夠從知識庫中檢索相關文檔，並使用 AI 模型生成有根據的答案。
+## Primary API
+- `POST /api/v1/query`
 
-### 功能亮點
+## How It Works
+1. Validate query input.
+2. Embed query and search vector store.
+3. Filter by similarity threshold.
+4. Generate answer from retrieved chunks.
+5. Return answer + source references + metadata.
 
-- 🎯 **向量相似度檢索**：使用 ChromaDB 進行高效語義搜索
-- 🤖 **AI 生成答案**：使用 Google Gemini 生成高質量回答
-- 📖 **來源引用**：自動提供答案的參考文獻
-- ⚡ **低延遲**：<2s P95 查詢延遲
-- 🔐 **源隔離**：防止模型虛構（Hallucination）
+## Test Guide
+### Automated
+```bash
+pytest tests/unit -v
+pytest tests/integration -v
+```
 
-## 🚀 快速開始
-
-### 基本查詢
-
+### Manual Smoke Test
 ```bash
 curl -X POST http://localhost:8000/api/v1/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "What is photosynthesis?"}'
+  -d '{"query":"What is photosynthesis?"}'
 ```
+Expected:
+- HTTP 200
+- Non-empty `answer`
+- `sources` returned
 
-### 響應示例
+### Negative Cases
+- Empty query should return HTTP 400.
+- Unrelated query should return a clear "no relevant information" error.
 
-```json
-{
-  "query": "What is photosynthesis?",
-  "answer": "Photosynthesis is the process...",
-  "sources": [
-    {
-      "document": "Photosynthesis.md",
-      "relevance": 0.92
-    }
-  ],
-  "latency_ms": 1250
-}
-```
-
-## 📚 相關資源
-
-- [完整 API 文檔](../API.md)
-- [架構設計](../ARCHITECTURE.md)
-- [設計文檔](../../specs/001-rag-qa/)
-
----
-
-**維護者**：CourseFlow 開發團隊
+## Success Signals
+- Valid queries return within ~3 seconds.
+- Responses cite retrieved documents.
+- No hallucination-style answer when retrieval has no valid chunks.

@@ -10,25 +10,23 @@
 ## 🗺️ Navigation
 
 **Quick Links:**
-- 📖 [Quick Start Guide](docs/QUICKSTART.md) - 新手入門指南
-- 🤝 [Contributing Guide](CONTRIBUTING.md) - 貢獻指南
-- 📚 [Features](docs/features/) - 功能文檔
-- 📊 [Changelog](docs/CHANGELOG.md) - 版本更新記錄
-- 🏗️ [Architecture](docs/ARCHITECTURE.md) - 系統架構設計
+- 📖 [Quick Start Guide](docs/QUICKSTART.md)
+- 📚 [Feature Documentation](docs/features/)
+- 📊 [Changelog](docs/CHANGELOG.md)
 
 ## 📋 Feature Status
 
 | # | Feature | Status | Documentation |
 |---|---------|--------|---|
-| 001 | RAG Q&A System | ✅ Complete | [詳情](docs/features/001-rag-qa.md) |
-| 002 | Document Ingestion | ✅ Complete | [詳情](docs/features/002-doc-ingestion.md) |
-| 003 | Conversation Context | ✅ Complete | - |
-| 004 | Streaming Responses | ✅ Complete | - |
-| 005 | Production Polish | ✅ Complete | - |
-| 006 | Demo Protection | ✅ Complete | - |
-| 007 | React Frontend | ✅ Complete | - |
-| 008 | Zeabur Deployment | ✅ Complete | - |
-| 009 | Wikipedia Scraper | ✅ Complete | [詳情](docs/features/009-web-scraping.md) |
+| 001 | RAG Q&A System | ✅ Complete | [Docs](docs/features/001-rag-qa.md) |
+| 002 | Document Ingestion | ✅ Complete | [Docs](docs/features/002-doc-ingestion.md) |
+| 003 | Conversation Context | ✅ Complete | [Docs](docs/features/003-conversation-context.md) |
+| 004 | Streaming Responses | ✅ Complete | [Docs](docs/features/004-streaming-responses.md) |
+| 005 | Production Polish | ✅ Complete | [Docs](docs/features/005-production-polish.md) |
+| 006 | Demo Protection | ✅ Complete | [Docs](docs/features/006-demo-protection.md) |
+| 007 | React Frontend | ✅ Complete | [Docs](docs/features/007-react-frontend-mvp.md) |
+| 008 | Zeabur Deployment | ✅ Complete | [Docs](docs/features/008-zeabur-deployment.md) |
+| 009 | Wikipedia Scraper | ✅ Complete | [Docs](docs/features/009-web-scraping.md) |
 
 ## 📖 Overview
 
@@ -392,14 +390,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 🤝 Contributing
 
-We welcome contributions! Please review the **[Contributing Guide](CONTRIBUTING.md)** for:
-- Development workflow
-- Code standards and conventions
-- Testing requirements
-- Documentation guidelines
-- Commit message format
-
-For detailed feature documentation, see [docs/features/](docs/features/).
+Contributions are welcome through issues and pull requests.
+For implementation details, see [docs/features/](docs/features/).
 
 ## 🙏 Acknowledgments
 
