@@ -2,7 +2,7 @@
 title: World War I
 source: wikipedia
 url: https://en.wikipedia.org/wiki/World_War_I
-scraped_at: 2026-02-24T20:13:33+00:00
+scraped_at: 2026-02-25T20:25:15+00:00
 word_count: 24093
 ---
 

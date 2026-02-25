@@ -2,7 +2,7 @@
 title: Industrial Revolution
 source: wikipedia
 url: https://en.wikipedia.org/wiki/Industrial_Revolution
-scraped_at: 2026-02-24T20:13:39+00:00
+scraped_at: 2026-02-25T20:29:20+00:00
 word_count: 26216
 ---
 
