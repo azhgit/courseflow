@@ -7,6 +7,29 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
+## 🗺️ Navigation
+
+**Quick Links:**
+- 📖 [Quick Start Guide](docs/QUICKSTART.md) - 新手入門指南
+- 🤝 [Contributing Guide](CONTRIBUTING.md) - 貢獻指南
+- 📚 [Features](docs/features/) - 功能文檔
+- 📊 [Changelog](docs/CHANGELOG.md) - 版本更新記錄
+- 🏗️ [Architecture](docs/ARCHITECTURE.md) - 系統架構設計
+
+## 📋 Feature Status
+
+| # | Feature | Status | Documentation |
+|---|---------|--------|---|
+| 001 | RAG Q&A System | ✅ Complete | [詳情](docs/features/001-rag-qa.md) |
+| 002 | Document Ingestion | ✅ Complete | [詳情](docs/features/002-doc-ingestion.md) |
+| 003 | Conversation Context | ✅ Complete | - |
+| 004 | Streaming Responses | ✅ Complete | - |
+| 005 | Production Polish | ✅ Complete | - |
+| 006 | Demo Protection | ✅ Complete | - |
+| 007 | React Frontend | ✅ Complete | - |
+| 008 | Zeabur Deployment | ✅ Complete | - |
+| 009 | Wikipedia Scraper | ✅ Complete | [詳情](docs/features/009-web-scraping.md) |
+
 ## 📖 Overview
 
 CourseFlow is a **Retrieval-Augmented Generation (RAG)** system that helps students learn any subject by answering questions using a curated knowledge base. Unlike traditional chatbots, CourseFlow grounds its answers in authoritative educational materials, reducing hallucinations and providing cited sources.
@@ -369,15 +392,14 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please:
+We welcome contributions! Please review the **[Contributing Guide](CONTRIBUTING.md)** for:
+- Development workflow
+- Code standards and conventions
+- Testing requirements
+- Documentation guidelines
+- Commit message format
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-All contributions must comply with the [CourseFlow Constitution](.specify/memory/constitution.md).
+For detailed feature documentation, see [docs/features/](docs/features/).
 
 ## 🙏 Acknowledgments
 
