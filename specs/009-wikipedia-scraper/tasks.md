@@ -1,0 +1,432 @@
+# Tasks: Wikipedia Knowledge Base Scraper
+
+**Input**: Design documents from `/specs/009-wikipedia-scraper/`
+**Prerequisites**: plan.md, spec.md, data-model.md, contracts/, research.md
+
+**Constitution Compliance**: All tasks must align with constitution principles:
+- Code Quality: Functions <50 lines, files <500 lines, documented code
+- Testing Standards: 80% coverage minimum, test-first for complex features
+- Hexagonal Architecture: Port/Adapter pattern, domain isolation
+- Performance: Rate limiting enforced, <500ms p90 semantic search latency
+
+**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+
+## Format: `- [ ] [ID] [P?] [Story] Description`
+
+- **[P]**: Can run in parallel (different files, no dependencies)
+- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US4)
+- Include exact file paths in descriptions
+
+---
+
+## Phase 1: Setup (Shared Infrastructure)
+
+**Purpose**: Project initialization and basic structure setup
+
+- [X] T001 Add click>=8.1.0 dependency to pyproject.toml (only new dependency needed)
+- [X] T002 [P] Create domain/scraping/ directory structure: __init__.py, models.py, ports.py, exceptions.py, services.py in src/courseflow/domain/scraping/
+- [X] T003 [P] Create infrastructure/scrapers/ directory structure: __init__.py, mediawiki.py, chroma_storage.py, processor.py, rate_limiter.py, retry_strategy.py in src/courseflow/infrastructure/scrapers/
+- [X] T004 [P] Create cli/ directory structure: __init__.py, scraper.py, config.py in src/courseflow/cli/
+- [X] T005 [P] Create application/scraping_service.py in src/courseflow/application/
+- [X] T006 [P] Create test directories: tests/unit/scraping/, tests/integration/scrapers/, tests/e2e/
+- [X] T007 Download NLTK Punkt tokenizer data in setup script (required for sentence tokenization)
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: Core domain models, ports, and infrastructure that ALL user stories depend on
+
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+
+### Domain Layer (Port Interfaces & Models)
+
+- [X] T008 [P] Define custom exceptions in src/courseflow/domain/scraping/exceptions.py (ScrapingError, ArticleNotFoundError, RateLimitError, NetworkError, ParsingError, ChunkingError, StorageError, EmbeddingError)
+- [X] T009 [P] Define ScrapingPort interface in src/courseflow/domain/scraping/ports.py with methods: fetch_article(), validate_article_exists(), follow_redirect()
+- [X] T010 [P] Define StoragePort interface in src/courseflow/domain/scraping/ports.py with methods: ingest_chunks(), check_article_exists(), delete_article(), get_article_metadata(), search(), list_all_articles()
+- [X] T011 [P] Define ProcessingPort interface in src/courseflow/domain/scraping/ports.py with methods: extract_content(), chunk_content(), validate_utf8(), estimate_chunk_count()
+- [X] T012 [P] Create JobStatus enum in src/courseflow/domain/scraping/models.py (PENDING, RUNNING, COMPLETED, FAILED, PARTIAL_SUCCESS)
+- [X] T013 [P] Create ScrapingConfig Pydantic model in src/courseflow/domain/scraping/models.py with validation (rate_limit, retry_attempts, timeout_seconds, dry_run, chunk_size, chunk_overlap)
+- [X] T014 [P] Create JobStatistics Pydantic model in src/courseflow/domain/scraping/models.py with cross-field validation (total_articles, successful_articles, failed_articles, total_chunks_created, total_processing_time_seconds)
+- [X] T015 [P] Create ArticleError Pydantic model in src/courseflow/domain/scraping/models.py (article_title, error_type, error_message, retry_count)
+- [X] T016 [P] Create WikipediaArticle Pydantic model in src/courseflow/domain/scraping/models.py with validation (title, canonical_title, source_url, content, retrieved_at, word_count, api_response_metadata)
+- [X] T017 [P] Create ContentChunk Pydantic model in src/courseflow/domain/scraping/models.py with validation and methods: to_chroma_metadata(), to_chroma_id() (id, text, chunk_index, total_chunks, article_title, source_url, word_count, overlap_start, overlap_end, created_at)
+- [X] T018 Create ScrapingJob Pydantic model in src/courseflow/domain/scraping/models.py with state transitions (id, topics, config, status, start_time, end_time, statistics, errors)
+
+### Infrastructure Layer (Core Adapters)
+
+- [X] T019 [P] Implement RateLimiter class in src/courseflow/infrastructure/scrapers/rate_limiter.py using token bucket algorithm (async context manager, configurable rate)
+- [X] T020 [P] Implement retry decorator with exponential backoff in src/courseflow/infrastructure/scrapers/retry_strategy.py using tenacity (1s, 2s, 4s delays, max 3 retries)
+- [X] T021 [P] Implement ContentProcessor (ProcessingPort adapter) in src/courseflow/infrastructure/scrapers/processor.py with NLTK sentence tokenization: extract_content(), chunk_content() with sentence boundaries and overlap, validate_utf8(), estimate_chunk_count()
+- [X] T022 Implement MediaWikiAdapter (ScrapingPort adapter) in src/courseflow/infrastructure/scrapers/mediawiki.py with httpx async client, rate limiting integration, retry logic: fetch_article(), validate_article_exists(), follow_redirect()
+- [X] T023 Implement ChromaDBStorageAdapter (StoragePort adapter) in src/courseflow/infrastructure/scrapers/chroma_storage.py reusing existing ChromaDB infrastructure: ingest_chunks() with deduplication, check_article_exists(), delete_article(), get_article_metadata(), search() for course-wide queries, list_all_articles()
+
+### Configuration & CLI Infrastructure
+
+- [X] T024 [P] Add scraping configuration section to src/courseflow/config.py (MediaWiki base URL, User-Agent, default rate limits, ChromaDB collection name)
+- [X] T025 [P] Create CLI configuration defaults in src/courseflow/cli/config.py with Click option definitions (--topics, --rate-limit, --dry-run, --chunk-size, --chunk-overlap, --timeout)
+
+**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+
+---
+
+## Phase 3: User Story 1 - Manual Topic Scraping with Immediate Ingestion (Priority: P1) 🎯 MVP
+
+**Goal**: Core scraping functionality - fetch Wikipedia articles by topic, process into chunks, and automatically ingest into ChromaDB with rate limiting and error handling
+
+**Independent Test**: Run `scraper wikipedia --topics "Python (programming language)" "Machine learning"` and verify ChromaDB contains processed chunks with metadata. Query ChromaDB to retrieve ingested content.
+
+**Why P1**: This is the core value proposition - without this, the feature delivers no value. All other stories enhance this foundation.
+
+### Implementation for User Story 1
+
+- [X] T026 [P] [US1] Implement ScrapingOrchestrator domain service in src/courseflow/domain/scraping/services.py: orchestrate scraping workflow, job state management, statistics tracking, error collection (uses all three ports)
+- [X] T027 [US1] Implement ScrapingService application layer in src/courseflow/application/scraping_service.py: coordinate between orchestrator and adapters, handle transaction boundaries, implement use case logic
+- [X] T028 [US1] Create CLI scrape command in src/courseflow/cli/scraper.py: parse arguments, initialize adapters and service, call scraping workflow, display progress and results, handle exit codes (0=success, 1=failure, 2=partial)
+- [X] T029 [US1] Add User-Agent header configuration with contact email to MediaWikiAdapter in src/courseflow/infrastructure/scrapers/mediawiki.py
+- [X] T030 [US1] Implement error handling and logging in ScrapingOrchestrator: log all operations (INFO/WARNING/ERROR), collect ArticleError for failed articles, calculate final job status
+- [X] T031 [US1] Add ChromaDB collection auto-creation in ChromaDBStorageAdapter: detect missing collection, create with appropriate config (embedding model, distance metric)
+- [X] T032 [US1] Implement partial success handling in ScrapingService: save successfully processed articles even if others fail, return statistics with success/failure breakdown
+
+**Checkpoint**: User Story 1 fully functional - can scrape topics and verify in ChromaDB
+
+---
+
+## Phase 4: User Story 4 - Content Processing Pipeline (Priority: P1)
+
+**Goal**: High-quality content processing - parse MediaWiki JSON, extract clean text, chunk with sentence boundaries and overlap, preserve UTF-8 encoding
+
+**Independent Test**: Retrieve long article (>5000 words) via MediaWiki API and verify ChromaDB contains multiple chunks with proper overlap, metadata, clean text, and no mid-sentence cuts
+
+**Why P1**: Essential for usable knowledge base content. Raw API responses need semantic chunking with proper metadata for effective RAG retrieval.
+
+**Note**: US4 builds on US1's infrastructure but focuses on processing quality
+
+### Implementation for User Story 4
+
+- [X] T033 [P] [US4] Enhance ContentProcessor.extract_content() in src/courseflow/infrastructure/scrapers/processor.py: parse MediaWiki REST API JSON structure, remove HTML tags, exclude navigation/metadata/infoboxes, preserve paragraph structure
+- [X] T034 [US4] Enhance ContentProcessor.chunk_content() in src/courseflow/infrastructure/scrapers/processor.py: implement sentence boundary detection with NLTK Punkt, create chunks ~1000 words with tolerance (+20%), add 100-word overlap with complete sentences, calculate overlap_start/overlap_end offsets
+- [X] T035 [P] [US4] Implement ContentProcessor.validate_utf8() in src/courseflow/infrastructure/scrapers/processor.py: detect partial multi-byte UTF-8 sequences, prevent corruption at chunk boundaries
+- [X] T036 [P] [US4] Add chunk size validation in ContentChunk model in src/courseflow/domain/scraping/models.py: ensure chunks ≤1200 words (1000 + 100 overlap + 100 buffer), validate sentence endings
+- [X] T037 [US4] Add metadata preservation in WikipediaArticle in src/courseflow/domain/scraping/models.py: store API response metadata (revision_id, last_modified, page_id) for debugging
+- [X] T038 [US4] Implement deduplication logic in ChromaDBStorageAdapter.ingest_chunks() in src/courseflow/infrastructure/scrapers/chroma_storage.py: use deterministic IDs (URL hash + chunk_index), replace existing chunks on re-scrape
+- [X] T039 [US4] Add stub article detection and warning in ContentProcessor in src/courseflow/infrastructure/scrapers/processor.py: log warning for articles <100 words, add metadata flag
+
+**Checkpoint**: Content processing delivers high-quality, semantically chunked content
+
+---
+
+## Phase 5: User Story 2 - Dry-Run Mode for Planning and Validation (Priority: P2)
+
+**Goal**: Preview scraping operations without making actual requests or modifying ChromaDB - shows article metadata (titles, URLs, estimated size)
+
+**Independent Test**: Run `scraper wikipedia --topics "Artificial intelligence" --dry-run` and verify output shows article metadata without any Wikipedia requests or ChromaDB changes
+
+**Why P2**: Validates requests before execution, prevents accidental large scrapes. Essential for production use but not required for basic functionality.
+
+### Implementation for User Story 2
+
+- [X] T040 [P] [US2] Add dry_run parameter to ScrapingOrchestrator.execute() in src/courseflow/domain/scraping/services.py: skip port calls when dry_run=True, return preview data only
+- [X] T041 [P] [US2] Implement dry-run preview generation in ScrapingService in src/courseflow/application/scraping_service.py: create preview metadata (title, estimated URL, estimated chunk count using ProcessingPort.estimate_chunk_count()), validate topic format
+- [X] T042 [US2] Add --dry-run flag to CLI scrape command in src/courseflow/cli/scraper.py: pass to service, display preview table (topic, estimated chunks, status), prevent Wikipedia/ChromaDB access
+- [X] T043 [US2] Add dry-run result formatting in CLI in src/courseflow/cli/scraper.py: display preview table with topic validation (would succeed/fail indicators), show summary statistics (total topics, estimated chunks)
+
+**Checkpoint**: Dry-run mode enables safe preview before actual scraping
+
+---
+
+## Phase 6: User Story 3 - Configurable Rate Limiting (Priority: P2)
+
+**Goal**: Respectful Wikipedia API usage - configurable rate limits via CLI flags or config file, enforcement across all HTTP requests
+
+**Independent Test**: Run `scraper wikipedia --topics "Topic1" "Topic2" --rate-limit 2.0` and measure actual request intervals to verify enforcement within ±50ms tolerance
+
+**Why P2**: Critical for responsible API usage and avoiding blocks, but reasonable defaults make it non-blocking for P1. Must be configurable for different use cases.
+
+### Implementation for User Story 3
+
+- [X] T044 [P] [US3] Enhance RateLimiter in src/courseflow/infrastructure/scrapers/rate_limiter.py: implement precise timing with asyncio.sleep(), measure actual intervals, add tolerance checking (±50ms)
+- [X] T045 [P] [US3] Add rate limit precedence logic in ScrapingService in src/courseflow/application/scraping_service.py: CLI flag > config file > default (1 req/sec), validate range (0.1-10.0 req/sec)
+- [X] T046 [US3] Add --rate-limit CLI flag to scrape command in src/courseflow/cli/scraper.py: accept float value, pass to ScrapingConfig, validate range
+- [X] T047 [US3] Add rate limit configuration to config.py in src/courseflow/config.py: default_rate_limit setting, load from environment variable if present
+- [X] T048 [US3] Add rate limit enforcement verification in MediaWikiAdapter in src/courseflow/infrastructure/scrapers/mediawiki.py: integrate RateLimiter as context manager for all fetch_article() calls
+
+**Checkpoint**: Rate limiting is configurable and enforced across all requests
+
+---
+
+## Phase 7: User Story 5 - Hexagonal Architecture Implementation (Priority: P3)
+
+**Goal**: Clean architecture with Port/Adapter separation - domain logic isolated from external systems, easy testing with mocks, future adapter swaps
+
+**Independent Test**: Code review verifying: domain layer has no external dependencies, ports are interfaces, adapters implement ports, unit tests run without Wikipedia/ChromaDB using mocks
+
+**Why P3**: Architectural quality requirement that improves maintainability and testability but doesn't directly deliver user value. Foundation is already hexagonal from Phase 2.
+
+### Implementation for User Story 5
+
+- [X] T049 [P] [US5] Conduct architecture review of domain/scraping/ in src/courseflow/domain/scraping/: verify zero imports of httpx, chromadb, click, nltk - only port interfaces and standard library
+- [ ] T050 [P] [US5] Create mock adapters for testing in tests/unit/scraping/: MockScrapingAdapter, MockStorageAdapter, MockProcessingAdapter implementing all port methods
+- [ ] T051 [P] [US5] Add architecture diagram to README.md: show Port/Adapter pattern, domain/application/infrastructure layers, data flow
+- [X] T052 [P] [US5] Document port interfaces with detailed docstrings in src/courseflow/domain/scraping/ports.py: parameters, return types, exceptions, examples
+- [ ] T053 [US5] Create architecture decision record (ADR) in docs/adr/002-hexagonal-scraping.md: explain hexagonal architecture choice, port definitions, adapter responsibilities, testability benefits
+- [ ] T054 [US5] Verify adapter replaceability: create second test adapter (e.g., FileBasedScrapingAdapter) implementing ScrapingPort to prove domain logic unchanged
+
+**Checkpoint**: Architecture is clean, documented, and verifiably hexagonal
+
+---
+
+## Phase 8: Testing & Quality Assurance
+
+**Purpose**: Comprehensive test coverage for all user stories
+
+### Unit Tests (Domain Logic with Mocked Ports)
+
+- [X] T055 [P] Create test_models.py in tests/unit/scraping/: test all Pydantic model validation rules, field validators, cross-field validation, state transitions, serialization
+- [ ] T056 [P] Create test_scraping_orchestrator.py in tests/unit/scraping/: test job lifecycle, status transitions, statistics tracking, error collection using mocked ports
+- [ ] T057 [P] Create test_content_chunking.py in tests/unit/scraping/: test sentence boundary detection, overlap calculation, UTF-8 validation, chunk size limits using MockProcessingAdapter
+
+### Integration Tests (Adapters with Real/Mocked External Services)
+
+- [ ] T058 [P] Create test_mediawiki_adapter.py in tests/integration/scrapers/: test real MediaWiki API calls (use VCR.py for HTTP recording), redirect following, error handling (404, 429, 503, timeout)
+- [ ] T059 [P] Create test_chroma_storage_adapter.py in tests/integration/scrapers/: test with test ChromaDB instance, verify deduplication, course-wide search, metadata queries
+- [ ] T060 [P] Create test_content_processor.py in tests/integration/scrapers/: test with real Wikipedia API responses, verify chunking quality, sentence boundaries, overlap correctness
+- [ ] T061 [P] Create test_rate_limiter.py in tests/integration/scrapers/: verify timing accuracy (±50ms tolerance over 10 consecutive requests), test different rate limits
+
+### Contract Tests (Port Interface Compliance)
+
+- [ ] T062 [P] Create test_scraping_port_contract.py in tests/unit/scraping/: parametrized test verifying MediaWikiAdapter implements ScrapingPort correctly (all methods, signatures, exceptions)
+- [ ] T063 [P] Create test_storage_port_contract.py in tests/unit/scraping/: parametrized test verifying ChromaDBStorageAdapter implements StoragePort correctly
+- [ ] T064 [P] Create test_processing_port_contract.py in tests/unit/scraping/: parametrized test verifying ContentProcessor implements ProcessingPort correctly
+
+### End-to-End Tests (Full Pipeline)
+
+- [ ] T065 Create test_e2e_scraping_pipeline.py in tests/e2e/: test full scraping workflow (CLI → MediaWiki → processing → ChromaDB) with 5 test articles, verify complete data flow, test exit codes
+- [ ] T066 Create test_e2e_dry_run.py in tests/e2e/: test dry-run mode end-to-end, verify no external calls, correct preview output
+- [ ] T067 Create test_e2e_error_scenarios.py in tests/e2e/: test partial success (some articles fail), network failures, ChromaDB unavailable, rate limit exceeded
+
+### Performance Tests
+
+- [ ] T068 [P] Create test_performance_chunking.py in tests/integration/scrapers/: verify 20,000-word article processes in <5 seconds, memory usage <100MB
+- [ ] T069 [P] Create test_performance_semantic_search.py in tests/integration/scrapers/: verify course-wide search across 100+ chunks completes in <500ms p90
+
+**Checkpoint**: >80% code coverage achieved, all user stories tested
+
+---
+
+## Phase 9: CLI Enhancement & User Experience
+
+**Purpose**: Additional CLI commands and improved user experience
+
+- [X] T070 [P] Create CLI list command in src/courseflow/cli/scraper.py: display all ingested articles with metadata (title, chunks, scrape date), use StoragePort.list_all_articles()
+- [X] T071 [P] Create CLI delete command in src/courseflow/cli/scraper.py: remove article by URL or title, confirm before deletion, use StoragePort.delete_article()
+- [X] T072 [P] Create CLI search-test command in src/courseflow/cli/scraper.py: test semantic search with query, display top results, use StoragePort.search()
+- [ ] T073 [P] Add progress indicators to scrape command in src/courseflow/cli/scraper.py: show progress every 2 seconds (articles processed, chunks created), use rich or tqdm
+- [X] T074 [P] Add color-coded output to CLI in src/courseflow/cli/scraper.py: green for success, yellow for warnings, red for errors using Click styling
+- [X] T075 [P] Add verbose mode (--verbose flag) to CLI in src/courseflow/cli/scraper.py: show detailed logging, API responses, chunk boundaries
+
+---
+
+## Phase 10: Documentation & Polish
+
+**Purpose**: Documentation, code cleanup, and final validation
+
+- [ ] T076 [P] Update README.md: add Wikipedia scraper section with installation instructions, usage examples for all CLI commands, architecture diagram
+- [ ] T077 [P] Create QUICKSTART.md in docs/: 5-minute getting started guide, first scrape walkthrough, verify ChromaDB ingestion
+- [X] T078 [P] Update API documentation in src/courseflow/domain/scraping/ports.py: ensure all port interfaces have complete docstrings with examples
+- [ ] T079 [P] Create troubleshooting guide in docs/troubleshooting.md: common errors (rate limit, network timeout, ChromaDB connection), suggested resolutions
+- [ ] T080 [P] Add inline comments to complex logic: chunking algorithm in ContentProcessor, retry strategy in MediaWikiAdapter, rate limiter token bucket algorithm
+- [ ] T081 [P] Run code quality checks: ruff linting, mypy type checking (strict mode for domain layer), verify constitution compliance (functions <50 lines, files <500 lines)
+- [ ] T082 Code cleanup and refactoring: extract long methods, remove code duplication, improve variable names
+- [ ] T083 [P] Create example_usage.py in examples/: demonstrate scraping workflow, dry-run mode, search testing with code examples
+- [ ] T084 Run final integration test suite: execute all E2E tests, verify >80% coverage, test all CLI commands
+- [ ] T085 Validate against quickstart.md: follow quickstart guide step-by-step, ensure new developer can run first scrape in 5 minutes
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Phase 1: Setup**: No dependencies - can start immediately
+- **Phase 2: Foundational**: Depends on Phase 1 completion - BLOCKS all user stories
+- **Phase 3: User Story 1 (P1)**: Depends on Phase 2 completion - MVP core functionality
+- **Phase 4: User Story 4 (P1)**: Depends on Phase 3 completion - enhances processing quality
+- **Phase 5: User Story 2 (P2)**: Depends on Phase 3 completion - adds dry-run preview
+- **Phase 6: User Story 3 (P2)**: Depends on Phase 3 completion - adds rate limit configuration
+- **Phase 7: User Story 5 (P3)**: Depends on Phase 2 completion - architectural validation (can run in parallel with P1 stories)
+- **Phase 8: Testing**: Depends on Phases 3-7 completion - comprehensive test coverage
+- **Phase 9: CLI Enhancement**: Depends on Phase 3 completion - additional commands
+- **Phase 10: Documentation**: Depends on all implementation phases - final polish
+
+### User Story Dependencies
+
+```
+Phase 2 (Foundational - REQUIRED FIRST)
+    │
+    ├──> Phase 3 (US1: Core Scraping - P1) ──> Phase 4 (US4: Processing Quality - P1)
+    │         │
+    │         ├──> Phase 5 (US2: Dry-Run - P2)
+    │         │
+    │         ├──> Phase 6 (US3: Rate Limiting - P2)
+    │         │
+    │         └──> Phase 9 (CLI Enhancement)
+    │
+    └──> Phase 7 (US5: Architecture - P3) [Can be parallel with US1-US4]
+         
+    Phase 8 (Testing) depends on all above
+    Phase 10 (Documentation) depends on all above
+```
+
+### Within Each Phase
+
+- Tasks marked [P] can run in parallel (different files, no dependencies)
+- Port interfaces (T009-T011) must complete before models that reference them
+- Models (T012-T018) must complete before services that use them
+- Adapters (T019-T023) must complete before application services (T027)
+- Domain layer (T008-T018) must complete before infrastructure layer (T019-T023)
+- Infrastructure must complete before CLI (T028)
+
+### Parallel Opportunities
+
+**Phase 1 (Setup)**: T002, T003, T004, T005, T006 can all run in parallel after T001
+
+**Phase 2 (Foundational)**:
+- Ports batch: T009, T010, T011 (parallel)
+- Models batch: T012, T013, T014, T015, T016, T017 (parallel, after T008)
+- Adapters batch: T019, T020, T021 (parallel), then T022, then T023
+- Config batch: T024, T025 (parallel)
+
+**Phase 3 (US1)**: T026 must complete before T027, then T028-T032 have dependencies on T027
+
+**Phase 4 (US4)**: T033, T035, T036, T037 can run in parallel
+
+**Phase 5 (US2)**: T040, T041 can run in parallel, then T042, then T043
+
+**Phase 6 (US3)**: T044, T045, T046, T047 can run in parallel
+
+**Phase 7 (US5)**: T049, T050, T051, T052 can all run in parallel
+
+**Phase 8 (Testing)**: All test files can be created in parallel (T055-T069)
+
+**Phase 9 (CLI)**: All CLI commands can be created in parallel (T070-T075)
+
+**Phase 10 (Documentation)**: Most documentation tasks can run in parallel (T076-T083)
+
+---
+
+## Parallel Example: Phase 2 Foundational
+
+```bash
+# Batch 1: Exception and Port Interfaces (can run together)
+Task T008: Define exceptions in domain/scraping/exceptions.py
+Task T009: Define ScrapingPort in domain/scraping/ports.py
+Task T010: Define StoragePort in domain/scraping/ports.py
+Task T011: Define ProcessingPort in domain/scraping/ports.py
+
+# Batch 2: Domain Models (after exceptions defined)
+Task T012: Create JobStatus enum in domain/scraping/models.py
+Task T013: Create ScrapingConfig in domain/scraping/models.py
+Task T014: Create JobStatistics in domain/scraping/models.py
+Task T015: Create ArticleError in domain/scraping/models.py
+Task T016: Create WikipediaArticle in domain/scraping/models.py
+Task T017: Create ContentChunk in domain/scraping/models.py
+
+# Batch 3: Infrastructure Adapters (after ports and models)
+Task T019: Implement RateLimiter in infrastructure/scrapers/rate_limiter.py
+Task T020: Implement retry_strategy in infrastructure/scrapers/retry_strategy.py
+Task T021: Implement ContentProcessor in infrastructure/scrapers/processor.py
+```
+
+---
+
+## Implementation Strategy
+
+### MVP First (Phase 1 + Phase 2 + Phase 3)
+
+1. Complete Phase 1: Setup (T001-T007)
+2. Complete Phase 2: Foundational (T008-T025) - **CRITICAL BLOCKER**
+3. Complete Phase 3: User Story 1 (T026-T032) - **MVP ACHIEVED**
+4. **STOP and VALIDATE**: Test scraping with `--topics`, verify ChromaDB ingestion
+5. Deploy/demo if ready
+
+**MVP Delivers**: Core Wikipedia scraping with rate limiting, error handling, and ChromaDB ingestion
+
+### Incremental Delivery (Add Features Sequentially)
+
+1. **Foundation** (Phase 1 + 2) → Can't do anything yet, but infrastructure ready
+2. **+ User Story 1** (Phase 3) → Can scrape Wikipedia articles! (MVP)
+3. **+ User Story 4** (Phase 4) → High-quality chunking with sentence boundaries
+4. **+ User Story 2** (Phase 5) → Can preview scrapes before execution
+5. **+ User Story 3** (Phase 6) → Configurable rate limits for different use cases
+6. **+ User Story 5** (Phase 7) → Architecture validated and documented
+7. **+ Testing** (Phase 8) → Comprehensive test coverage
+8. **+ CLI Enhancement** (Phase 9) → Additional utility commands
+9. **+ Documentation** (Phase 10) → Production-ready with docs
+
+Each increment adds value without breaking previous functionality.
+
+### Parallel Team Strategy
+
+With multiple developers after Phase 2:
+
+1. **Team completes Phase 1 + Phase 2 together** (critical foundation)
+2. **Once Phase 2 done, parallelize**:
+   - Developer A: Phase 3 (US1: Core Scraping)
+   - Developer B: Phase 7 (US5: Architecture validation - less blocking)
+   - Developer C: Start Phase 8 test infrastructure
+3. **After Phase 3 completes**:
+   - Developer A continues: Phase 4 (US4: Processing Quality)
+   - Developer B: Phase 5 (US2: Dry-Run)
+   - Developer C: Phase 6 (US3: Rate Limiting)
+4. **Final phases**:
+   - All developers: Phase 8 (Testing) - split test files
+   - Developer A: Phase 9 (CLI Enhancement)
+   - Developer B: Phase 10 (Documentation)
+
+---
+
+## Success Criteria Validation
+
+After all phases complete, verify:
+
+### Measurable Outcomes (from spec.md)
+
+- [ ] **SC-001**: Scrape and ingest 10 Wikipedia articles in <15 seconds (with 1 req/sec rate limit)
+- [ ] **SC-002**: Process articles from 500 to 20,000 words without data loss or corruption
+- [ ] **SC-003**: ChromaDB retrieval returns relevant chunks with >90% semantic accuracy (test with queries)
+- [ ] **SC-004**: Handle 95% of Wikipedia articles without parsing errors (test with 1000 random samples)
+- [ ] **SC-005**: Dry-run mode executes in <1 second for up to 20 topics
+- [ ] **SC-006**: Network failures result in zero data loss for already-processed articles
+- [ ] **SC-007**: Achieve >90% code coverage for domain logic and adapters
+- [ ] **SC-008**: New developer can run first successful scrape within 5 minutes of reading docs
+
+### Performance & UX Targets
+
+- [ ] CLI response time <100ms for command validation and dry-run
+- [ ] Rate limiting accuracy within ±50ms tolerance
+- [ ] Memory usage <100MB per article (streaming processing)
+- [ ] 100% chunks respect sentence boundaries (no mid-sentence cuts)
+- [ ] Semantic search latency <500ms p90 for course-wide queries
+
+### Architectural Quality
+
+- [ ] Domain logic has zero dependencies on httpx, chromadb, click, nltk
+- [ ] Unit tests for domain run in <1 second without network/database
+- [ ] Can swap Wikipedia adapter without modifying domain logic (verified via test adapter)
+- [ ] 12+ configurable parameters (rate limits, chunk sizes, retry attempts, timeouts)
+
+---
+
+## Notes
+
+- **[P] = Parallelizable**: Different files, no dependencies within phase
+- **[Story] label**: Maps task to user story for traceability
+- **No tests by default**: Tests are in Phase 8 to keep focus on implementation
+- **Hexagonal architecture**: Domain layer isolated from infrastructure from Phase 2 onward
+- **Rate limiting**: Enforced from User Story 1 (Phase 3) with defaults, configurable in Phase 6
+- **ChromaDB reuse**: Existing ChromaDB infrastructure in project is reused in T023
+- **NLTK data**: Punkt tokenizer data must be downloaded (T007) before testing ContentProcessor
+- **Exit codes**: 0=success, 1=failure, 2=partial success (some articles failed)
+- **Commit strategy**: Commit after each task or logical group
+- **Stop at checkpoints**: Each checkpoint validates story independence

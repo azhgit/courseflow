@@ -71,6 +71,16 @@ class Settings(BaseSettings):
     QUOTA_CACHE_ENABLED: bool = True  # Enable demo cache bypass
     QUOTA_STREAM_DELAY_MS: int = Field(default=30, ge=0)  # Word delay for cached responses
 
+    # Wikipedia Scraping
+    MEDIAWIKI_BASE_URL: str = "https://en.wikipedia.org/w/rest.php/v1"
+    MEDIAWIKI_USER_AGENT: str = "CourseFlow/0.1.0 (Educational RAG System; contact@example.com)"
+    MEDIAWIKI_RATE_LIMIT: float = Field(default=1.0, ge=0.1, le=10.0)
+    MEDIAWIKI_TIMEOUT_SECONDS: int = Field(default=30, ge=5, le=300)
+    WIKIPEDIA_CHROMA_COLLECTION: str = "wikipedia_articles"
+    SCRAPER_OUTPUT_DIR: str = "./docs/scraped"
+    SCRAPER_LOG_FILE: str = "./logs/scraper.log"
+    SCRAPER_EMBEDDING_RPS: float = Field(default=0.2, ge=0.05, le=5.0)
+
     # Development flags
     LOCAL_UNLIMITED: bool = True  # Disable rate/quota limits for local dev
     MOCK_QUERY_MODE: bool = False  # Return mock answers without calling Gemini

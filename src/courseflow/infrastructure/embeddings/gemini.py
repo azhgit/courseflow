@@ -52,9 +52,11 @@ class GeminiEmbeddingClient(EmbeddingPort):
         await self.client.aclose()
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=4),
-        retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError)),
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=2, min=5, max=60),
+        retry=retry_if_exception_type(
+            (httpx.RequestError, httpx.HTTPStatusError, QuotaExceededError)
+        ),
         reraise=True,
     )
     async def generate_embedding(self, text: str, timeout: int = 10) -> list[float]:
