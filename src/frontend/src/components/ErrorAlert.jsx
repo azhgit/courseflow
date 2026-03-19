@@ -55,7 +55,7 @@ export function ErrorAlert({ error = {}, onDismiss, onRetry }) {
   const sourceLabel = source === 'local_guard' ? 'Local guard' : source === 'gemini' ? 'Gemini' : null;
   const friendly = quotaLike
     ? `${sourceLabel ? `${sourceLabel} ` : ''}quota/rate limit reached. Please wait and retry.`
-    : 'Something went wrong. Please try again.';
+    : rawMessage || 'Something went wrong. Please try again.';
 
   const copyDetails = async () => {
     const txt = JSON.stringify(error, null, 2);

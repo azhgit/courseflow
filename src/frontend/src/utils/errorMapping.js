@@ -45,7 +45,7 @@ export function mapSSEErrorToErrorState(errorType, message, errorSource = null) 
   if (errorType === 'no_relevant_documents') {
     return {
       type: 'no_documents',
-      message: 'No content found for this query. Try rephrasing your question.',
+      message: message || 'No content found for this query. Try rephrasing your question.',
     };
   }
 
@@ -58,6 +58,7 @@ export function mapSSEErrorToErrorState(errorType, message, errorSource = null) 
     };
   }
 
+  // For service_unavailable, internal_error, and other errors, use the API message
   return {
     type: 'network_error',
     message: message || 'Connection lost. Please try again.',
