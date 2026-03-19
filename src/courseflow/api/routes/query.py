@@ -384,13 +384,15 @@ async def query_endpoint(
         if any(phrase in answer_lower for phrase in [
             "cannot answer",
             "cannot provide",
-            "do not contain information",
+            "do not contain",
             "doesn't contain",
             "no information",
             "unable to answer",
-            "not available in",
-            "not found in the",
-            "not mentioned in",
+            "not available",
+            "not found",
+            "not mentioned",
+            "not provided",
+            "not included",
         ]):
             sources = []
 
@@ -741,13 +743,15 @@ async def stream_query_endpoint(
             if any(phrase in answer_lower for phrase in [
                 "cannot answer",
                 "cannot provide",
-                "do not contain information",
+                "do not contain",
                 "doesn't contain",
                 "no information",
                 "unable to answer",
-                "not available in",
-                "not found in the",
-                "not mentioned in",
+                "not available",
+                "not found",
+                "not mentioned",
+                "not provided",
+                "not included",
             ]):
                 all_sources = []
 
