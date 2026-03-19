@@ -4,6 +4,7 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 
+from courseflow.application.document_filters import filter_development_docs
 from courseflow.domain.exceptions import NoRelevantDocumentsError
 from courseflow.domain.models import Answer, Query, SearchResult
 from courseflow.domain.ports import (
@@ -95,11 +96,11 @@ class RAGService:
         embedding_time_ms = int((time.time() - embedding_start) * 1000)
         logger.debug(f"Query embedding generated in {embedding_time_ms}ms")
 
-        # Stage 2: Search vector store
+        # Stage 2: Search vector store (fetch more candidates for filtering)
         search_start = time.time()
         search_results = await self.vector_store.search(
             query_embedding=query_embedding,
-            k=self.top_k,
+            k=max(self.top_k * 2, 6),  # Fetch more candidates to account for filtering
             subject=subject,
         )
         search_time_ms = int((time.time() - search_start) * 1000)
@@ -107,15 +108,22 @@ class RAGService:
             f"Vector search completed in {search_time_ms}ms, found {len(search_results)} results"
         )
 
-        # Stage 3: Filter by threshold
-        filtered_results = self._filter_by_threshold(search_results)
+        # Stage 3: Filter out development/internal documents
+        user_facing_results = filter_development_docs(search_results)
+        logger.debug(
+            f"After filtering development docs: {len(user_facing_results)} results "
+            f"(removed {len(search_results) - len(user_facing_results)})"
+        )
+        
+        # Stage 4: Filter by threshold (on user-facing results only)
+        filtered_results = self._filter_by_threshold(user_facing_results)
 
         if not filtered_results:
             max_similarity = (
-                max([r.similarity_score for r in search_results]) if search_results else 0.0
+                max([r.similarity_score for r in user_facing_results]) if user_facing_results else 0.0
             )
             logger.warning(
-                f"No relevant documents found for query {query.id}. "
+                f"No relevant user-facing documents found for query {query.id}. "
                 f"Max similarity: {max_similarity:.3f}, threshold: {self.similarity_threshold}"
             )
             raise NoRelevantDocumentsError(
@@ -239,11 +247,11 @@ class RAGService:
         embedding_time_ms = int((time.time() - embedding_start) * 1000)
         logger.debug(f"Query embedding generated in {embedding_time_ms}ms")
 
-        # Stage 2: Search vector store
+        # Stage 2: Search vector store (fetch more candidates for filtering)
         search_start = time.time()
         search_results = await self.vector_store.search(
             query_embedding=query_embedding,
-            k=self.top_k,
+            k=max(self.top_k * 2, 6),  # Fetch more candidates to account for filtering
             subject=subject,
         )
         search_time_ms = int((time.time() - search_start) * 1000)
@@ -251,15 +259,22 @@ class RAGService:
             f"Vector search completed in {search_time_ms}ms, found {len(search_results)} results"
         )
 
-        # Stage 3: Filter by threshold
-        filtered_results = self._filter_by_threshold(search_results)
+        # Stage 3: Filter out development/internal documents
+        user_facing_results = filter_development_docs(search_results)
+        logger.debug(
+            f"After filtering development docs: {len(user_facing_results)} results "
+            f"(removed {len(search_results) - len(user_facing_results)})"
+        )
+        
+        # Stage 4: Filter by threshold (on user-facing results only)
+        filtered_results = self._filter_by_threshold(user_facing_results)
 
         if not filtered_results:
             max_similarity = (
-                max([r.similarity_score for r in search_results]) if search_results else 0.0
+                max([r.similarity_score for r in user_facing_results]) if user_facing_results else 0.0
             )
             logger.warning(
-                f"No relevant documents for streaming query {query.id}. "
+                f"No relevant user-facing documents for streaming query {query.id}. "
                 f"Max similarity: {max_similarity:.3f}, threshold: {self.similarity_threshold}"
             )
             raise NoRelevantDocumentsError(
