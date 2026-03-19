@@ -180,13 +180,25 @@ function App() {
           });
         },
         (errorEvent) => {
-          setError(
-            mapSSEErrorToErrorState(
-              errorEvent.error,
-              errorEvent.message,
-              errorEvent.error_source
-            )
+          console.log('SSE Error Event:', errorEvent);
+          const mappedError = mapSSEErrorToErrorState(
+            errorEvent.error,
+            errorEvent.message,
+            errorEvent.error_source
           );
+          console.log('Mapped Error:', mappedError);
+          setError(mappedError);
+          
+          // Update assistant message with error status and empty sources
+          setMessages((prev) => {
+            const updated = [...prev];
+            const msg = updated.find((m) => m.id === assistantMessageId);
+            if (msg) {
+              msg.status = 'error';
+              msg.sources = [];  // Clear sources for error responses
+            }
+            return updated;
+          });
           setIsLoading(false);
         },
         () => {

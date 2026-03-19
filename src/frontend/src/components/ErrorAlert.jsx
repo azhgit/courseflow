@@ -50,12 +50,15 @@ export function ErrorAlert({ error = {}, onDismiss, onRetry }) {
   }, [remaining]);
 
   const rawMessage = error?.error?.message || error?.message || '';
+  console.log('ErrorAlert - error object:', error);
+  console.log('ErrorAlert - rawMessage:', rawMessage);
   const quotaLike = /quota|RESOURCE_EXHAUSTED|quota exceeded|rate limit/i.test(rawMessage);
   const source = error?.source || error?.error?.details?.source;
   const sourceLabel = source === 'local_guard' ? 'Local guard' : source === 'gemini' ? 'Gemini' : null;
   const friendly = quotaLike
     ? `${sourceLabel ? `${sourceLabel} ` : ''}quota/rate limit reached. Please wait and retry.`
     : rawMessage || 'Something went wrong. Please try again.';
+  console.log('ErrorAlert - friendly:', friendly);
 
   const copyDetails = async () => {
     const txt = JSON.stringify(error, null, 2);
