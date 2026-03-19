@@ -379,6 +379,21 @@ async def query_endpoint(
             if matched_sources:
                 sources = matched_sources
 
+        # If the answer indicates insufficient information, clear sources
+        answer_lower = answer.answer_text.lower()
+        if any(phrase in answer_lower for phrase in [
+            "cannot answer",
+            "cannot provide",
+            "do not contain information",
+            "doesn't contain",
+            "no information",
+            "unable to answer",
+            "not available in",
+            "not found in the",
+            "not mentioned in",
+        ]):
+            sources = []
+
         # Save assistant turn after successful RAG
         assistant_turn = ConversationTurn(
             conversation_id=conversation_id,
@@ -720,12 +735,27 @@ async def stream_query_endpoint(
                 if matched_sources:
                     all_sources = matched_sources
 
+            # If the answer indicates insufficient information, clear sources
+            full_response = "".join(all_chunks)
+            answer_lower = full_response.lower()
+            if any(phrase in answer_lower for phrase in [
+                "cannot answer",
+                "cannot provide",
+                "do not contain information",
+                "doesn't contain",
+                "no information",
+                "unable to answer",
+                "not available in",
+                "not found in the",
+                "not mentioned in",
+            ]):
+                all_sources = []
+
             yield SSEEvent.with_sources(
                 sources=all_sources,
                 retrieval_count=len(all_sources),
             ).to_sse()
 
-            full_response = "".join(all_chunks)
             token_count = len(full_response.split())
             yield SSEEvent.done(conversation_id=conversation_id, token_count=token_count).to_sse()
             streaming_metrics.success_count += 1
