@@ -381,8 +381,9 @@ async def query_endpoint(
 
         # If the answer indicates insufficient information, clear sources
         answer_lower = answer.answer_text.lower()
-        if any(phrase in answer_lower for phrase in [
+        negation_phrases = [
             "cannot answer",
+            "cannot be answered",
             "cannot provide",
             "do not contain",
             "doesn't contain",
@@ -393,7 +394,13 @@ async def query_endpoint(
             "not mentioned",
             "not provided",
             "not included",
-        ]):
+            "this question cannot",
+            "this question is not",
+            "answer cannot be found",
+            "cannot be answered",
+            "insufficient information",
+        ]
+        if any(phrase in answer_lower for phrase in negation_phrases):
             sources = []
 
         # Save assistant turn after successful RAG
@@ -740,8 +747,9 @@ async def stream_query_endpoint(
             # If the answer indicates insufficient information, clear sources
             full_response = "".join(all_chunks)
             answer_lower = full_response.lower()
-            if any(phrase in answer_lower for phrase in [
+            negation_phrases = [
                 "cannot answer",
+                "cannot be answered",
                 "cannot provide",
                 "do not contain",
                 "doesn't contain",
@@ -752,7 +760,12 @@ async def stream_query_endpoint(
                 "not mentioned",
                 "not provided",
                 "not included",
-            ]):
+                "this question cannot",
+                "this question is not",
+                "answer cannot be found",
+                "insufficient information",
+            ]
+            if any(phrase in answer_lower for phrase in negation_phrases):
                 all_sources = []
 
             yield SSEEvent.with_sources(
