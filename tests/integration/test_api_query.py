@@ -172,11 +172,13 @@ class TestQueryEndpointContract:
         data = response.json()
         assert "data" in data
         assert "answer" in data["data"]
+        # Check that answer follows the unified format
+        answer = data["data"]["answer"]
+        assert answer.startswith("I cannot answer that question.")
+        assert "The provided documents do not contain information about" in answer
         assert isinstance(data["data"]["sources"], list)
         assert data["data"]["sources"] == []
         assert "metadata" in data
-        assert "no_relevant_documents" in data["metadata"]
-        assert data["metadata"]["no_relevant_documents"]["threshold"] == 0.5
 
     def test_quota_exceeded_error(self, client, mock_rag_service):
         """Test 429 response for quota exceeded."""
@@ -203,7 +205,7 @@ class TestQueryEndpointContract:
         assert int(response.headers["retry-after"]) == 60
 
     def test_service_unavailable_error(self, client, mock_rag_service):
-        """Test 503 response for service unavailable."""
+        """Test 200 response with friendly message for service unavailable."""
         from courseflow.domain.exceptions import ServiceUnavailableError
 
         mock_rag_service.answer_query.side_effect = ServiceUnavailableError(
@@ -215,11 +217,16 @@ class TestQueryEndpointContract:
             json={"query": "What is photosynthesis?"},
         )
 
-        assert response.status_code == 503
-
+        assert response.status_code == 200
+        
         data = response.json()
-        assert "error" in data
-        assert data["error"]["type"] == "service_unavailable"
+        assert "data" in data
+        assert "answer" in data["data"]
+        # Check that answer follows the unified format
+        answer = data["data"]["answer"]
+        assert answer.startswith("I cannot answer that question.")
+        assert "The provided documents do not contain information about" in answer
+        assert data["data"]["sources"] == []
 
     def test_response_includes_token_usage(self, client, mock_rag_service):
         """Test that response includes token usage when available."""

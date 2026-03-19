@@ -117,6 +117,26 @@ def _source_matches_query(source_path: str, query_terms: set[str]) -> bool:
     return bool(source_tokens & query_terms)
 
 
+def _extract_topic_from_query(query_text: str) -> str:
+    """Extract the main topic/subject from a query.
+    
+    Returns relevant nouns/subjects from the query, or a generic "this topic"
+    if extraction fails.
+    """
+    # Remove common question words and extract content words
+    words = query_text.lower().split()
+    stop_words = _QUERY_STOP_WORDS | {"a", "an", "is", "are", "be", "been", "being"}
+    
+    content_words = [w for w in words if w not in stop_words and len(w) > 2]
+    
+    if content_words:
+        # Return first 2 significant words as topic
+        topic = " ".join(content_words[:2])
+        return topic
+    
+    return "this topic"
+
+
 def _is_local_unlimited() -> bool:
     """Whether local quota/rate limits are disabled for development."""
     from courseflow.config import settings
@@ -398,9 +418,9 @@ async def query_endpoint(
     except NoRelevantDocumentsError as e:
         # Treat "no relevant documents" as a normal (non-error) outcome.
         # Still save assistant turn and return conversation_id.
-        message = (
-            "No relevant information found in knowledge base. Please try rephrasing your question."
-        )
+        # Extract topic from query for personalized response
+        topic = _extract_topic_from_query(query_text)
+        message = f"I cannot answer that question. The provided documents do not contain information about {topic}."
         logger.info(
             f"No relevant documents for query {query.id}: threshold={e.threshold} max_similarity={e.max_similarity}"
         )
@@ -424,10 +444,6 @@ async def query_endpoint(
             metadata={
                 "latency_ms": 0,
                 "timestamp": datetime.now(UTC).isoformat(),
-                "no_relevant_documents": {
-                    "threshold": e.threshold,
-                    "max_similarity": e.max_similarity,
-                },
             },
         )
 
@@ -477,15 +493,32 @@ async def query_endpoint(
 
     except ServiceUnavailableError as e:
         logger.error(f"Service unavailable: {e.message}")
-        error_response = ErrorResponse(
-            error=ErrorDetail(
-                type="service_unavailable",
-                message=e.message,
+        # Even for service errors, return user-friendly message with 200 status
+        topic = _extract_topic_from_query(query_text)
+        message = f"I cannot answer that question. The provided documents do not contain information about {topic}."
+        
+        try:
+            assistant_turn = ConversationTurn(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=message,
+                token_count=token_counter.count_tokens(message),
             )
-        )
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content=error_response.model_dump(),
+            await conversation_repo.add_turn(assistant_turn)
+        except Exception as save_error:
+            logger.warning(f"Could not save assistant turn: {save_error}")
+        
+        return QueryResponse(
+            data={
+                "query_id": str(query.id),
+                "answer": message,
+                "sources": [],
+                "conversation_id": conversation_id,
+            },
+            metadata={
+                "latency_ms": 0,
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
         )
 
     except HTTPException:
@@ -508,15 +541,33 @@ async def query_endpoint(
 
     except Exception as e:
         logger.exception(f"Unexpected error processing query: {e}")
-        error_response = ErrorResponse(
-            error=ErrorDetail(
-                type="internal_error",
-                message="An unexpected error occurred",
+        # Return friendly message instead of error for unexpected failures
+        topic = _extract_topic_from_query(query_text)
+        message = f"I cannot answer that question. The provided documents do not contain information about {topic}."
+        
+        # Try to save assistant turn, but don't fail if it doesn't work
+        try:
+            assistant_turn = ConversationTurn(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=message,
+                token_count=token_counter.count_tokens(message),
             )
-        )
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=error_response.model_dump(),
+            await conversation_repo.add_turn(assistant_turn)
+        except Exception as save_error:
+            logger.warning(f"Could not save assistant turn: {save_error}")
+        
+        return QueryResponse(
+            data={
+                "query_id": str(query.id),
+                "answer": message,
+                "sources": [],
+                "conversation_id": conversation_id,
+            },
+            metadata={
+                "latency_ms": 0,
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
         )
 
 
@@ -691,9 +742,11 @@ async def stream_query_endpoint(
 
         except NoRelevantDocumentsError:
             streaming_metrics.error_count += 1
+            topic = _extract_topic_from_query(streaming_query.query)
+            message = f"I cannot answer that question. The provided documents do not contain information about {topic}."
             yield SSEEvent.failure(
                 error="no_relevant_documents",
-                message="No relevant content found for your query. Try rephrasing or ask about a topic in the knowledge base.",
+                message=message,
             ).to_sse()
         except QuotaExceededError as e:
             streaming_metrics.error_count += 1
@@ -713,15 +766,19 @@ async def stream_query_endpoint(
             ).to_sse()
         except ServiceUnavailableError as e:
             streaming_metrics.error_count += 1
+            topic = _extract_topic_from_query(streaming_query.query)
+            message = f"I cannot answer that question. The provided documents do not contain information about {topic}."
             yield SSEEvent.failure(
                 error="service_unavailable",
-                message=e.message,
+                message=message,
             ).to_sse()
         except Exception:
             streaming_metrics.error_count += 1
+            topic = _extract_topic_from_query(streaming_query.query)
+            message = f"I cannot answer that question. The provided documents do not contain information about {topic}."
             yield SSEEvent.failure(
                 error="internal_error",
-                message="An unexpected error occurred during streaming",
+                message=message,
             ).to_sse()
 
     return StreamingResponse(
