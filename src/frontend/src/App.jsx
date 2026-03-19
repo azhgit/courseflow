@@ -207,7 +207,12 @@ function App() {
             const msg = updated.find((m) => m.id === assistantMessageId);
             if (msg) {
               msg.status = 'complete';
-              msg.sources = assistantSources;
+              // If the answer contains "I cannot answer", don't show sources
+              if (msg.content.includes('I cannot answer')) {
+                msg.sources = [];
+              } else {
+                msg.sources = assistantSources;
+              }
             }
             return updated;
           });
