@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: courseflow-backend
+  namespace: courseflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: courseflow-backend
+  template:
+    metadata:
+      labels:
+        app: courseflow-backend
+    spec:
+      containers:
+        - name: courseflow-backend
+          image: courseflow-backend:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: courseflow-config
+            - secretRef:
+                name: courseflow-secrets
+          env:
+            - name: PORT
+              value: "8000"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: courseflow-backend
+  namespace: courseflow
+spec:
+  type: ClusterIP
+  selector:
+    app: courseflow-backend
+  ports:
+    - port: 8000
+      targetPort: 8000
