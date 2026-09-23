@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     SCRAPER_EMBEDDING_RPS: float = Field(default=0.2, ge=0.05, le=5.0)
 
     # Development flags
-    LOCAL_UNLIMITED: bool = True  # Disable rate/quota limits for local dev
+    LOCAL_UNLIMITED: bool = False  # Set true to disable rate/quota limits for local dev
     MOCK_QUERY_MODE: bool = False  # Return mock answers without calling Gemini
 
     model_config = SettingsConfigDict(
