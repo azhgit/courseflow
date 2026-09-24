@@ -119,21 +119,21 @@ def _source_matches_query(source_path: str, query_terms: set[str]) -> bool:
 
 def _extract_topic_from_query(query_text: str) -> str:
     """Extract the main topic/subject from a query.
-    
+
     Returns relevant nouns/subjects from the query, or a generic "this topic"
     if extraction fails.
     """
     # Remove common question words and extract content words
     words = query_text.lower().split()
     stop_words = _QUERY_STOP_WORDS | {"a", "an", "is", "are", "be", "been", "being"}
-    
+
     content_words = [w for w in words if w not in stop_words and len(w) > 2]
-    
+
     if content_words:
         # Return first 2 significant words as topic
         topic = " ".join(content_words[:2])
         return topic
-    
+
     return "this topic"
 
 
@@ -520,7 +520,7 @@ async def query_endpoint(
         # Even for service errors, return user-friendly message with 200 status
         topic = _extract_topic_from_query(query_text)
         message = f"I cannot answer that question. The provided documents do not contain information about {topic}."
-        
+
         try:
             assistant_turn = ConversationTurn(
                 conversation_id=conversation_id,
@@ -531,7 +531,7 @@ async def query_endpoint(
             await conversation_repo.add_turn(assistant_turn)
         except Exception as save_error:
             logger.warning(f"Could not save assistant turn: {save_error}")
-        
+
         return QueryResponse(
             data={
                 "query_id": str(query.id),
@@ -568,7 +568,7 @@ async def query_endpoint(
         # Return friendly message instead of error for unexpected failures
         topic = _extract_topic_from_query(query_text)
         message = f"I cannot answer that question. The provided documents do not contain information about {topic}."
-        
+
         # Try to save assistant turn, but don't fail if it doesn't work
         try:
             assistant_turn = ConversationTurn(
@@ -580,7 +580,7 @@ async def query_endpoint(
             await conversation_repo.add_turn(assistant_turn)
         except Exception as save_error:
             logger.warning(f"Could not save assistant turn: {save_error}")
-        
+
         return QueryResponse(
             data={
                 "query_id": str(query.id),
@@ -811,7 +811,7 @@ async def stream_query_endpoint(
                 error="stream_timeout",
                 message="Response generation timeout. Maximum streaming duration is 30 seconds.",
             ).to_sse()
-        except ServiceUnavailableError as e:
+        except ServiceUnavailableError:
             streaming_metrics.error_count += 1
             topic = _extract_topic_from_query(streaming_query.query)
             message = f"I cannot answer that question. The provided documents do not contain information about {topic}."

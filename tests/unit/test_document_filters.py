@@ -21,7 +21,6 @@ class TestIsDevDoc:
             ("docs/changelog.md", True),  # Case insensitive
             ("docs/README.md", True),
             ("docs/readme.md", True),  # Case insensitive
-            
             # User-facing docs - should return False
             ("docs/biology/photosynthesis.md", False),
             ("docs/biology/genetics.md", False),
@@ -29,12 +28,11 @@ class TestIsDevDoc:
             ("docs/programming/python-async.md", False),
             ("docs/history/world-war-i.md", False),
             ("docs/scraped/Great_Depression.md", False),
-            
             # Edge cases
             ("", False),  # Empty string
             (None, False),  # None should be handled gracefully
         ]
-        
+
         for source, expected in test_cases:
             # Handle None case
             if source is None:
@@ -46,13 +44,13 @@ class TestIsDevDoc:
 
     def test_case_insensitivity(self):
         """Test that classification is case-insensitive."""
-        assert is_development_doc("docs/features/001-rag-qa.md") == True
-        assert is_development_doc("docs/FEATURES/001-rag-qa.md") == True
-        assert is_development_doc("docs/Features/001-rag-qa.md") == True
-        
-        assert is_development_doc("docs/CHANGELOG.md") == True
-        assert is_development_doc("docs/changelog.md") == True
-        assert is_development_doc("docs/Changelog.md") == True
+        assert is_development_doc("docs/features/001-rag-qa.md")
+        assert is_development_doc("docs/FEATURES/001-rag-qa.md")
+        assert is_development_doc("docs/Features/001-rag-qa.md")
+
+        assert is_development_doc("docs/CHANGELOG.md")
+        assert is_development_doc("docs/changelog.md")
+        assert is_development_doc("docs/Changelog.md")
 
 
 class TestFilterDevelopmentDocs:
@@ -62,7 +60,7 @@ class TestFilterDevelopmentDocs:
         """Helper to create a SearchResult object."""
         # Create content that meets the minimum length requirement (100 characters)
         long_content = f"Content from {source}. " + ("This is sample test content. " * 5)
-        
+
         doc = Document(
             id=f"doc_{source}",
             content=long_content,
@@ -85,9 +83,9 @@ class TestFilterDevelopmentDocs:
             self._create_search_result("docs/programming/python-async.md", 0.75),
             self._create_search_result("docs/CHANGELOG.md", 0.7),
         ]
-        
+
         filtered = filter_development_docs(results)
-        
+
         # Should only keep biology and programming docs
         assert len(filtered) == 2
         assert filtered[0].document.metadata.source == "docs/biology/photosynthesis.md"
@@ -100,9 +98,9 @@ class TestFilterDevelopmentDocs:
             self._create_search_result("docs/features/001-rag-qa.md", 0.85),
             self._create_search_result("docs/programming/python-async.md", 0.8),
         ]
-        
+
         filtered = filter_development_docs(results)
-        
+
         assert len(filtered) == 2
         # Order should be preserved (biology first, then programming)
         assert filtered[0].document.metadata.source == "docs/biology/photosynthesis.md"
@@ -115,9 +113,9 @@ class TestFilterDevelopmentDocs:
             self._create_search_result("docs/deployment/zeabur-setup.md", 0.85),
             self._create_search_result("docs/CHANGELOG.md", 0.8),
         ]
-        
+
         filtered = filter_development_docs(results)
-        
+
         assert filtered == []
 
     def test_returns_original_when_none_filtered(self):
@@ -126,9 +124,9 @@ class TestFilterDevelopmentDocs:
             self._create_search_result("docs/biology/photosynthesis.md", 0.9),
             self._create_search_result("docs/programming/python-async.md", 0.85),
         ]
-        
+
         filtered = filter_development_docs(results)
-        
+
         assert len(filtered) == 2
         assert filtered[0].document.metadata.source == "docs/biology/photosynthesis.md"
         assert filtered[1].document.metadata.source == "docs/programming/python-async.md"

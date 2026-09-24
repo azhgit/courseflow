@@ -114,13 +114,15 @@ class RAGService:
             f"After filtering development docs: {len(user_facing_results)} results "
             f"(removed {len(search_results) - len(user_facing_results)})"
         )
-        
+
         # Stage 4: Filter by threshold (on user-facing results only)
         filtered_results = self._filter_by_threshold(user_facing_results)
 
         if not filtered_results:
             max_similarity = (
-                max([r.similarity_score for r in user_facing_results]) if user_facing_results else 0.0
+                max([r.similarity_score for r in user_facing_results])
+                if user_facing_results
+                else 0.0
             )
             logger.warning(
                 f"No relevant user-facing documents found for query {query.id}. "
@@ -265,13 +267,15 @@ class RAGService:
             f"After filtering development docs: {len(user_facing_results)} results "
             f"(removed {len(search_results) - len(user_facing_results)})"
         )
-        
+
         # Stage 4: Filter by threshold (on user-facing results only)
         filtered_results = self._filter_by_threshold(user_facing_results)
 
         if not filtered_results:
             max_similarity = (
-                max([r.similarity_score for r in user_facing_results]) if user_facing_results else 0.0
+                max([r.similarity_score for r in user_facing_results])
+                if user_facing_results
+                else 0.0
             )
             logger.warning(
                 f"No relevant user-facing documents for streaming query {query.id}. "
