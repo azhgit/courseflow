@@ -66,7 +66,7 @@ ignore = [
 "tests/**/*.py" = ["B011"]  # assert False
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 # Relaxed strict mode for pragmatic development
 warn_return_any = false  # Too many false positives with Pydantic/ChromaDB
 warn_unused_configs = true
